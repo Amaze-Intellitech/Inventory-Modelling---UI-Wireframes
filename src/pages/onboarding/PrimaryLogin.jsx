@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import aitekLogo from '../../components/aitek_logo_bg_removed-removebg-preview.png';
 
 export default function PrimaryLogin() {
   const navigate = useNavigate();
@@ -11,7 +12,11 @@ export default function PrimaryLogin() {
       <div className="login-split__hero">
         <div>
           <div className="login-split__brand">
-            <div className="rail__brand-mark">AT</div>
+            <img
+              src={aitekLogo}
+              alt="AITEK Logo"
+              style={{ height: 46, width: 'auto', objectFit: 'contain' }}
+            />
             <div className="rail__brand-text">
               <span className="rail__brand-name">AITEK</span>
               <span className="rail__brand-sub">Enterprise Intelligence</span>
@@ -34,6 +39,17 @@ export default function PrimaryLogin() {
 
       <div className="login-split__right">
         <div className="login-form-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <img
+              src={aitekLogo}
+              alt="AITEK Logo"
+              style={{ height: 36, width: 'auto', objectFit: 'contain' }}
+            />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: '0.04em', color: 'var(--ink)' }}>AITEK</div>
+              <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>Enterprise Intelligence</div>
+            </div>
+          </div>
           <h2>Welcome back</h2>
           <p className="sub">Sign in to continue to the Enterprise Intelligence Platform</p>
 

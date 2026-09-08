@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import aitekLogo from '../../components/aitek_logo_bg_removed-removebg-preview.png';
 
 export default function SecondaryLogin() {
   const navigate = useNavigate();
@@ -9,7 +10,11 @@ export default function SecondaryLogin() {
     <div className="onb-shell" style={{ maxWidth: 460, paddingTop: 80 }}>
       <div className="onb-shell__topbar">
         <div className="login-split__brand" style={{ color: 'var(--ink)' }}>
-          <div className="rail__brand-mark" style={{ background: 'var(--ink)' }}>AT</div>
+          <img
+            src={aitekLogo}
+            alt="AITEK Logo"
+            style={{ height: 38, width: 'auto', objectFit: 'contain' }}
+          />
           <div className="rail__brand-text">
             <span className="rail__brand-name" style={{ color: 'var(--ink)' }}>AITEK</span>
             <span className="rail__brand-sub" style={{ color: 'var(--muted)' }}>Inventory Modelling</span>

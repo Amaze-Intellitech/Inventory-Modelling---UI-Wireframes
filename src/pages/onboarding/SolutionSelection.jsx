@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layers, Grid2x2 } from 'lucide-react';
 import { usePlatform } from '../../context/PlatformContext';
+import aitekLogo from '../../components/aitek_logo_bg_removed-removebg-preview.png';
 
 export default function SolutionSelection() {
   const navigate = useNavigate();
@@ -16,7 +17,11 @@ export default function SolutionSelection() {
     <div className="solutions-page">
       <div className="solutions-topbar">
         <div className="login-split__brand" style={{ color: 'var(--ink)' }}>
-          <div className="rail__brand-mark" style={{ background: 'var(--ink)' }}>AT</div>
+          <img
+            src={aitekLogo}
+            alt="AITEK Logo"
+            style={{ height: 38, width: 'auto', objectFit: 'contain' }}
+          />
           <div className="rail__brand-text">
             <span className="rail__brand-name" style={{ color: 'var(--ink)' }}>AITEK</span>
             <span className="rail__brand-sub" style={{ color: 'var(--muted)' }}>Enterprise Intelligence</span>

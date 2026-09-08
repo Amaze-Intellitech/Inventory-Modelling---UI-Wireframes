@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Badge, Stepper } from '../../components/CommonUI';
 import { MATERIALS } from '../../data/mockData';
 import { usePlatform } from '../../context/PlatformContext';
+import aitekLogo from '../../components/aitek_logo_bg_removed-removebg-preview.png';
 
 export default function MaterialSelection() {
   const navigate = useNavigate();
@@ -12,7 +13,11 @@ export default function MaterialSelection() {
     <div className="onb-shell" style={{ maxWidth: 1040 }}>
       <div className="onb-shell__topbar">
         <div className="login-split__brand" style={{ color: 'var(--ink)' }}>
-          <div className="rail__brand-mark" style={{ background: 'var(--ink)' }}>AT</div>
+          <img
+            src={aitekLogo}
+            alt="AITEK Logo"
+            style={{ height: 38, width: 'auto', objectFit: 'contain' }}
+          />
           <div className="rail__brand-text">
             <span className="rail__brand-name" style={{ color: 'var(--ink)' }}>AITEK</span>
             <span className="rail__brand-sub" style={{ color: 'var(--muted)' }}>Inventory Modelling</span>

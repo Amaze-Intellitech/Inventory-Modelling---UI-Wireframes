@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CreditCard, Database, Archive, FileText } from 'lucide-react';
 import { Badge, Stepper } from '../../components/CommonUI';
 import { CONNECTORS_STATIC, SQL_TABLE_OPTIONS } from '../../data/mockData';
+import aitekLogo from '../../components/aitek_logo_bg_removed-removebg-preview.png';
 
 const ICONS = { erp1: CreditCard, wh: Archive, file: FileText };
 
@@ -121,7 +122,11 @@ export default function DataSourceConnections() {
     <div className="onb-shell" style={{ maxWidth: 920 }}>
       <div className="onb-shell__topbar">
         <div className="login-split__brand" style={{ color: 'var(--ink)' }}>
-          <div className="rail__brand-mark" style={{ background: 'var(--ink)' }}>AT</div>
+          <img
+            src={aitekLogo}
+            alt="AITEK Logo"
+            style={{ height: 38, width: 'auto', objectFit: 'contain' }}
+          />
           <div className="rail__brand-text">
             <span className="rail__brand-name" style={{ color: 'var(--ink)' }}>AITEK</span>
             <span className="rail__brand-sub" style={{ color: 'var(--muted)' }}>Inventory Modelling</span>

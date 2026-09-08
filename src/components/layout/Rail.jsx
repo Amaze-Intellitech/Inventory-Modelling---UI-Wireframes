@@ -4,6 +4,7 @@ import {
   LayoutGrid, Database, LineChart, PieChart, BarChart3, RefreshCcw,
   TrendingUp, GitBranch, SlidersHorizontal, Settings2, Layers,
 } from 'lucide-react';
+import aitekLogo from '../aitek_logo_bg_removed-removebg-preview.png';
 
 const GROUPS = [
   {
@@ -40,7 +41,11 @@ export default function Rail() {
   return (
     <nav className="rail">
       <div className="rail__brand">
-        <div className="rail__brand-mark">AT</div>
+        <img
+          src={aitekLogo}
+          alt="AITEK Logo"
+          style={{ height: 32, width: 'auto', objectFit: 'contain' }}
+        />
         <div className="rail__brand-text">
           <span className="rail__brand-name">AITEK</span>
           <span className="rail__brand-sub">Inventory Intelligence</span>
