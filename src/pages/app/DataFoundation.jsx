@@ -1,86 +1,252 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
+import { Search, Database, RefreshCw, CheckCircle2, Clock, Layers, Filter } from 'lucide-react';
 import { ViewHead, KpiTile, Badge, WhyDisclosure } from '../../components/CommonUI';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { MATERIALS } from '../../data/mockData';
 
 const SOURCES = [
-  { name: 'SAP S/4HANA', domain: 'Inventory ledger, cost', records: '3.80M', cadence: 'Every 4.00h', status: 'ok' },
-  { name: 'Manhattan WMS', domain: 'Warehouse movement', records: '1.60M', cadence: 'Every 1.00h', status: 'ok' },
-  { name: 'Coupa', domain: 'Procurement, PO, supplier', records: '640.00K', cadence: 'Nightly', status: 'ok' },
-  { name: 'Quality Mgmt System', domain: 'Inspection, shelf-life', records: '160.00K', cadence: 'Nightly', status: 'watch' },
+  { name: 'SAP S/4HANA', domain: 'Inventory ledger, cost', records: '3.80M', cadence: 'Every 4.00h', status: 'ok', lastSync: '12 mins ago' },
+  { name: 'Manhattan WMS', domain: 'Warehouse movement', records: '1.60M', cadence: 'Every 1.00h', status: 'ok', lastSync: '8 mins ago' },
+  { name: 'Coupa', domain: 'Procurement, PO, supplier', records: '640.00K', cadence: 'Nightly', status: 'ok', lastSync: '3 hrs ago' },
+  { name: 'Quality Mgmt System', domain: 'Inspection, shelf-life', records: '160.00K', cadence: 'Nightly', status: 'watch', lastSync: '2.00h delayed' },
 ];
 
 export default function DataFoundation() {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredMaterials = useMemo(() => {
+    if (!searchQuery.trim()) return MATERIALS;
+    const q = searchQuery.toLowerCase();
+    return MATERIALS.filter(
+      (m) =>
+        m.id.toLowerCase().includes(q) ||
+        m.name.toLowerCase().includes(q) ||
+        m.plant.toLowerCase().includes(q) ||
+        m.category.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
+
   return (
-    <section className="view">
-      <ViewHead title="Data Foundation" subtitle={<p>What the platform is reading from, at what scale, and how it's organized — before any analysis runs on top of it.</p>} />
+    <section className="view max-w-7xl mx-auto">
+      <ViewHead
+        title="Data Foundation"
+        subtitle={
+          <p className="text-muted leading-relaxed">
+            What the platform is reading from, at what scale, and how it's organized — before any analysis runs on top of it.
+          </p>
+        }
+      />
 
-      <div className="grid-4">
-        <KpiTile label="Transactional Records Ingested" value="6.20M" sub="Movements, receipts & consumption, trailing 24 months" />
-        <KpiTile label="Active Master Records" value="1,420" sub="Materials in active management scope" />
-        <KpiTile label="Source Systems Connected" value="4" sub="ERP · WMS · Procurement · Quality" />
-        <KpiTile label="Data Quality Score" value="99.80%" sub="Schema & completeness validation, last snapshot" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+        <KpiTile
+          label="Transactional Records Ingested"
+          value="6.20M"
+          sub="Movements, receipts & consumption, trailing 24 months"
+        />
+        <KpiTile
+          label="Active Master Records"
+          value="1,420"
+          sub="Materials in active management scope"
+        />
+        <KpiTile
+          label="Source Systems Connected"
+          value="4"
+          sub="ERP · WMS · Procurement · Quality"
+        />
+        <KpiTile
+          label="Data Quality Score"
+          value="99.80%"
+          sub="Schema & completeness validation, last snapshot"
+        />
       </div>
 
-      <div className="two-col">
-        <div className="card">
-          <div className="card__head"><div><h2 className="card__title">Connected sources</h2><p className="card__sub">Each source syncs on its own cadence into a single reconciled snapshot</p></div></div>
-          <table>
-            <thead><tr><th>Source</th><th>Domain</th><th className="num text-right">Records</th><th>Cadence</th><th>Status</th></tr></thead>
-            <tbody>
-              {SOURCES.map((s) => (
-                <tr key={s.name}>
-                  <td className="font-semibold">{s.name}</td><td>{s.domain}</td>
-                  <td className="num text-right">{s.records}</td><td>{s.cadence}</td>
-                  <td><Badge tone={s.status === 'ok' ? 'success' : 'watch'}>{s.status === 'ok' ? 'Synchronized' : '2.00h delayed'}</Badge></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="footnote">Snapshot v2.40 · frozen at data-read time so every screen in this session reflects the same instant, not a live-moving feed.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6">
+        {/* Connected Sources */}
+        <div className="lg:col-span-7 bg-surface border border-line rounded-md p-5 shadow-subtle flex flex-col justify-between">
+          <div>
+            <div className="card__head flex items-start justify-between gap-4 mb-3">
+              <div>
+                <h2 className="card__title text-sm font-bold text-ink">Connected sources</h2>
+                <p className="card__sub text-xs text-muted">Each source syncs on its own cadence into a single reconciled snapshot</p>
+              </div>
+              <Badge tone="accent" className="gap-1">
+                <RefreshCw size={10} className="animate-spin-slow" />
+                <span>Reconciled v2.4</span>
+              </Badge>
+            </div>
+
+            <div className="rounded-sm border border-line overflow-hidden mb-3">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Domain</TableHead>
+                    <TableHead className="text-right font-mono">Records</TableHead>
+                    <TableHead>Cadence</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {SOURCES.map((s) => (
+                    <TableRow key={s.name}>
+                      <TableCell className="font-bold text-ink">{s.name}</TableCell>
+                      <TableCell className="text-muted text-xs">{s.domain}</TableCell>
+                      <TableCell className="text-right font-mono font-medium">{s.records}</TableCell>
+                      <TableCell className="text-xs text-muted">{s.cadence}</TableCell>
+                      <TableCell>
+                        <Badge tone={s.status === 'ok' ? 'success' : 'watch'} className="gap-1">
+                          {s.status === 'ok' ? <CheckCircle2 size={10} /> : <Clock size={10} />}
+                          <span>{s.status === 'ok' ? 'Synchronized' : s.lastSync}</span>
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-muted-2 m-0">
+            Snapshot v2.40 · frozen at data-read time so every screen in this session reflects the same instant, not a live-moving feed.
+          </p>
         </div>
 
-        <div className="card">
-          <h2 className="card__title">Taxonomy in scope</h2>
-          <p className="card__sub" style={{ marginBottom: 10 }}>How every material is classified before any analytics run</p>
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', margin: '12px 0 4px' }}>Material taxonomy</p>
-          <ul className="taxo-list">
-            <li>Raw Materials <span>480 SKUs</span></li>
-            <li>Components &amp; Electronics <span>320 SKUs</span></li>
-            <li>Finished Goods <span>240 SKUs</span></li>
-            <li>Spare Parts &amp; MRO <span>260 SKUs</span></li>
-            <li>Consumables <span>120 SKUs</span></li>
-          </ul>
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', margin: '14px 0 4px' }}>Organization &amp; cost-center taxonomy</p>
-          <ul className="taxo-list">
-            <li>Enterprise <span>1 org</span></li>
-            <li>Region <span>3 regions</span></li>
-            <li>Plant <span>4 plants</span></li>
-            <li>Cost center <span>22 centers</span></li>
-          </ul>
+        {/* Taxonomy in Scope */}
+        <div className="lg:col-span-5 bg-surface border border-line rounded-md p-5 shadow-subtle">
+          <h2 className="card__title text-sm font-bold text-ink mb-1">Taxonomy in scope</h2>
+          <p className="card__sub text-xs text-muted mb-4">How every material is classified before any analytics run</p>
+
+          <div className="space-y-4">
+            <div>
+              <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Material taxonomy</span>
+                <span className="text-[11px] font-normal text-muted-2">1,420 SKUs</span>
+              </div>
+              <ul className="space-y-1.5 text-xs">
+                {[
+                  { label: 'Raw Materials', count: '480 SKUs', pct: 33.8 },
+                  { label: 'Components & Electronics', count: '320 SKUs', pct: 22.5 },
+                  { label: 'Finished Goods', count: '240 SKUs', pct: 16.9 },
+                  { label: 'Spare Parts & MRO', count: '260 SKUs', pct: 18.3 },
+                  { label: 'Consumables', count: '120 SKUs', pct: 8.5 },
+                ].map((item) => (
+                  <li key={item.label} className="flex flex-col gap-1 p-1.5 rounded bg-bg/60 border border-line/60">
+                    <div className="flex justify-between items-center text-text font-medium">
+                      <span>{item.label}</span>
+                      <span className="font-mono text-muted">{item.count}</span>
+                    </div>
+                    <div className="w-full bg-line h-1 rounded-full overflow-hidden">
+                      <div className="bg-accent h-full rounded-full" style={{ width: `${item.pct}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="pt-2 border-t border-line">
+              <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
+                Organization &amp; cost-center taxonomy
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2 rounded bg-bg border border-line">
+                  <span className="text-muted block text-[11px]">Enterprise</span>
+                  <strong className="text-ink font-mono">1 Org</strong>
+                </div>
+                <div className="p-2 rounded bg-bg border border-line">
+                  <span className="text-muted block text-[11px]">Region</span>
+                  <strong className="text-ink font-mono">3 Regions</strong>
+                </div>
+                <div className="p-2 rounded bg-bg border border-line">
+                  <span className="text-muted block text-[11px]">Plant</span>
+                  <strong className="text-ink font-mono">4 Plants</strong>
+                </div>
+                <div className="p-2 rounded bg-bg border border-line">
+                  <span className="text-muted block text-[11px]">Cost Center</span>
+                  <strong className="text-ink font-mono">22 Centers</strong>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card__head">
-          <div><h2 className="card__title">Material ledger</h2><p className="card__sub">Inventory shown in both cost and quantity — the unit of measure always travels with the number</p></div>
-          <input className="btn btn-sm" style={{ cursor: 'text', fontWeight: 400 }} placeholder="Search material, plant or supplier…" readOnly />
+      {/* Material Ledger Table with Live Filter */}
+      <div className="bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="card__title text-sm font-bold text-ink m-0">Material ledger</h2>
+            <p className="card__sub text-xs text-muted m-0 mt-0.5">
+              Inventory shown in both cost and quantity — the unit of measure always travels with the number
+            </p>
+          </div>
+
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-2 h-4 w-4" />
+            <Input
+              type="text"
+              placeholder="Filter by material ID, name, plant..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-xs bg-bg"
+            />
+          </div>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Material</th><th>Category</th><th>Plant</th><th className="num text-right">On-Hand Qty</th><th className="num text-right">Unit Cost</th><th className="num text-right">Inventory Value</th><th>Class</th></tr></thead>
-            <tbody>
-              {MATERIALS.map((m) => (
-                <tr key={m.id}>
-                  <td className="font-semibold">{m.id} · {m.name}</td><td>{m.category}</td><td>{m.plant}</td>
-                  <td className="num text-right">{m.qty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {m.uom}</td>
-                  <td className="num text-right">${m.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td className="num text-right">${m.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td><Badge tone={m.abcClass === 'A' ? 'accent' : 'neutral'}>Class {m.abcClass}</Badge></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+        <div className="rounded-sm border border-line overflow-hidden mb-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Material</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Plant</TableHead>
+                <TableHead className="text-right font-mono">On-Hand Qty</TableHead>
+                <TableHead className="text-right font-mono">Unit Cost</TableHead>
+                <TableHead className="text-right font-mono">Inventory Value</TableHead>
+                <TableHead>Class</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredMaterials.length > 0 ? (
+                filteredMaterials.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-bold text-ink">{m.id} · {m.name}</TableCell>
+                    <TableCell>{m.category}</TableCell>
+                    <TableCell>{m.plant}</TableCell>
+                    <TableCell className="text-right font-mono font-medium">
+                      {m.qty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {m.uom}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      ${m.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-bold text-ink">
+                      ${m.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone={m.abcClass === 'A' ? 'accent' : 'neutral'}>
+                        Class {m.abcClass}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-6 text-muted">
+                    No materials matching "{searchQuery}"
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
+
         <WhyDisclosure
           summary="Why data foundation quality score is 99.80% (Driver breakdown)"
           drivers={[

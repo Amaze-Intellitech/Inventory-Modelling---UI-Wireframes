@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ViewHead, KpiTile, WhyDisclosure, Badge, Insight } from '../../components/CommonUI';
 import { UnivariateTrendChart, BivariateScatterChart } from '../../components/Charts';
 import { usePlatform } from '../../context/PlatformContext';
@@ -67,10 +68,7 @@ const BIVARIATE_RELATIONSHIPS = [
   },
 ];
 
-// ============================================================================
-// AUXILIARY CHARTS FOR OTHER PRE-SELECTED VARIABLES & RELATIONSHIPS
-// ============================================================================
-
+// Auxiliary Charts
 function UnitCostTrendChart() {
   const W = 900, H = 260, ML = 60, MR = 24, MT = 24, MB = 32;
   const data = [76.0, 76.0, 76.0, 77.5, 77.5, 77.5, 78.0, 78.0, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 92.0, 78.65, 78.65, 78.65, 79.5, 79.5, 78.65, 78.65, 78.65, 78.65];
@@ -80,7 +78,7 @@ function UnitCostTrendChart() {
   const linePath = data.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
       {[60, 70, 80, 90, 100].map((v) => (
         <g key={v}>
           <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="#EEF2F7" />
@@ -126,7 +124,7 @@ function LeadTimeTrendChart() {
   const linePath = data.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
       {[40, 60, 80, 100].map((v) => (
         <g key={v}>
           <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="#EEF2F7" />
@@ -184,7 +182,7 @@ function OnHandStockTrendChart() {
   const linePath = data.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
       {[5000, 10000, 15000].map((v) => (
         <g key={v}>
           <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="#EEF2F7" />
@@ -233,7 +231,7 @@ function OrderQtyVsCostScatterChart() {
   ];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
       {[500, 1000, 2000, 3000].map((v) => (
         <g key={v}>
           <line x1={x(v)} x2={x(v)} y1={MT} y2={H - MB} stroke="#EEF2F7" />
@@ -276,7 +274,7 @@ function DemandVsOnTimeScatterChart() {
   ];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
       {[10, 20, 30, 40, 50].map((v) => (
         <g key={v}>
           <line x1={x(v)} x2={x(v)} y1={MT} y2={H - MB} stroke="#EEF2F7" />
@@ -307,16 +305,12 @@ function DemandVsOnTimeScatterChart() {
   );
 }
 
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
 export default function Descriptive() {
   const { persona, selectedMaterial } = usePlatform();
   const [tab, setTab] = useState('uni');
   const [selectedVarId, setSelectedVarId] = useState('weekly_consumption');
   const [selectedRelId, setSelectedRelId] = useState('lt_vs_stockout');
 
-  // Subtitle personalized by lens
   const subtitleText = {
     ds: 'Statistical evidence, stationarity tests, and distributional diagnostics on the raw demand signal before downstream model fitting.',
     analyst: 'Trend velocity, operational volatility, and outlier investigations to baseline SKU consumption behavior before classification.',
@@ -324,8 +318,12 @@ export default function Descriptive() {
   }[persona] || 'Trend, seasonality and relationship analysis on the raw signal — run before any classification or lot-sizing.';
 
   return (
-    <section className="view">
-      {/* Header ViewHead: Action button removed per user specification */}
+    <motion.section 
+      className="view"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       <ViewHead
         title="Descriptive Intelligence"
         subtitle={<p>{subtitleText}</p>}
@@ -349,31 +347,29 @@ export default function Descriptive() {
         </button>
       </div>
 
-      {/* ================================================================== */}
-      {/* TAB 1: UNIVARIATE ANALYSIS                                         */}
-      {/* ================================================================== */}
+      {/* TAB 1: UNIVARIATE ANALYSIS */}
       {tab === 'uni' && (
         <div>
           {/* Material Context Bar */}
-          <div className="card__head" style={{ marginBottom: 12 }}>
-            <span style={{ fontWeight: 600 }}>
+          <div className="card__head mb-3">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
               {selectedMaterial.id} · {selectedMaterial.name} — {selectedMaterial.plant}
             </span>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div className="flex items-center gap-2">
               <Badge tone={selectedMaterial.abcClass === 'A' ? 'accent' : 'neutral'}>
                 Class {selectedMaterial.abcClass} Material
               </Badge>
-              <span className="badge badge-neutral">104 weeks historical signal</span>
+              <span className="badge badge-neutral text-xs">104 weeks historical signal</span>
             </div>
           </div>
 
-          {/* PRE-SELECTED VARIABLES SECTION (Card-based Selection Model) */}
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>
+          {/* PRE-SELECTED VARIABLES SECTION */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 Pre-Selected Variables
               </span>
-              <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>
+              <span className="text-xs text-slate-400">
                 Click a variable card to inspect its analytical profile
               </span>
             </div>
@@ -383,7 +379,6 @@ export default function Descriptive() {
                 return (
                   <div
                     key={v.id}
-                    className="card"
                     onClick={() => setSelectedVarId(v.id)}
                     role="button"
                     tabIndex={0}
@@ -393,26 +388,22 @@ export default function Descriptive() {
                         setSelectedVarId(v.id);
                       }
                     }}
-                    style={{
-                      cursor: 'pointer',
-                      marginBottom: 0,
-                      borderColor: isSelected ? 'var(--accent)' : 'var(--line)',
-                      background: isSelected ? 'linear-gradient(180deg, #FBFDFF, #F6FAFD)' : 'var(--surface)',
-                      boxShadow: isSelected ? '0 0 0 1px var(--accent), var(--shadow-card)' : 'none',
-                      padding: '14px 16px',
-                      transition: 'border-color 0.15s, box-shadow 0.15s',
-                    }}
+                    className={`card p-3.5 mb-0 cursor-pointer transition-all ${
+                      isSelected 
+                        ? 'border-cyan-500 bg-cyan-50/20 dark:bg-cyan-950/20 shadow-sm ring-1 ring-cyan-500' 
+                        : 'border-slate-200 dark:border-navy-700/80 hover:border-slate-300'
+                    }`}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: isSelected ? 'var(--accent)' : 'var(--text)' }}>
+                    <div className="flex justify-between items-start mb-1.5">
+                      <span className={`text-xs font-bold ${isSelected ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-slate-100'}`}>
                         {v.name}
                       </span>
                       <Badge tone={isSelected ? 'accent' : 'neutral'}>{v.tag}</Badge>
                     </div>
-                    <div style={{ fontSize: 10.5, fontFamily: 'var(--font-mono)', color: 'var(--muted-2)', marginBottom: 6 }}>
+                    <div className="text-[10px] font-mono text-slate-400 mb-1.5">
                       {v.type}
                     </div>
-                    <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: 0, lineHeight: 1.35 }}>
+                    <p className="text-xs text-slate-500 leading-snug m-0">
                       {v.desc}
                     </p>
                   </div>
@@ -421,122 +412,140 @@ export default function Descriptive() {
             </div>
           </div>
 
-          {/* ============================================================== */}
-          {/* UNIVARIATE ANALYSIS CONTENT FOR SELECTED VARIABLE              */}
-          {/* ============================================================== */}
+          {/* UNIVARIATE ANALYSIS CONTENT */}
           {selectedVarId === 'weekly_consumption' && (
             <div>
-              {/* 1. PRIMARY PERSONA KPIs */}
-              {persona === 'ds' && (
-                <div className="grid-4">
-                  <KpiTile
-                    label="Mean & Central Tendency"
-                    value="1,284.00 EA"
-                    sub="Median 1,190.00 EA · IQR 360.00 EA (P25: 1,120 · P75: 1,480)"
-                  />
-                  <KpiTile
-                    label="Normalized Trend Slope (OLS β₁)"
-                    value="+2.40%/wk"
-                    delta="+30.82 EA/wk (t=4.82, p < 0.001)"
-                    deltaTone="up"
-                    sub="R² = 0.84 · Statistically significant linear ramp"
-                  />
-                  <KpiTile
-                    label="Variance & Distribution (σ)"
-                    value="312.00 EA"
-                    sub="CV = 24.30% · Skewness = +1.18 · Kurtosis = 4.22"
-                  />
-                  <KpiTile
-                    label="Seasonality & Spectral"
-                    value="0.31 Strength"
-                    sub="Quarterly cycle (T=13 wks) · ACF(1) = 0.68"
-                  />
-                </div>
-              )}
+              {/* PRIMARY PERSONA KPIs */}
+              <AnimatePresence mode="wait">
+                {persona === 'ds' && (
+                  <motion.div
+                    key="ds-kpi"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="grid-4 mb-4"
+                  >
+                    <KpiTile
+                      label="Mean & Central Tendency"
+                      value="1,284.00 EA"
+                      sub="Median 1,190.00 EA · IQR 360.00 EA (P25: 1,120 · P75: 1,480)"
+                    />
+                    <KpiTile
+                      label="Normalized Trend Slope (OLS β₁)"
+                      value="+2.40%/wk"
+                      delta="+30.82 EA/wk (t=4.82, p < 0.001)"
+                      deltaTone="up"
+                      sub="R² = 0.84 · Statistically significant linear ramp"
+                    />
+                    <KpiTile
+                      label="Variance & Distribution (σ)"
+                      value="312.00 EA"
+                      sub="CV = 24.30% · Skewness = +1.18 · Kurtosis = 4.22"
+                    />
+                    <KpiTile
+                      label="Seasonality & Spectral"
+                      value="0.31 Strength"
+                      sub="Quarterly cycle (T=13 wks) · ACF(1) = 0.68"
+                    />
+                  </motion.div>
+                )}
 
-              {persona === 'analyst' && (
-                <div className="grid-4">
-                  <KpiTile
-                    label="Current Consumption Velocity"
-                    value="1,620.00 EA/wk"
-                    delta="+26.17% vs 104-wk baseline"
-                    deltaTone="up"
-                    sub="Baseline 1,284.00 EA/wk (+$26.43K/wk volume)"
-                  />
-                  <KpiTile
-                    label="Demand Expansion Trajectory"
-                    value="+30.82 EA/wk"
-                    delta="Sustained ramp, 9 of last 12 weeks"
-                    deltaTone="up"
-                    sub="+2.40% of baseline/wk linear velocity"
-                  />
-                  <KpiTile
-                    label="Demand Volatility"
-                    value="Moderate (CV 24.30%)"
-                    sub="Std dev ±312.00 EA (±$24.54K/wk value spread)"
-                  />
-                  <KpiTile
-                    label="Flagged Operational Events"
-                    value="2 Breach Weeks"
-                    delta="1 extreme surge · 1 cap breach"
-                    deltaTone="down"
-                    sub="Investigation required before lot-size calibration"
-                  />
-                </div>
-              )}
+                {persona === 'analyst' && (
+                  <motion.div
+                    key="analyst-kpi"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="grid-4 mb-4"
+                  >
+                    <KpiTile
+                      label="Current Consumption Velocity"
+                      value="1,620.00 EA/wk"
+                      delta="+26.17% vs 104-wk baseline"
+                      deltaTone="up"
+                      sub="Baseline 1,284.00 EA/wk (+$26.43K/wk volume)"
+                    />
+                    <KpiTile
+                      label="Demand Expansion Trajectory"
+                      value="+30.82 EA/wk"
+                      delta="Sustained ramp, 9 of last 12 weeks"
+                      deltaTone="up"
+                      sub="+2.40% of baseline/wk linear velocity"
+                    />
+                    <KpiTile
+                      label="Demand Volatility"
+                      value="Moderate (CV 24.30%)"
+                      sub="Std dev ±312.00 EA (±$24.54K/wk value spread)"
+                    />
+                    <KpiTile
+                      label="Flagged Operational Events"
+                      value="2 Breach Weeks"
+                      delta="1 extreme surge · 1 cap breach"
+                      deltaTone="down"
+                      sub="Investigation required before lot-size calibration"
+                    />
+                  </motion.div>
+                )}
 
-              {persona === 'exec' && (
-                <div className="grid-4">
-                  <KpiTile
-                    label="Demand Health & Momentum"
-                    value="EXPANDING (+26.17%)"
-                    delta="Positive Market Momentum"
-                    deltaTone="up"
-                    sub="Current 1,620 EA/wk vs 1,284 EA historical baseline"
-                  />
-                  <KpiTile
-                    label="Annual Throughput Value"
-                    value="$5.25M / Year"
-                    sub="Weekly throughput $100.99K/wk ($78.65/EA unit cost)"
-                  />
-                  <KpiTile
-                    label="Demand Volatility Exposure"
-                    value="±$24.54K / Week"
-                    sub="Moderate variance (CV 24.30%) requires active buffer sizing"
-                  />
-                  <KpiTile
-                    label="Plant Capacity Utilization"
-                    value="81.00% of Limit"
-                    delta="19.00% Headroom Remaining"
-                    deltaTone="down"
-                    sub="Current 1,620 EA/wk approaching 2,000 EA line cap"
-                  />
-                </div>
-              )}
+                {persona === 'exec' && (
+                  <motion.div
+                    key="exec-kpi"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="grid-4 mb-4"
+                  >
+                    <KpiTile
+                      label="Demand Health & Momentum"
+                      value="EXPANDING (+26.17%)"
+                      delta="Positive Market Momentum"
+                      deltaTone="up"
+                      sub="Current 1,620 EA/wk vs 1,284 EA historical baseline"
+                    />
+                    <KpiTile
+                      label="Annual Throughput Value"
+                      value="$5.25M / Year"
+                      sub="Weekly throughput $100.99K/wk ($78.65/EA unit cost)"
+                    />
+                    <KpiTile
+                      label="Demand Volatility Exposure"
+                      value="±$24.54K / Week"
+                      sub="Moderate variance (CV 24.30%) requires active buffer sizing"
+                    />
+                    <KpiTile
+                      label="Plant Capacity Utilization"
+                      value="81.00% of Limit"
+                      delta="19.00% Headroom Remaining"
+                      deltaTone="down"
+                      sub="Current 1,620 EA/wk approaching 2,000 EA line cap"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-              {/* 2. MAIN VISUALIZATION CARD WITH ANNOTATIONS */}
-              <div className="card">
-                <div className="card__head">
+              {/* MAIN VISUALIZATION CARD */}
+              <div className="card mb-4">
+                <div className="card__head mb-3">
                   <div>
-                    <h2 className="card__title">
+                    <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">
                       {persona === 'ds'
                         ? '104-Week Demand Series Decomposition & Anomaly Identification'
                         : persona === 'analyst'
                         ? 'Weekly Consumption Velocity with Flagged Operational Breaches'
                         : 'Consumption Demand Trajectory & Plant Operating Envelope'}
                     </h2>
-                    <p className="card__sub">
+                    <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       {persona === 'ds'
-                        ? 'Raw time-series exhibiting OLS linear drift (+30.82 EA/wk, +2.40%/wk of baseline) with distinct statistical anomaly (>3σ) and policy constraint breach'
+                        ? 'Raw time-series exhibiting OLS linear drift (+30.82 EA/wk, +2.40%/wk of baseline) with distinct statistical anomaly (>3σ)'
                         : persona === 'analyst'
                         ? 'Two distinct operational outliers surfaced: statistical demand shock vs plant policy capacity breach'
                         : 'Strong expansion trajectory with capacity ceiling alert at Plant 1 assembly line ($157.30K/wk threshold)'}
                     </p>
                   </div>
-                  <div className="chart-legend" style={{ marginTop: 0 }}>
+                  <div className="chart-legend mt-0 text-xs">
                     <span><span className="legend-dot" style={{ background: 'var(--accent)' }} />● Actual Weekly Consumption</span>
-                    <span><span className="legend-dot" style={{ background: 'var(--risk)', transform: 'rotate(45deg)' }} />◆ Statistical outlier (&gt;3σ, z=3.61)</span>
-                    <span><span className="legend-dot" style={{ background: 'var(--watch)' }} />■ Policy cap breach (&gt;2,000.00 EA)</span>
+                    <span><span className="legend-dot" style={{ background: 'var(--risk)', transform: 'rotate(45deg)' }} />◆ Statistical outlier (&gt;3σ)</span>
+                    <span><span className="legend-dot" style={{ background: 'var(--watch)' }} />■ Policy cap breach (&gt;2,000 EA)</span>
                   </div>
                 </div>
 
@@ -544,30 +553,30 @@ export default function Descriptive() {
                   <UnivariateTrendChart />
                 </div>
 
-                {/* Structured Annotation Card (WHAT / HOW SIGNIFICANT / WHY / WHAT NEXT) */}
-                <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                {/* Structured Annotation Card */}
+                <div className="mt-3.5 p-3 bg-slate-50 dark:bg-navy-900/60 rounded-md border border-slate-200 dark:border-navy-700 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted-2)' }}>1. What Happened</span>
-                      <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text)', fontWeight: 500 }}>
-                        Week 41 demand spiked to 2,410.00 EA (z=3.61); Week 67 hit 2,050.00 EA, breaching the 2,000.00 EA plant policy cap.
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">1. What Happened</span>
+                      <p className="text-slate-700 dark:text-slate-300 font-medium m-0">
+                        Week 41 demand spiked to 2,410.00 EA (z=3.61); Week 67 hit 2,050.00 EA, breaching the 2,000.00 EA cap.
                       </p>
                     </div>
                     <div>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted-2)' }}>2. How Significant</span>
-                      <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text)', fontWeight: 500 }}>
-                        Week 41 is 87.70% above baseline ($189.55K value); overall trend slope is +30.82 EA/wk (+2.40% of baseline/wk, R²=0.84).
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">2. How Significant</span>
+                      <p className="text-slate-700 dark:text-slate-300 font-medium m-0">
+                        Week 41 is 87.70% above baseline ($189.55K value); overall trend slope is +30.82 EA/wk (R²=0.84).
                       </p>
                     </div>
                     <div>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted-2)' }}>3. Why It Matters</span>
-                      <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text)', fontWeight: 500 }}>
-                        Static lot sizes and fixed 2,000.00 EA caps create replenishment deficits and line starvation risks during surge periods.
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">3. Why It Matters</span>
+                      <p className="text-slate-700 dark:text-slate-300 font-medium m-0">
+                        Static lot sizes and fixed 2,000 EA caps create replenishment deficits during surge periods.
                       </p>
                     </div>
                     <div>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted-2)' }}>4. What Next</span>
-                      <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text)', fontWeight: 500 }}>
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">4. What Next</span>
+                      <p className="text-slate-700 dark:text-slate-300 font-medium m-0">
                         Recalibrate lot sizing parameters and incorporate linear trend slope in Multivariate Forecast.
                       </p>
                     </div>
@@ -575,250 +584,8 @@ export default function Descriptive() {
                 </div>
               </div>
 
-              {/* 3. BUSINESS CONTEXT / BUSINESS IMPACT SECTION WITH PERSONA INTERPRETATIONS */}
+              {/* Explainability Panel */}
               <div className="card">
-                <div className="card__head">
-                  <div>
-                    <h2 className="card__title">Business Impact & Metric Interpretations</h2>
-                    <p className="card__sub">
-                      {persona === 'ds'
-                        ? 'Statistical and model-architecture interpretations for demand scale, dispersion, and stationarity'
-                        : persona === 'analyst'
-                        ? 'Operational interpretations, throughput exposure, and capacity risk drivers for weekly consumption'
-                        : 'Executive financial impact, working capital sensitivity, and strategic capacity decisions'}
-                    </p>
-                  </div>
-                  <Badge tone="accent">{persona === 'ds' ? 'Data Science Lens' : persona === 'analyst' ? 'Analyst Lens' : 'Executive Lens'}</Badge>
-                </div>
-
-                <div className="grid-2" style={{ marginBottom: 0 }}>
-                  {/* Metric 1 */}
-                  <div className="card" style={{ marginBottom: 0, padding: 14, background: 'var(--bg)', border: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Demand Value / Week</span>
-                      <span className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>$100.99K / wk</span>
-                    </div>
-                    <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--muted)' }}>
-                      <p style={{ margin: '0 0 6px' }}>
-                        <strong style={{ color: 'var(--text)' }}>What it means: </strong>
-                        {persona === 'ds'
-                          ? 'Represents the scale parameter of the signal process in monetary units ($100.99K/wk baseline: 1,284 EA × $78.65/EA unit cost).'
-                          : persona === 'analyst'
-                          ? 'Monetary value of physical material consumed each week on Plant 1 production lines (1,284 EA/wk average baseline).'
-                          : 'Current demand represents approximately $100.99K of weekly material throughput ($5.25M annualized expenditure at 52 weeks).'}
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong style={{ color: 'var(--text)' }}>Why it matters: </strong>
-                        {persona === 'ds'
-                          ? 'High monetary scale means small forecasting percentage errors (e.g., 5% MAPE) translate to large absolute dollar deviations ($5.05K/wk).'
-                          : persona === 'analyst'
-                          ? 'Sustained volume expansion (+26.17% vs baseline) increases weekly replenishment capital commitments from $100.99K to $127.41K/wk.'
-                          : 'Persistent demand growth increases replenishment requirements and the value of inventory needed to support target service levels.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Metric 2 */}
-                  <div className="card" style={{ marginBottom: 0, padding: 14, background: 'var(--bg)', border: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Demand Volatility Exposure</span>
-                      <span className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>±$24.54K / wk (CV 24.30%)</span>
-                    </div>
-                    <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--muted)' }}>
-                      <p style={{ margin: '0 0 6px' }}>
-                        <strong style={{ color: 'var(--text)' }}>What it means: </strong>
-                        {persona === 'ds'
-                          ? 'Demand exhibits moderate relative dispersion (CV = 24.30%, σ = 312.00 EA) around the non-stationary linear trend.'
-                          : persona === 'analyst'
-                          ? 'Weekly consumption fluctuates by ±312.00 EA around the mean, creating weekly demand value swings of up to ±$24.54K.'
-                          : 'Monetary exposure to demand swings that must be absorbed by physical warehouse safety stock capital.'}
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong style={{ color: 'var(--text)' }}>Why it matters: </strong>
-                        {persona === 'ds'
-                          ? 'Dispersion widens confidence intervals in downstream regression models; requires robust loss functions (Huber/Ridge) or variance-stabilizing transforms.'
-                          : persona === 'analyst'
-                          ? 'Fluctuations increase short-term replenishment jitter; safety stock must be dynamically scaled to prevent line starvation.'
-                          : 'Unmitigated volatility ties up additional working capital in contingency buffers; demand smoothing mitigates holding cost inflation.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Metric 3 */}
-                  <div className="card" style={{ marginBottom: 0, padding: 14, background: 'var(--bg)', border: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Plant Capacity Pressure</span>
-                      <span className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--watch)' }}>81.00% Current · 120.50% Peak</span>
-                    </div>
-                    <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--muted)' }}>
-                      <p style={{ margin: '0 0 6px' }}>
-                        <strong style={{ color: 'var(--text)' }}>What it means: </strong>
-                        {persona === 'ds'
-                          ? 'Current velocity (1,620 EA/wk) operates at 81.00% of the 2,000 EA policy cap; Week 41 breached capacity at 120.50% (z=3.61).'
-                          : persona === 'analyst'
-                          ? 'Production consumption is consuming 81.00% of the 2,000 EA/wk line feeding cap, leaving only 19.00% headroom.'
-                          : 'Assembly line velocity is reaching 81.00% of designed capacity, with past peak spikes exceeding maximum plant throughput.'}
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong style={{ color: 'var(--text)' }}>Why it matters: </strong>
-                        {persona === 'ds'
-                          ? 'Truncation at policy caps creates right-censored data if physical lines throttle order surges, biasing linear estimators downward.'
-                          : persona === 'analyst'
-                          ? 'If the +30.82 EA/wk growth persists for another 12 weeks, regular demand will hit the 2,000 EA cap, creating an internal bottleneck.'
-                          : 'Unaddressed capacity limits will result in unfulfilled customer orders and delivery backlog as market demand expands.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Metric 4 */}
-                  <div className="card" style={{ marginBottom: 0, padding: 14, background: 'var(--bg)', border: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
-                        {persona === 'ds' ? 'Signal Stationarity & OLS Trend' : persona === 'analyst' ? 'Warehouse Buffer Coverage' : 'On-Hand Inventory Value'}
-                      </span>
-                      <span className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
-                        {persona === 'ds' ? 'β₁ = +30.82 EA/wk (p < 0.001)' : persona === 'analyst' ? '70.9 Days Supply (13,000 EA)' : '$1.02M (70.9 Days Supply)'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--muted)' }}>
-                      <p style={{ margin: '0 0 6px' }}>
-                        <strong style={{ color: 'var(--text)' }}>What it means: </strong>
-                        {persona === 'ds'
-                          ? 'Strong autocorrelation (ACF₁ = 0.68) and significant positive slope confirm mean-reverting stationarity is rejected (d=1 required).'
-                          : persona === 'analyst'
-                          ? 'On-hand stock of 13,000 EA covers 70.9 days of supply at average consumption (183.43 EA/day), but current velocity (231.43 EA/day) reduces coverage to 56.2 days.'
-                          : 'Total capital invested in warehouse stock is $1.02M (13,000 EA at $78.65/EA), providing 70.9 days of supply against 60-day supplier lead time.'}
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong style={{ color: 'var(--text)' }}>Why it matters: </strong>
-                        {persona === 'ds'
-                          ? 'Standard static time-series models require differencing or lag feature engineering to prevent structural forecast lag.'
-                          : persona === 'analyst'
-                          ? 'Ramping velocity drains the 60-day replenishment buffer 14.7 days faster than planned; reorder points must be updated in MRP.'
-                          : 'Buffer is currently healthy relative to 60-day lead time, but requires EOQ recalibration to prevent stockouts as demand expands.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. DETAILED DIAGNOSTICS BY PERSONA */}
-              {persona === 'ds' && (
-                <div className="grid-3">
-                  <div className="card" style={{ marginBottom: 0, padding: 14 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                      Distribution Diagnostics
-                    </span>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-                      <div>• <strong>Skewness:</strong> +1.18 (Right-skewed positive tail)</div>
-                      <div>• <strong>Kurtosis:</strong> 4.22 (Leptokurtic, heavy tails)</div>
-                      <div>• <strong>Spread:</strong> 910.00 – 2,410.00 EA (1,500.00 EA)</div>
-                      <div>• <strong>Completeness:</strong> 104/104 wks valid (0.00% missing)</div>
-                    </div>
-                  </div>
-                  <div className="card" style={{ marginBottom: 0, padding: 14 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                      Time-Series & Stationarity
-                    </span>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-                      <div>• <strong>Autocorrelation:</strong> ACF(1) = 0.68, ACF(4) = 0.42</div>
-                      <div>• <strong>Ljung-Box:</strong> Q(12) = 38.4 (p = 0.0001)</div>
-                      <div>• <strong>Trend Variance:</strong> 84.20% of total variation</div>
-                      <div>• <strong>Seasonality:</strong> 11.60% (Quarterly 13-wk cycle)</div>
-                    </div>
-                  </div>
-                  <div className="card" style={{ marginBottom: 0, padding: 14 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                      Model Architecture Implications
-                    </span>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-                      <div>• <strong>Candidate:</strong> Lag-1/7/30 Ridge regression</div>
-                      <div>• <strong>Variance:</strong> Box-Cox / Log transform advised</div>
-                      <div>• <strong>Outlier Treatment:</strong> Winsorize z &gt; 3.5 spike</div>
-                      <div>• <strong>Forecasting Fit:</strong> High R² expected (&gt;0.85)</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {persona === 'analyst' && (
-                <div className="grid-3">
-                  <div className="card" style={{ marginBottom: 0, padding: 14 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                      Operational Behaviour
-                    </span>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-                      <div>• <strong>Classification:</strong> High-Growth Active SKU</div>
-                      <div>• <strong>Trailing 12-Wk Ramp:</strong> +14.80% volume increase</div>
-                      <div>• <strong>Data Quality:</strong> 100.00% complete records</div>
-                      <div>• <strong>Cyclicality:</strong> Mild Q3/Q4 demand surge</div>
-                    </div>
-                  </div>
-                  <div className="card" style={{ marginBottom: 0, padding: 14 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                      Outlier Breakdown
-                    </span>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-                      <div>• <strong>Wk 41 Spike:</strong> 2,410 EA ($189.55K value)</div>
-                      <div>• <strong>Wk 67 Breach:</strong> 2,050 EA ($161.23K value)</div>
-                      <div>• <strong>Control Band:</strong> 102/104 wks inside ±2σ</div>
-                      <div>• <strong>Buffer Drain:</strong> Velocity cuts buffer by 14.7 days</div>
-                    </div>
-                  </div>
-                  <div className="card" style={{ marginBottom: 0, padding: 14 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                      Investigation Targets
-                    </span>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-                      <div>• <strong>Plant 1 Line:</strong> Audit 2,000 EA/wk cap</div>
-                      <div>• <strong>Customer Orders:</strong> Confirm Wk 41 recurrence</div>
-                      <div>• <strong>Safety Buffer:</strong> Check reorder point coverage</div>
-                      <div>• <strong>Action Priority:</strong> HIGH — Rebalance EOQ</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {persona === 'exec' && (
-                <div className="grid-3">
-                  <div className="card" style={{ marginBottom: 0, padding: 14 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                      Business Signal & Growth
-                    </span>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-                      <div>• <strong>Expansion Trajectory:</strong> +26.17% vs historical mean</div>
-                      <div>• <strong>Strategic Role:</strong> Class A backbone for Plant 1</div>
-                      <div>• <strong>Annual Throughput:</strong> $5.25M annual volume</div>
-                      <div>• <strong>Market Traction:</strong> Expanding client demand</div>
-                    </div>
-                  </div>
-                  <div className="card" style={{ marginBottom: 0, padding: 14 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                      Working Capital & Exposure
-                    </span>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-                      <div>• <strong>Weekly Capital:</strong> $100.99K/wk capital flow</div>
-                      <div>• <strong>Buffer Requirement:</strong> ±$24.54K/wk volatility</div>
-                      <div>• <strong>Peak Demand:</strong> $189.55K in Wk 41 peak</div>
-                      <div>• <strong>Cap Bottleneck:</strong> $157.30K/wk capacity limit</div>
-                    </div>
-                  </div>
-                  <div className="card" style={{ marginBottom: 0, padding: 14 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                      Executive Decision Priority
-                    </span>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-                      <div>• <strong>Executive Attention:</strong> HIGH PRIORITY</div>
-                      <div>• <strong>Procurement:</strong> Lock 15% supplier capacity</div>
-                      <div>• <strong>Operations:</strong> Elevate Plant 1 line throughput</div>
-                      <div>• <strong>Next Action:</strong> Calibrate EOQ lot sizing</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 5. INTERPRETATION & EXPLAINABILITY PANEL (FINDING / MEANING / IMPLICATION / ACTION) */}
-              <div className="card" style={{ marginTop: 16 }}>
                 <Insight label="Analytical Synthesis">
                   Demand for {selectedMaterial.id} has expanded at <span className="metric">+30.82 EA/week</span> (+26.17% above historical baseline) with moderate volatility (CV <span className="metric">24.30%</span>). While baseline consumption is steady at $100.99K/week, peak spikes have tested the 2,000.00 EA plant policy limit ($157.30K/wk capacity threshold).
                 </Insight>
@@ -845,22 +612,16 @@ export default function Descriptive() {
             </div>
           )}
 
-          {/* Fallback for other pre-selected variables */}
           {selectedVarId === 'unit_cost' && (
             <div className="card">
-              <div className="card__head">
+              <div className="card__head mb-3">
                 <div>
-                  <h2 className="card__title">Unit Purchase Price Trajectory ($78.65/EA baseline)</h2>
-                  <p className="card__sub">Contract master baseline with spot surcharge anomalies across purchase tranches</p>
-                </div>
-                <div className="chart-legend" style={{ marginTop: 0 }}>
-                  <span><span className="legend-dot" style={{ background: '#0EA5E9' }} />● Effective Unit Price</span>
-                  <span><span className="legend-dot" style={{ background: '#C0362C', transform: 'rotate(45deg)' }} />◆ Spot PO Surcharge ($92.00)</span>
-                  <span><span className="legend-dot" style={{ background: '#0C7EBE' }} />-- Contract Baseline ($78.65)</span>
+                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Unit Purchase Price Trajectory ($78.65/EA baseline)</h2>
+                  <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Contract master baseline with spot surcharge anomalies across purchase tranches</p>
                 </div>
               </div>
               <div className="chart-shell"><UnitCostTrendChart /></div>
-              <div className="grid-3" style={{ marginTop: 14 }}>
+              <div className="grid-3 mt-3.5">
                 <KpiTile label="Baseline Contract Cost" value="$78.65 / EA" sub="Master Service Agreement fixed pricing" />
                 <KpiTile label="Price Volatility (CV)" value="5.34%" sub="±$4.20 spread across purchase tranches" />
                 <KpiTile label="Annual Procurement Spend" value="$5.25M" sub="Based on 66,768 EA/yr baseline volume" />
@@ -870,19 +631,14 @@ export default function Descriptive() {
 
           {selectedVarId === 'lead_time' && (
             <div className="card">
-              <div className="card__head">
+              <div className="card__head mb-3">
                 <div>
-                  <h2 className="card__title">Supplier Replenishment Lead Time (60 Days Baseline)</h2>
-                  <p className="card__sub">Transit duration history with port congestion outliers exceeding high-risk threshold (70d)</p>
-                </div>
-                <div className="chart-legend" style={{ marginTop: 0 }}>
-                  <span><span className="legend-dot" style={{ background: '#0EA5E9' }} />● Recorded Lead Time (Days)</span>
-                  <span><span className="legend-dot" style={{ background: '#C0362C', transform: 'rotate(45deg)' }} />◆ Port Delay Spike (88d)</span>
-                  <span><span className="legend-dot" style={{ background: '#B7791F' }} />■ Customs Latency (75d)</span>
+                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Supplier Replenishment Lead Time (60 Days Baseline)</h2>
+                  <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Transit duration history with port congestion outliers exceeding high-risk threshold (70d)</p>
                 </div>
               </div>
               <div className="chart-shell"><LeadTimeTrendChart /></div>
-              <div className="grid-3" style={{ marginTop: 14 }}>
+              <div className="grid-3 mt-3.5">
                 <KpiTile label="Nominal Lead Time" value="60.00 Days" sub="Supplier contract SLA: 60 calendar days" />
                 <KpiTile label="Lead Time Volatility (σ)" value="±14.20 Days" sub="CV 23.67% · Heavy right-skewed delivery tail" />
                 <KpiTile label="Pipeline Capital Exposure" value="$865.61K" sub="8.57 weeks of demand (11,006 EA) in transit" />
@@ -892,19 +648,14 @@ export default function Descriptive() {
 
           {selectedVarId === 'on_hand_stock' && (
             <div className="card">
-              <div className="card__head">
+              <div className="card__head mb-3">
                 <div>
-                  <h2 className="card__title">On-Hand Stock Level vs Reorder Point (11,500.00 EA)</h2>
-                  <p className="card__sub">Physical warehouse position tracking with safety buffer depletion events</p>
-                </div>
-                <div className="chart-legend" style={{ marginTop: 0 }}>
-                  <span><span className="legend-dot" style={{ background: '#0EA5E9' }} />● On-Hand Inventory (EA)</span>
-                  <span><span className="legend-dot" style={{ background: '#C0362C', transform: 'rotate(45deg)' }} />◆ Buffer Depletion Dip (7,200 EA)</span>
-                  <span><span className="legend-dot" style={{ background: '#B7791F' }} />-- Reorder Point (11,500 EA)</span>
+                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">On-Hand Stock Level vs Reorder Point (11,500.00 EA)</h2>
+                  <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Physical warehouse position tracking with safety buffer depletion events</p>
                 </div>
               </div>
               <div className="chart-shell"><OnHandStockTrendChart /></div>
-              <div className="grid-3" style={{ marginTop: 14 }}>
+              <div className="grid-3 mt-3.5">
                 <KpiTile label="Current On-Hand Stock" value="13,000.00 EA" sub="$1.02M total warehouse working capital" />
                 <KpiTile label="Days of Supply" value="70.87 Days" sub="10.9 days safety buffer above 60-day lead time" />
                 <KpiTile label="Inventory Turnover" value="5.15x / yr" sub="Turning within Class A target bandwidth" />
@@ -914,19 +665,17 @@ export default function Descriptive() {
         </div>
       )}
 
-      {/* ================================================================== */}
-      {/* TAB 2: BIVARIATE RELATIONSHIP EXPLORER                             */}
-      {/* ================================================================== */}
+      {/* TAB 2: BIVARIATE RELATIONSHIP EXPLORER */}
       {tab === 'bi' && (
         <div>
-          {/* PRE-SELECTED RELATIONSHIPS SECTION (Card-based Selection Model) */}
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>
+          {/* PRE-SELECTED RELATIONSHIPS SECTION */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 Pre-Selected Relationships
               </span>
-              <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>
-                Click a relationship card to inspect cross-variable correlation & risk concentration
+              <span className="text-xs text-slate-400">
+                Click a relationship card to inspect cross-variable correlation
               </span>
             </div>
             <div className="grid-3">
@@ -935,7 +684,6 @@ export default function Descriptive() {
                 return (
                   <div
                     key={r.id}
-                    className="card"
                     onClick={() => setSelectedRelId(r.id)}
                     role="button"
                     tabIndex={0}
@@ -945,26 +693,22 @@ export default function Descriptive() {
                         setSelectedRelId(r.id);
                       }
                     }}
-                    style={{
-                      cursor: 'pointer',
-                      marginBottom: 0,
-                      borderColor: isSelected ? 'var(--accent)' : 'var(--line)',
-                      background: isSelected ? 'linear-gradient(180deg, #FBFDFF, #F6FAFD)' : 'var(--surface)',
-                      boxShadow: isSelected ? '0 0 0 1px var(--accent), var(--shadow-card)' : 'none',
-                      padding: '14px 16px',
-                      transition: 'border-color 0.15s, box-shadow 0.15s',
-                    }}
+                    className={`card p-3.5 mb-0 cursor-pointer transition-all ${
+                      isSelected 
+                        ? 'border-cyan-500 bg-cyan-50/20 dark:bg-cyan-950/20 shadow-sm ring-1 ring-cyan-500' 
+                        : 'border-slate-200 dark:border-navy-700/80 hover:border-slate-300'
+                    }`}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: isSelected ? 'var(--accent)' : 'var(--text)' }}>
+                    <div className="flex justify-between items-start mb-1.5">
+                      <span className={`text-xs font-bold ${isSelected ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-slate-100'}`}>
                         {r.varA} vs {r.varB}
                       </span>
                       <Badge tone={isSelected ? 'accent' : 'neutral'}>{r.tag}</Badge>
                     </div>
-                    <div style={{ fontSize: 10.5, fontFamily: 'var(--font-mono)', color: 'var(--muted-2)', marginBottom: 6 }}>
+                    <div className="text-[10px] font-mono text-slate-400 mb-1.5">
                       {r.type}
                     </div>
-                    <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: 0, lineHeight: 1.35 }}>
+                    <p className="text-xs text-slate-500 leading-snug m-0">
                       {r.meaning}
                     </p>
                   </div>
@@ -973,158 +717,53 @@ export default function Descriptive() {
             </div>
           </div>
 
-          {/* ============================================================== */}
-          {/* BIVARIATE ANALYSIS CONTENT FOR SELECTED RELATIONSHIP           */}
-          {/* ============================================================== */}
+          {/* BIVARIATE CONTENT */}
           {selectedRelId === 'lt_vs_stockout' && (
             <div>
-              {/* 1. PRIMARY BIVARIATE KPIs BY PERSONA */}
-              {persona === 'ds' && (
-                <div className="grid-4" style={{ marginBottom: 16 }}>
-                  <KpiTile
-                    label="Pearson Correlation (r)"
-                    value="0.74"
-                    delta="t = 6.24 · p < 0.0001 (Significant)"
-                    deltaTone="up"
-                    sub="Strong positive linear association across 142 SKUs"
-                  />
-                  <KpiTile
-                    label="Coefficient of Determination (R²)"
-                    value="0.548"
-                    sub="54.80% of stockout variance explained by lead time"
-                  />
-                  <KpiTile
-                    label="Spearman Rank Correlation (ρ)"
-                    value="0.71"
-                    sub="Monotonic rank agreement · Non-linear tail effect"
-                  />
-                  <KpiTile
-                    label="OLS Regression Equation"
-                    value="y = 0.218x - 1.78"
-                    sub="SE(β₁) = 0.035 · 95% CI [0.149, 0.287] · RMSE 1.94%"
-                  />
-                </div>
-              )}
+              <div className="grid-4 mb-4">
+                <KpiTile
+                  label="Pearson Correlation (r)"
+                  value="0.74"
+                  delta="t = 6.24 · p < 0.0001 (Significant)"
+                  deltaTone="up"
+                  sub="Strong positive linear association across 142 SKUs"
+                />
+                <KpiTile
+                  label="Coefficient of Determination (R²)"
+                  value="0.548"
+                  sub="54.80% of stockout variance explained by lead time"
+                />
+                <KpiTile
+                  label="Spearman Rank Correlation (ρ)"
+                  value="0.71"
+                  sub="Monotonic rank agreement · Non-linear tail effect"
+                />
+                <KpiTile
+                  label="OLS Regression Equation"
+                  value="y = 0.218x - 1.78"
+                  sub="SE(β₁) = 0.035 · 95% CI [0.149, 0.287] · RMSE 1.94%"
+                />
+              </div>
 
-              {persona === 'analyst' && (
-                <div className="grid-4" style={{ marginBottom: 16 }}>
-                  <KpiTile
-                    label="Relationship Strength"
-                    value="Strong Positive (r=0.74)"
-                    delta="Primary stockout indicator"
-                    deltaTone="down"
-                    sub="Direct correlation between transit delay & stockouts"
-                  />
-                  <KpiTile
-                    label="High-Risk Population"
-                    value="28 Critical SKUs"
-                    sub="19.70% of Class A catalog in >45d red zone"
-                  />
-                  <KpiTile
-                    label="Stockout Multiplier"
-                    value="3.20x Higher Rate"
-                    sub="9.80% stockout rate (>45d) vs 3.06% (<30d)"
-                  />
-                  <KpiTile
-                    label="Explained Variation"
-                    value="54.80% of Failures"
-                    sub="Lead time variability accounts for majority of stockouts"
-                  />
-                </div>
-              )}
-
-              {persona === 'exec' && (
-                <div className="grid-4" style={{ marginBottom: 16 }}>
-                  <KpiTile
-                    label="Strategic Supplier Risk"
-                    value="HIGH VULNERABILITY"
-                    delta="28 Class A SKUs exposed"
-                    deltaTone="down"
-                    sub="Illustrative $11.85M inventory value exposure in >45d cohort"
-                  />
-                  <KpiTile
-                    label="Service Level Gap"
-                    value="-7.40 percentage points"
-                    delta="91.20% vs 98.60% Target"
-                    deltaTone="down"
-                    sub="Overseas transit directly penalizes assembly lines"
-                  />
-                  <KpiTile
-                    label="Working Capital in Transit"
-                    value="$3.80M Buffer Capital"
-                    sub="Tied up in safety stock to absorb supplier variance"
-                  />
-                  <KpiTile
-                    label="Executive Decision Priority"
-                    value="HIGH — DUAL SOURCING"
-                    sub="Nearshoring / regional buffer mitigates transit delay"
-                  />
-                </div>
-              )}
-
-              {/* 2. MAIN BIVARIATE SCATTER VISUALIZATION & SUMMARY */}
               <div className="two-col">
                 <div className="card">
-                  <div className="card__head">
+                  <div className="card__head mb-3">
                     <div>
-                      <h2 className="card__title">Supplier Lead Time vs Stockout Frequency</h2>
-                      <p className="card__sub">142 Class A materials ($34.28M value), trailing 12 months</p>
+                      <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Supplier Lead Time vs Stockout Frequency</h2>
+                      <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">142 Class A materials ($34.28M value), trailing 12 months</p>
                     </div>
                     <Badge tone="risk">Critical Risk Zone: &gt;45 Days</Badge>
                   </div>
                   <div className="chart-shell">
                     <BivariateScatterChart />
                   </div>
-                  <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)', fontSize: 11.5 }}>
-                    <strong style={{ color: 'var(--risk)' }}>Key Finding:</strong> Materials with lead time &gt;45 days exhibit a 3.20× higher stockout rate (9.80% vs 3.06%) and 3.20× higher delivery variance than local suppliers.
-                  </div>
                 </div>
 
                 <div className="card">
-                  <h2 className="card__title">Relationship Intelligence</h2>
+                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 mb-3">Relationship Intelligence</h2>
                   <Insight label="Correlation vs Causation Standard">
                     Statistical analysis establishes a <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> between supplier lead time and stockout frequency across 142 Class A materials. While this empirical relationship is highly significant, correlation does not prove direct isolated causality — delivery transit variance (σ_LT), right-skewed shipping tails, and single-sourcing are key contributing operational drivers.
                   </Insight>
-
-                  {/* Persona-specific Relationship Breakdown */}
-                  {persona === 'ds' && (
-                    <div style={{ marginTop: 12, fontSize: 12.5, lineHeight: 1.5 }}>
-                      <div style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', marginBottom: 8 }}>
-                        <strong>Statistical Diagnostics:</strong>
-                        <div style={{ marginTop: 4, color: 'var(--muted)' }}>
-                          • Breusch-Pagan heteroskedasticity test p = 0.041 (variance expands beyond 45d)<br />
-                          • 3 high-leverage outliers identified in overseas component categories (Cook&apos;s d &gt; 4/N)<br />
-                          • Piecewise regression spline at LT=45d improves explanatory fit to R² = 0.63
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {persona === 'analyst' && (
-                    <div style={{ marginTop: 12, fontSize: 12.5, lineHeight: 1.5 }}>
-                      <div style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', marginBottom: 8 }}>
-                        <strong>Cohort Risk Segmentation:</strong>
-                        <div style={{ marginTop: 4, color: 'var(--muted)' }}>
-                          • <strong>Red Zone (&gt;45d):</strong> 28 SKUs · 9.80% stockout rate · $11.85M illustrative value exposure<br />
-                          • <strong>Watch Zone (30–45d):</strong> 44 SKUs · 4.90% stockout rate · $12.40M illustrative value exposure<br />
-                          • <strong>Safe Zone (&lt;30d):</strong> 70 SKUs · 3.06% stockout rate · $10.03M illustrative value exposure
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {persona === 'exec' && (
-                    <div style={{ marginTop: 12, fontSize: 12.5, lineHeight: 1.5 }}>
-                      <div style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', marginBottom: 8 }}>
-                        <strong>Executive Strategic Impact:</strong>
-                        <div style={{ marginTop: 4, color: 'var(--muted)' }}>
-                          • 64.20% of observed enterprise stockout events originate from the 28 Red Zone SKUs<br />
-                          • <strong>Potential Working-Capital Opportunity:</strong> Regional buffer optimization on these SKUs identifies up to $1.65M in potential opportunity (subject to scenario validation)<br />
-                          • High leverage: Addressing the 28 SKUs directly stabilizes Plant 1 and Plant 3 assembly lines
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   <WhyDisclosure
                     summary="Why lead time variability correlates with stockout frequency"
@@ -1146,154 +785,24 @@ export default function Descriptive() {
                   />
                 </div>
               </div>
-
-              {/* 3. BUSINESS IMPACT & METRIC INTERPRETATIONS (BIVARIATE) */}
-              <div className="card" style={{ marginTop: 16 }}>
-                <div className="card__head">
-                  <div>
-                    <h2 className="card__title">Bivariate Business Impact & Risk Interpretations</h2>
-                    <p className="card__sub">
-                      {persona === 'ds'
-                        ? 'Inference rigor, coefficient stability, and non-linear risk zone diagnostics for lead time vs stockout'
-                        : persona === 'analyst'
-                        ? 'Operational exposure, risk concentration cohorts, and supplier investigation targets'
-                        : 'Strategic supplier vulnerability, financial value exposure, and dual-sourcing governance'}
-                    </p>
-                  </div>
-                  <Badge tone="accent">{persona === 'ds' ? 'Data Science Lens' : persona === 'analyst' ? 'Analyst Lens' : 'Executive Lens'}</Badge>
-                </div>
-
-                <div className="grid-2" style={{ marginBottom: 0 }}>
-                  {/* Bivariate Metric 1 */}
-                  <div className="card" style={{ marginBottom: 0, padding: 14, background: 'var(--bg)', border: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>At-Risk Population & Concentration</span>
-                      <span className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--risk)' }}>28 SKUs (19.70% of Catalog)</span>
-                    </div>
-                    <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--muted)' }}>
-                      <p style={{ margin: '0 0 6px' }}>
-                        <strong style={{ color: 'var(--text)' }}>What it means: </strong>
-                        {persona === 'ds'
-                          ? '28 of 142 materials fall beyond the 45-day knot where delivery variance expands exponentially (19.70% concentration).'
-                          : persona === 'analyst'
-                          ? '28 Class A materials are exposed to high supplier transit latency and elevated stockout frequency.'
-                          : '19.70% of analyzed materials account for 64.20% of observed enterprise stockout events.'}
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong style={{ color: 'var(--text)' }}>Why it matters: </strong>
-                        {persona === 'ds'
-                          ? 'Risk is heavily concentrated rather than uniformly distributed, requiring segmented piecewise model calibration.'
-                          : persona === 'analyst'
-                          ? 'Concentration allows targeted operational intervention on 28 vendor relationships rather than a catalog-wide overhaul.'
-                          : 'Prioritizing intervention on this specific cohort targets the primary source of assembly line disruptions.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Bivariate Metric 2 */}
-                  <div className="card" style={{ marginBottom: 0, padding: 14, background: 'var(--bg)', border: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Inventory Value Exposure (Illustrative)</span>
-                      <span className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>$11.85M (34.57% of Class A)</span>
-                    </div>
-                    <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--muted)' }}>
-                      <p style={{ margin: '0 0 6px' }}>
-                        <strong style={{ color: 'var(--text)' }}>What it means: </strong>
-                        {persona === 'ds'
-                          ? 'Illustrative valuation weight of observations residing in the heteroskedastic high-variance domain (>45 days).'
-                          : persona === 'analyst'
-                          ? 'Illustrative inventory value exposure estimate associated with the 28 materials operating with >45-day lead times ($423.21K average value/SKU across $34.28M Class A baseline).'
-                          : 'Illustrative inventory value exposure estimate ($11.85M) tied to supplier disruption and transit risk across the high-risk cohort.'}
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong style={{ color: 'var(--text)' }}>Why it matters: </strong>
-                        {persona === 'ds'
-                          ? 'High value weighting in the upper quadrant means unmodeled tail variance carries severe monetary loss potential.'
-                          : persona === 'analyst'
-                          ? 'Stockouts in this high-value cohort directly starve downstream production lines at Plant 1 and Plant 3.'
-                          : 'Concentrated capital exposure creates a clear business case for strategic dual-sourcing and regional supplier buffering.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Bivariate Metric 3 */}
-                  <div className="card" style={{ marginBottom: 0, padding: 14, background: 'var(--bg)', border: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Service Level Performance Gap</span>
-                      <span className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--risk)' }}>-7.40 percentage points</span>
-                    </div>
-                    <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--muted)' }}>
-                      <p style={{ margin: '0 0 6px' }}>
-                        <strong style={{ color: 'var(--text)' }}>What it means: </strong>
-                        {persona === 'ds'
-                          ? 'The conditional probability of fulfillment P(Fill | LT > 45d) is 91.20%, compared to 98.60% target SLA (-7.40 percentage points deficit).'
-                          : persona === 'analyst'
-                          ? 'The affected long-lead cohort operates 7.40 percentage points below the required enterprise service-level target (91.20% vs 98.60%).'
-                          : 'Overseas transit delays correlate with measurable service degradation and production scheduling interruptions (-7.40 percentage points gap).'}
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong style={{ color: 'var(--text)' }}>Why it matters: </strong>
-                        {persona === 'ds'
-                          ? 'Proves that standard Gaussian lead-time assumptions underestimate actual empirical failure rates in long-lead modules.'
-                          : persona === 'analyst'
-                          ? 'Service gap is concentrated in single-sourced components, creating frequent unplanned assembly line downtime.'
-                          : 'Service failures directly threaten customer delivery commitments and quarterly revenue recognition.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Bivariate Metric 4 */}
-                  <div className="card" style={{ marginBottom: 0, padding: 14, background: 'var(--bg)', border: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
-                        {persona === 'ds' ? 'Inference & Association Diagnostic' : persona === 'analyst' ? 'Single-Sourcing Vulnerability' : 'Strategic Governance Mandate'}
-                      </span>
-                      <span className="num" style={{ fontSize: 14, fontWeight: 700, color: 'var(--watch)' }}>
-                        {persona === 'ds' ? 'r = 0.74 (Associated, Not Causal)' : persona === 'analyst' ? '22 of 28 SKUs (78.60% Single-Sourced)' : 'HIGH SOURCING VULNERABILITY'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--muted)' }}>
-                      <p style={{ margin: '0 0 6px' }}>
-                        <strong style={{ color: 'var(--text)' }}>What it means: </strong>
-                        {persona === 'ds'
-                          ? 'Strong empirical association (r = 0.74, R² = 0.548) indicates lead time is an indicator of risk, though transit variance (σ_LT) is the operational driver.'
-                          : persona === 'analyst'
-                          ? '78.60% of the high-risk cohort relies exclusively on single-vendor international supply contracts with low supplier redundancy.'
-                          : '78.60% single-sourcing concentration creates high operational vulnerability, requiring executive approval for dual-sourcing qualification.'}
-                      </p>
-                      <p style={{ margin: 0 }}>
-                        <strong style={{ color: 'var(--text)' }}>Why it matters: </strong>
-                        {persona === 'ds'
-                          ? 'Avoids misleading causal claims; models must incorporate both transit mean and transit standard deviation (σ_LT).'
-                          : persona === 'analyst'
-                          ? 'Single-sourcing creates operational single-points-of-failure with no fallback during shipping disruptions.'
-                          : 'Authorizing dual-sourcing terms targets service reliability while identifying up to $1.65M in potential working-capital opportunity (subject to scenario validation).'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
           {selectedRelId === 'order_qty_vs_cost' && (
             <div className="two-col">
               <div className="card">
-                <div className="card__head">
+                <div className="card__head mb-3">
                   <div>
-                    <h2 className="card__title">Order Quantity vs Unit Purchase Cost</h2>
-                    <p className="card__sub">Scale discounts vs holding cost trade-off across catalog order batches</p>
+                    <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Order Quantity vs Unit Purchase Cost</h2>
+                    <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Scale discounts vs holding cost trade-off across catalog order batches</p>
                   </div>
                   <Badge tone="accent">r = -0.68 · Scale Economics</Badge>
                 </div>
                 <div className="chart-shell"><OrderQtyVsCostScatterChart /></div>
-                <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)', fontSize: 11.5 }}>
-                  <strong style={{ color: 'var(--accent)' }}>Scale Insight:</strong> Purchasing batches &ge;1,200 EA unlock an average 8.50% unit price discount, balancing ordering economy against annual carrying costs.
-                </div>
               </div>
 
               <div className="card">
-                <h2 className="card__title">Batch Sizing Summary</h2>
+                <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 mb-3">Batch Sizing Summary</h2>
                 <Insight label="Scale Elasticity">
                   Unit purchase cost exhibits an inverse relationship with batch size (r = <span className="metric">-0.68</span>). Beyond 1,200 EA, marginal unit price savings plateau while inventory carrying costs scale linearly.
                 </Insight>
@@ -1320,21 +829,18 @@ export default function Descriptive() {
           {selectedRelId === 'demand_vs_ontime' && (
             <div className="two-col">
               <div className="card">
-                <div className="card__head">
+                <div className="card__head mb-3">
                   <div>
-                    <h2 className="card__title">Demand Volatility (CV) vs Supplier On-Time Rate</h2>
-                    <p className="card__sub">Fulfillment strain: High-volatility SKUs exhibit lower supplier on-time delivery</p>
+                    <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Demand Volatility (CV) vs Supplier On-Time Rate</h2>
+                    <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Fulfillment strain: High-volatility SKUs exhibit lower supplier on-time delivery</p>
                   </div>
                   <Badge tone="watch">r = -0.61 · Fulfillment Stress</Badge>
                 </div>
                 <div className="chart-shell"><DemandVsOnTimeScatterChart /></div>
-                <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)', fontSize: 11.5 }}>
-                  <strong style={{ color: 'var(--watch)' }}>Bullwhip Alert:</strong> SKUs with demand CV &gt; 25% show a 12.40 percentage point lower supplier on-time delivery rate (83.80% vs 96.20%), increasing stockout exposure.
-                </div>
               </div>
 
               <div className="card">
-                <h2 className="card__title">Volatility Impact Summary</h2>
+                <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 mb-3">Volatility Impact Summary</h2>
                 <Insight label="Bullwhip Stress">
                   Demand volatility is negatively associated with supplier delivery punctuality (r = <span className="metric">-0.61</span>). Erratic order patterns amplify supplier schedule disruption.
                 </Insight>
@@ -1359,8 +865,6 @@ export default function Descriptive() {
           )}
         </div>
       )}
-    </section>
+    </motion.section>
   );
 }
-
-

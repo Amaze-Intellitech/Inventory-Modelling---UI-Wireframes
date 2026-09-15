@@ -1,6 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
+import { ArrowRight, PieChart, Layers, ShieldCheck, Box } from 'lucide-react';
 import { ViewHead, WhyDisclosure, Badge, KpiTile, Insight } from '../../components/CommonUI';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { ParetoChart } from '../../components/Charts';
 import { usePlatform } from '../../context/PlatformContext';
 
@@ -21,9 +33,9 @@ const MATERIAL_INTELLIGENCE = {
     uom: 'EA',
     unitCost: 600.0,
     annualDemand: 4800.0,
-    annualConsumptionValue: 2880000.0, // 4,800 EA × $600.00 = $2.88M
+    annualConsumptionValue: 2880000.0,
     onHandQty: 930.0,
-    onHandValue: 558000.0, // 930 EA × $600.00 = $558,000.00 (4.07% of $13.71M physical stock)
+    onHandValue: 558000.0,
     abcClass: 'A',
     contextTag: 'Class A + High Downstream Dependency + Single-Source Lead Time',
     demandCV: 0.12,
@@ -88,9 +100,9 @@ const MATERIAL_INTELLIGENCE = {
     uom: 'EA',
     unitCost: 5.14,
     annualDemand: 420000.0,
-    annualConsumptionValue: 2158800.0, // 420,000 EA × $5.14 = $2.16M
+    annualConsumptionValue: 2158800.0,
     onHandQty: 142000.0,
-    onHandValue: 729880.0, // 142,000 EA × $5.14 = $729,880.00 (5.32% of $13.71M physical stock)
+    onHandValue: 729880.0,
     abcClass: 'A',
     contextTag: 'Class A + High Volume Velocity + Multi-Pack Dependency',
     demandCV: 0.10,
@@ -146,9 +158,9 @@ const MATERIAL_INTELLIGENCE = {
     uom: 'EA',
     unitCost: 78.65,
     annualDemand: 24000.0,
-    annualConsumptionValue: 1887600.0, // 24,000 EA × $78.65 = $1.89M
+    annualConsumptionValue: 1887600.0,
     onHandQty: 920.0,
-    onHandValue: 72358.0, // 920 EA × $78.65 = $72,358.00 (0.53% of $13.71M physical stock)
+    onHandValue: 72358.0,
     abcClass: 'A',
     contextTag: 'Class A + Elevated Volatility + Long Supply Latency',
     demandCV: 0.28,
@@ -204,9 +216,9 @@ const MATERIAL_INTELLIGENCE = {
     uom: 'KG',
     unitCost: 41.14,
     annualDemand: 6000.0,
-    annualConsumptionValue: 246840.0, // 6,000 KG × $41.14 = $246.84K
+    annualConsumptionValue: 246840.0,
     onHandQty: 1400.0,
-    onHandValue: 57596.0, // 1,400 KG × $41.14 = $57,596.00 (0.42% of $13.71M physical stock)
+    onHandValue: 57596.0,
     abcClass: 'C',
     contextTag: 'Class C + Low Economic Exposure + High Shelf-Life Sensitivity',
     demandCV: 0.15,
@@ -247,16 +259,14 @@ const MATERIAL_INTELLIGENCE = {
   },
 };
 
-// Enterprise Baseline Metrics
-const ENTERPRISE_TOTAL_CONSUMPTION_VALUE = 43860000.0; // $43.86M total annual raw-material consumption value
-const ENTERPRISE_CLASS_A_CONSUMPTION_VALUE = 34280000.0; // $34.28M (78.30%)
-const ENTERPRISE_PHYSICAL_ON_HAND_VALUE = 13710000.0; // $13.71M total physical on-hand inventory value
+const ENTERPRISE_TOTAL_CONSUMPTION_VALUE = 43860000.0;
+const ENTERPRISE_PHYSICAL_ON_HAND_VALUE = 13710000.0;
 
 export default function AbcClassification() {
   const navigate = useNavigate();
   const { persona, selectedMaterial } = usePlatform();
+  const shouldReduceMotion = useReducedMotion();
 
-  // Retrieve coherent canonical data for selected material
   const matKey = selectedMaterial?.id || 'MAT-1082';
   const mat = MATERIAL_INTELLIGENCE[matKey] || MATERIAL_INTELLIGENCE['MAT-1082'];
 
@@ -265,126 +275,133 @@ export default function AbcClassification() {
   const formatCurrency = (val, decimals = 2) =>
     `$${val.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 
-  // Calculated enterprise proportions for the selected material
   const enterpriseValueShare = (mat.annualConsumptionValue / ENTERPRISE_TOTAL_CONSUMPTION_VALUE) * 100;
   const physicalStockShare = (mat.onHandValue / ENTERPRISE_PHYSICAL_ON_HAND_VALUE) * 100;
 
-  // Total derived demand validation across downstream products
   const totalDerivedDemand = mat.downstreamProducts.reduce((sum, p) => sum + p.derivedConsumption, 0);
   const totalDerivedValue = mat.downstreamProducts.reduce((sum, p) => sum + p.derivedValue, 0);
   const totalSharePct = mat.downstreamProducts.reduce((sum, p) => sum + p.sharePct, 0);
 
   return (
-    <section className="view">
+    <section className="view max-w-7xl mx-auto">
       <ViewHead
         title="ABC Classification"
         subtitle={
-          <p>
+          <p className="text-muted leading-relaxed">
             Raw materials segmented by <strong>Annual Consumption Value</strong> (Annual Demand × Unit Cost) across the $43.86M enterprise raw-material portfolio, augmented with downstream product dependency and operational risk context.
           </p>
         }
         actions={
-          <button type="button" className="btn btn-primary" onClick={() => navigate('/app/eoq')}>
-            Open EOQ for {mat.id}
-          </button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/app/eoq')}
+            className="gap-1.5"
+          >
+            <span>Open EOQ for {mat.id}</span>
+            <ArrowRight size={13} />
+          </Button>
         }
       />
 
-      {/* ==================================================================== */}
-      {/* 1. ENTERPRISE ABC PORTFOLIO SEGMENTATION LAYER                      */}
-      {/* ==================================================================== */}
-      <div className="grid-3">
-        <div className="card" style={{ borderTop: '3px solid var(--accent)' }}>
+      {/* 1. Portfolio Segmentation Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="card bg-surface border-2 border-accent/40 rounded-md p-5 shadow-subtle relative overflow-hidden">
           <Badge tone="accent">Class A · High Governance</Badge>
-          <div className="kpi__value" style={{ fontSize: 26, margin: '10px 0 2px' }}>$34.28M</div>
-          <p className="card__sub">78.30% of annual consumption value · 142 SKUs (10.00% of catalog)</p>
-          <p style={{ fontSize: 12.5, marginTop: 10 }}>
+          <div className="kpi__value text-2xl font-bold font-mono text-ink mt-2.5 mb-1">$34.28M</div>
+          <p className="card__sub text-xs text-muted">78.30% of annual consumption value · 142 SKUs (10.00% of catalog)</p>
+          <p className="text-xs text-text mt-3 pt-3 border-t border-line leading-relaxed">
             Weekly review cadence · Cycle-counting accuracy target 99.00% · Target service level 98.00–99.00% · High-governance replenishment control.
           </p>
         </div>
-        <div className="card">
-          <Badge>Class B · Periodic Control</Badge>
-          <div className="kpi__value" style={{ fontSize: 26, margin: '10px 0 2px' }}>$6.71M</div>
-          <p className="card__sub">15.30% of annual consumption value · 298 SKUs (21.00% of catalog)</p>
-          <p style={{ fontSize: 12.5, marginTop: 10 }}>
+
+        <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle">
+          <Badge tone="neutral">Class B · Periodic Control</Badge>
+          <div className="kpi__value text-2xl font-bold font-mono text-ink mt-2.5 mb-1">$6.71M</div>
+          <p className="card__sub text-xs text-muted">15.30% of annual consumption value · 298 SKUs (21.00% of catalog)</p>
+          <p className="text-xs text-text mt-3 pt-3 border-t border-line leading-relaxed">
             Monthly review cadence · Cycle-counting accuracy target 95.00% · Target service level 95.00% · Standard batch replenishment policy.
           </p>
         </div>
-        <div className="card">
-          <Badge>Class C · Automated / Two-Bin</Badge>
-          <div className="kpi__value" style={{ fontSize: 26, margin: '10px 0 2px' }}>$2.87M</div>
-          <p className="card__sub">6.40% of annual consumption value · 980 SKUs (69.00% of catalog)</p>
-          <p style={{ fontSize: 12.5, marginTop: 10 }}>
+
+        <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle">
+          <Badge tone="neutral">Class C · Automated / Two-Bin</Badge>
+          <div className="kpi__value text-2xl font-bold font-mono text-ink mt-2.5 mb-1">$2.87M</div>
+          <p className="card__sub text-xs text-muted">6.40% of annual consumption value · 980 SKUs (69.00% of catalog)</p>
+          <p className="text-xs text-text mt-3 pt-3 border-t border-line leading-relaxed">
             Quarterly or visual two-bin review · Minimal administrative oversight · Target service level 90.00–95.00% · Bulk order processing.
           </p>
         </div>
       </div>
 
-      {/* ==================================================================== */}
-      {/* 2. CUMULATIVE VALUE CONTRIBUTION PARETO VISUALIZATION               */}
-      {/* ==================================================================== */}
-      <div className="card">
-        <div className="card__head">
+      {/* 2. Cumulative Value Pareto Chart */}
+      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+        <div className="card__head flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
           <div>
-            <h2 className="card__title">Cumulative Annual Consumption Value Contribution (Pareto)</h2>
-            <p className="card__sub">
+            <h2 className="card__title text-sm font-bold text-ink">Cumulative Annual Consumption Value Contribution (Pareto)</h2>
+            <p className="card__sub text-xs text-muted">
               Empirical distribution: Class A boundary at 78.30% ($34.28M), Class B at 93.60% ($40.99M), and Class C tail at 100.00% ($43.86M).
             </p>
           </div>
           {persona === 'ds' && (
-            <span className="badge badge-neutral">Gini Index 0.81 · Empirical Cutoffs (Log-Value)</span>
+            <Badge tone="neutral" className="self-start sm:self-auto">Gini Index 0.81 · Empirical Cutoffs (Log-Value)</Badge>
           )}
           {persona === 'analyst' && (
-            <span className="badge badge-accent">142 Class A SKUs in Priority Queue</span>
+            <Badge tone="accent" className="self-start sm:self-auto">142 Class A SKUs in Priority Queue</Badge>
           )}
           {persona === 'exec' && (
-            <span className="badge badge-neutral">78.30% Value Concentrated in 10.00% of SKUs</span>
+            <Badge tone="neutral" className="self-start sm:self-auto">78.30% Value Concentrated in 10.00% of SKUs</Badge>
           )}
         </div>
-        <div className="chart-shell">
+
+        <div className="chart-shell mb-4">
           <ParetoChart />
         </div>
 
-        {/* Persona-specific methodological & operational context */}
-        {persona === 'ds' && (
-          <Insight label="Data Scientist Lens · Methodological & Distribution Intelligence">
-            The catalog exhibits a steep Pareto concentration (Gini coefficient <span className="metric">0.81</span>), where 10.00% of materials drive 78.30% of annual consumption value. Supplementary analytical clustering (e.g. k-means on log-consumption) and multi-dimensional risk overlays (demand CV, lead-time latency, downstream product fan-out) enrich the operational profile without distorting the primary economic ranking basis: <span className="metric">Annual Consumption Value = Annual Demand × Unit Cost</span>.
-          </Insight>
-        )}
-        {persona === 'analyst' && (
-          <Insight label="Supply Chain Analyst Lens · Control Policy & Review Priority">
-            The top 142 Class A materials ($34.28M annual consumption value) require strict weekly inventory surveillance and tightest lot-size governance. Review cadences and cycle-count accuracy targets scale by segment: <span className="metric">Class A (99.00% accuracy, weekly)</span> → <span className="metric">Class B (95.00% accuracy, monthly)</span> → <span className="metric">Class C (90.00% accuracy, quarterly)</span>. High-consumption Class A items transition directly into algorithmic EOQ calibration.
-          </Insight>
-        )}
-        {persona === 'exec' && (
-          <Insight label="C-Suite Executive Lens · Economic Concentration & Risk Governance">
-            78.30% of annual raw-material consumption value is concentrated in 10.00% of SKUs (142 materials out of 1,420 catalog SKUs totaling <span className="metric">$34.28M</span>). This high economic concentration justifies dedicated executive supplier governance, disciplined review cadences, and prioritized working-capital control to protect enterprise manufacturing throughput across all plants.
-          </Insight>
-        )}
+        {/* Persona-specific lens insights */}
+        <motion.div
+          key={persona}
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {persona === 'ds' && (
+            <Insight label="Data Scientist Lens · Methodological & Distribution Intelligence">
+              The catalog exhibits a steep Pareto concentration (Gini coefficient <span className="font-mono font-bold text-ink">0.81</span>), where 10.00% of materials drive 78.30% of annual consumption value. Supplementary analytical clustering (e.g. k-means on log-consumption) and multi-dimensional risk overlays (demand CV, lead-time latency, downstream product fan-out) enrich the operational profile without distorting the primary economic ranking basis: <span className="font-mono font-bold text-ink">Annual Consumption Value = Annual Demand × Unit Cost</span>.
+            </Insight>
+          )}
+          {persona === 'analyst' && (
+            <Insight label="Supply Chain Analyst Lens · Control Policy & Review Priority">
+              The top 142 Class A materials ($34.28M annual consumption value) require strict weekly inventory surveillance and tightest lot-size governance. Review cadences and cycle-count accuracy targets scale by segment: <span className="font-mono font-bold text-ink">Class A (99.00% accuracy, weekly)</span> → <span className="font-mono font-bold text-ink">Class B (95.00% accuracy, monthly)</span> → <span className="font-mono font-bold text-ink">Class C (90.00% accuracy, quarterly)</span>. High-consumption Class A items transition directly into algorithmic EOQ calibration.
+            </Insight>
+          )}
+          {persona === 'exec' && (
+            <Insight label="C-Suite Executive Lens · Economic Concentration & Risk Governance">
+              78.30% of annual raw-material consumption value is concentrated in 10.00% of SKUs (142 materials out of 1,420 catalog SKUs totaling <span className="font-mono font-bold text-ink">$34.28M</span>). This high economic concentration justifies dedicated executive supplier governance, disciplined review cadences, and prioritized working-capital control to protect enterprise manufacturing throughput across all plants.
+            </Insight>
+          )}
+        </motion.div>
       </div>
 
-      {/* ==================================================================== */}
-      {/* 3. SELECTED RAW MATERIAL CONTEXTUAL INTELLIGENCE LAYER               */}
-      {/* ==================================================================== */}
-      <div className="card">
-        <div className="card__head" style={{ marginBottom: 16 }}>
+      {/* 3. Selected Material Contextual Intelligence Layer */}
+      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-line">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <h2 className="card__title" style={{ fontSize: 16, margin: 0 }}>
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-base font-bold text-ink m-0">
                 {mat.id} · {mat.name}
               </h2>
               <Badge tone={mat.abcClass === 'A' ? 'accent' : 'neutral'}>
                 {mat.contextTag}
               </Badge>
             </div>
-            <p className="card__sub">
+            <p className="text-xs text-muted m-0">
               {mat.plant} · Category: <strong>{mat.category}</strong> · Single Raw Material Inventory Object supporting <strong>{mat.downstreamProductsCount} Downstream Products</strong> ({mat.downstreamSummary})
             </p>
           </div>
         </div>
 
-        {/* Selected material primary metrics & context */}
-        <div className="grid-4" style={{ marginBottom: 18 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
           <KpiTile
             label="Annual Consumption Value"
             value={formatCurrency(mat.annualConsumptionValue)}
@@ -407,76 +424,73 @@ export default function AbcClassification() {
           />
         </div>
 
-        {/* Downstream Product Demand Breakdown Table */}
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-            <h3 style={{ fontSize: 13.5, fontWeight: 700, margin: 0 }}>
+        {/* Downstream Products Table */}
+        <div className="mb-4">
+          <div className="flex justify-between items-baseline mb-2">
+            <h3 className="text-xs font-bold text-ink uppercase tracking-wider">
               Downstream Product Demand Drivers ({mat.downstreamSummary} Consuming {mat.id})
             </h3>
-            <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-              Core Relationship: Product Demand × BOM Usage Rate = Derived Raw-Material Demand
+            <span className="text-[11px] text-muted font-mono">
+              Product Demand × BOM Usage Rate = Derived Raw-Material Demand
             </span>
           </div>
 
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Downstream Product / Assembly</th>
-                  <th>Product Category / Line</th>
-                  <th className="num text-right">BOM Usage (Qty/{mat.uom})</th>
-                  <th className="num text-right">Product Annual Plan</th>
-                  <th className="num text-right">Derived RM Demand ({mat.uom}/yr)</th>
-                  <th className="num text-right">Share of RM Demand</th>
-                  <th className="num text-right">Derived Annual Consumption Value</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="rounded-sm border border-line overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Downstream Product / Assembly</TableHead>
+                  <TableHead>Product Category / Line</TableHead>
+                  <TableHead className="text-right font-mono">BOM Usage</TableHead>
+                  <TableHead className="text-right font-mono">Product Plan</TableHead>
+                  <TableHead className="text-right font-mono">Derived Demand</TableHead>
+                  <TableHead className="text-right font-mono">Share</TableHead>
+                  <TableHead className="text-right font-mono">Annual Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {mat.downstreamProducts.map((p, idx) => (
-                  <tr key={idx}>
-                    <td style={{ fontWeight: 600 }}>{p.product}</td>
-                    <td><span className="badge badge-neutral">{p.type}</span></td>
-                    <td className="num text-right">{formatNum(p.bomQty, p.bomQty < 1 ? 2 : 1)} {mat.uom}</td>
-                    <td className="num text-right">{formatNum(p.productDemand, p.productDemand % 1 === 0 ? 0 : 1)} units/yr</td>
-                    <td className="num text-right" style={{ fontWeight: 600 }}>{formatNum(p.derivedConsumption, 0)} {mat.uom}</td>
-                    <td className="num text-right">
-                      <span className="badge badge-accent" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {formatNum(p.sharePct)}%
-                      </span>
-                    </td>
-                    <td className="num text-right font-semibold">{formatCurrency(p.derivedValue)}</td>
-                  </tr>
+                  <TableRow key={idx}>
+                    <TableCell className="font-bold text-ink">{p.product}</TableCell>
+                    <TableCell><Badge tone="neutral">{p.type}</Badge></TableCell>
+                    <TableCell className="text-right font-mono">{formatNum(p.bomQty, p.bomQty < 1 ? 2 : 1)} {mat.uom}</TableCell>
+                    <TableCell className="text-right font-mono">{formatNum(p.productDemand, p.productDemand % 1 === 0 ? 0 : 1)} units/yr</TableCell>
+                    <TableCell className="text-right font-mono font-bold text-ink">{formatNum(p.derivedConsumption, 0)} {mat.uom}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      <Badge tone="accent">{formatNum(p.sharePct)}%</Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-bold text-ink">{formatCurrency(p.derivedValue)}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-              <tfoot>
-                <tr style={{ background: 'var(--bg)', fontWeight: 700, borderTop: '2px solid var(--line-strong)' }}>
-                  <td colSpan={4}>Aggregate Reconciled Demand Across All {mat.downstreamProductsCount} Downstream Products</td>
-                  <td className="num text-right" style={{ color: 'var(--accent)' }}>
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={4} className="font-bold text-ink">
+                    Aggregate Reconciled Demand Across All {mat.downstreamProductsCount} Products
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-bold text-accent">
                     {formatNum(totalDerivedDemand, 0)} {mat.uom}/yr
-                  </td>
-                  <td className="num text-right">
-                    <span className="badge badge-neutral">{formatNum(totalSharePct)}%</span>
-                  </td>
-                  <td className="num text-right" style={{ color: 'var(--ink)' }}>
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-bold text-ink">
+                    <Badge tone="neutral">{formatNum(totalSharePct)}%</Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-bold text-ink">
                     {formatCurrency(totalDerivedValue)}/yr
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
           </div>
         </div>
 
-        {/* Operational Context & Boundary Note */}
-        <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)', fontSize: 12.5, color: 'var(--muted)' }}>
-          <strong style={{ color: 'var(--text)' }}>Architectural Boundary & Downstream Driver Model:</strong> Downstream finished goods are <em>demand drivers</em> whose production schedules generate aggregate raw-material demand ({formatNum(mat.annualDemand, 0)} {mat.uom}/yr). {mat.id} is the <em>inventory and procurement object</em> classified into ABC Class {mat.abcClass}. This page determines <strong>Control Priority and Governance Cadence</strong>; optimal batch lot sizes are calculated on the <strong>EOQ Calibration</strong> page.
+        <div className="p-3 bg-bg rounded-sm border border-line text-xs text-muted leading-relaxed">
+          <strong className="text-text">Architectural Boundary & Downstream Driver Model:</strong> Downstream finished goods are <em>demand drivers</em> whose production schedules generate aggregate raw-material demand ({formatNum(mat.annualDemand, 0)} {mat.uom}/yr). {mat.id} is the <em>inventory and procurement object</em> classified into ABC Class {mat.abcClass}. This page determines <strong>Control Priority and Governance Cadence</strong>; optimal batch lot sizes are calculated on the <strong>EOQ Calibration</strong> page.
         </div>
       </div>
 
-      {/* ==================================================================== */}
-      {/* 4. DRIVER BREAKDOWN & EXPLAINABILITY (WHY DISCLOSURE)                */}
-      {/* ==================================================================== */}
-      <div className="card">
-        <h2 className="card__title">
+      {/* 4. Driver Breakdown (WhyDisclosure) */}
+      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+        <h2 className="card__title text-sm font-bold text-ink mb-1">
           Why {mat.id} ({mat.name}) Anchors ABC Class {mat.abcClass} Governance
         </h2>
         <WhyDisclosure
@@ -508,5 +522,3 @@ export default function AbcClassification() {
     </section>
   );
 }
-
-

@@ -1,4 +1,8 @@
-/* AITEK Inventory Intelligence — design tokens & shared styles */
+/* AITEK Inventory Modelling — design tokens & shared styles */
+
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 
 :root{

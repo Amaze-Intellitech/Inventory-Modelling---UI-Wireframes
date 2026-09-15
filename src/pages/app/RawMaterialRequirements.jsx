@@ -1,8 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ViewHead, KpiTile, WhyDisclosure, Badge, Insight } from '../../components/CommonUI';
 import { usePlatform } from '../../context/PlatformContext';
 import { EOQ_INPUTS, FORECAST_INPUTS } from '../../data/mockData';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableFooter,
+} from '@/components/ui/table';
 
 // Planning service-factor for one-sided 95.00% target coverage under standard normal assumption
 const Z = 1.65;
@@ -145,44 +155,29 @@ function DailyForecastChart({
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', minHeight: 440, maxWidth: '100%', overflow: 'hidden' }}>
+    <div className="relative w-full overflow-hidden" style={{ minHeight: 440 }}>
       {/* Real-Time Interactive Day Inspector Bar */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'var(--bg, #F8FAFC)',
-          border: '1px solid var(--line, #E2E8F0)',
-          borderRadius: 6,
-          padding: '8px 14px',
-          marginBottom: 10,
-          flexWrap: 'wrap',
-          gap: 10,
-          minWidth: 0,
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexShrink: 1 }}>
-          <span className="badge badge-accent" style={{ fontWeight: 700 }}>
+      <div className="flex flex-wrap items-center justify-between gap-2.5 bg-slate-50/90 dark:bg-navy-900/60 border border-slate-200 dark:border-navy-700/60 rounded-lg px-3.5 py-2 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Badge tone="accent" className="font-bold">
             {hoveredPoint ? 'Inspecting Day' : 'Next-Day Baseline'}
-          </span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>
+          </Badge>
+          <span className="text-xs font-bold text-slate-900 dark:text-slate-100 font-mono">
             Day {activePoint.day} · {activePoint.dayOfWeek}, {activePoint.date}, 2026 (Week {activePoint.weekNum})
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center', fontSize: 12, flexWrap: 'wrap', minWidth: 0, flexShrink: 1 }}>
+        <div className="flex flex-wrap items-center gap-3.5 text-xs text-slate-600 dark:text-slate-300 font-mono">
           <div>
-            <span style={{ color: 'var(--muted)', marginRight: 4 }}>Daily Forecast:</span>
-            <strong style={{ color: '#0284C7', fontSize: 13 }}>{activePoint.dailyMean.toFixed(2)} {uom}/day</strong>
+            <span className="text-slate-400 mr-1 font-sans">Daily Forecast:</span>
+            <strong className="text-cyan-600 dark:text-cyan-400 font-semibold">{activePoint.dailyMean.toFixed(2)} {uom}/day</strong>
           </div>
           <div>
-            <span style={{ color: 'var(--muted)', marginRight: 4 }}>Planning Envelope (Z=1.65):</span>
-            <span style={{ color: 'var(--text)', fontWeight: 600 }}>{activePoint.lowerBand.toFixed(2)} – {activePoint.upperBand.toFixed(2)} {uom}/d</span>
+            <span className="text-slate-400 mr-1 font-sans">Planning Envelope (Z=1.65):</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200">{activePoint.lowerBand.toFixed(2)} – {activePoint.upperBand.toFixed(2)} {uom}/d</span>
           </div>
           <div>
-            <span style={{ color: 'var(--muted)', marginRight: 4 }}>Cumulative Total:</span>
-            <strong style={{ color: 'var(--ink)' }}>{activePoint.cumulativeDemand.toFixed(1)} {uom}</strong>
+            <span className="text-slate-400 mr-1 font-sans">Cumulative Total:</span>
+            <strong className="text-slate-900 dark:text-slate-100">{activePoint.cumulativeDemand.toFixed(1)} {uom}</strong>
           </div>
         </div>
       </div>
@@ -190,13 +185,14 @@ function DailyForecastChart({
       <svg
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="none"
-        style={{ width: '100%', height: 380, display: 'block', cursor: 'crosshair' }}
+        className="w-full block cursor-crosshair rounded-lg overflow-hidden border border-slate-200/80 dark:border-navy-700/60 shadow-inner"
+        style={{ height: 380 }}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHoveredPoint(null)}
       >
         <defs>
           <linearGradient id="forecastAreaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0284C7" stopOpacity="0.18" />
+            <stop offset="0%" stopColor="#0284C7" stopOpacity="0.22" />
             <stop offset="100%" stopColor="#0284C7" stopOpacity="0.0" />
           </linearGradient>
         </defs>
@@ -230,7 +226,7 @@ function DailyForecastChart({
           width={W - MR - x(0)}
           height={H - MT - MB}
           fill="#F0F9FF"
-          opacity={0.4}
+          opacity={0.45}
         />
         <text
           x={x(0) + 12}
@@ -400,34 +396,26 @@ function DailyForecastChart({
       {/* Floating Hover Card */}
       {hoveredPoint && (
         <div
+          className="absolute z-20 min-w-[240px] rounded-lg border border-cyan-500 bg-white/95 dark:bg-navy-900/95 p-3 text-xs shadow-xl backdrop-blur-sm pointer-events-none"
           style={{
-            position: 'absolute',
             top: 55,
             left: hoveredPoint.day > 42 ? 85 : 'auto',
             right: hoveredPoint.day > 42 ? 'auto' : 25,
-            background: 'rgba(255, 255, 255, 0.98)',
-            backdropFilter: 'blur(6px)',
-            border: '1.5px solid #0284C7',
-            borderRadius: 8,
-            padding: '10px 14px',
-            fontSize: 12,
-            boxShadow: '0 8px 24px rgba(2, 132, 199, 0.16)',
-            pointerEvents: 'none',
-            zIndex: 20,
-            minWidth: 240,
           }}
         >
-          <div style={{ fontWeight: 700, color: 'var(--ink)', marginBottom: 4, display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0', paddingBottom: 4 }}>
-            <span>Day {hoveredPoint.day} · {hoveredPoint.date}, 2026</span>
-            <span style={{ color: '#0284C7', fontWeight: 600 }}>Week {hoveredPoint.weekNum}</span>
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-navy-700 pb-1.5 mb-2">
+            <span className="font-bold text-slate-900 dark:text-slate-100 font-mono">
+              Day {hoveredPoint.day} · {hoveredPoint.date}, 2026
+            </span>
+            <span className="text-cyan-600 dark:text-cyan-400 font-semibold font-mono">Week {hoveredPoint.weekNum}</span>
           </div>
-          <div style={{ color: '#0284C7', fontWeight: 700, fontSize: 13, marginBottom: 2 }}>
+          <div className="text-cyan-600 dark:text-cyan-400 font-bold text-sm mb-1 font-mono">
             Daily Forecast: {hoveredPoint.dailyMean.toFixed(2)} {uom}/day
           </div>
-          <div style={{ color: 'var(--text)', fontSize: 11.5, marginTop: 2 }}>
+          <div className="text-slate-700 dark:text-slate-300 text-xs font-mono">
             Planning Envelope (Z=1.65): <strong>{hoveredPoint.lowerBand.toFixed(2)} – {hoveredPoint.upperBand.toFixed(2)}</strong> {uom}/d
           </div>
-          <div style={{ color: 'var(--muted)', fontSize: 11, marginTop: 2 }}>
+          <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-1 font-mono">
             Cumulative to Date: <strong>{hoveredPoint.cumulativeDemand.toFixed(1)} {uom}</strong>
           </div>
         </div>
@@ -493,13 +481,10 @@ export default function RawMaterialRequirements() {
   // 4. Forecast error & trajectory derivations (from multivariate model)
   const rmse = rmseRatio * avgWeekly;
   const forecastHorizonDays = 84; // Complete 12-week horizon = 84 individual daily forecast points
-  const forecastHorizonWeeks = 12;
   const baseDailyDemand = avgWeekly / 7; // Exact daily baseline consistent with linear weekly model
   const trendPerDay = trendPerWeek / 7;  // Linear daily slope
 
   // Generate explicit deterministic 84-day daily forecast series (Days 1 to 84)
-  // Day t in [1, 84] corresponds to week fraction t / 7
-  // Anchor dates: Day 0 = Sep 8, 2026 (Today); Day 1 = Sep 9, 2026; Day 84 = Dec 1, 2026
   const baseAnchorDate = new Date(2026, 8, 8); // Sep 8, 2026
   const dailyForecastSeries = [];
   let sumDailyDemand = 0;
@@ -511,12 +496,7 @@ export default function RawMaterialRequirements() {
     const weekNum = Math.ceil(t / 7);
     const dayOfWeek = dayDate.toLocaleDateString('en-US', { weekday: 'short' });
 
-    // Linear daily trajectory: d(t) = baseDailyDemand * (1 + trendPerWeek * (t / 7))
-    // Exactly reconciles with Week-12 endpoint: d(84) * 7 = avgWeekly * (1 + trendPerWeek * 12)
     const dailyMean = baseDailyDemand * (1 + trendPerWeek * (t / 7));
-
-    // Planning service-factor envelope: Z * baseDailyDemand * demandCV * sqrt(t / 7)
-    // One-sided 95% service factor (Z = 1.65), expanding with square root of time
     const bandHalfWidth = Z * baseDailyDemand * demandCV * Math.sqrt(t / 7);
     const upperBand = dailyMean + bandHalfWidth;
     const lowerBand = Math.max(0, dailyMean - bandHalfWidth);
@@ -543,16 +523,9 @@ export default function RawMaterialRequirements() {
   const day1Forecast = dailyForecastSeries[0].dailyMean;
   const day84Forecast = dailyForecastSeries[forecastHorizonDays - 1].dailyMean;
   const week12ForecastDaily = day84Forecast;
-  // Reconciled Week-12 weekly projection matching Day 84 rate
   const week12ProjectedMean = day84Forecast * 7;
   const trendMagnitudePct = trendPerWeek * 100;
   const trendMagnitudeDailyPct = trendPerDay * 100;
-
-  // Key weekly milestone totals summed from the daily series (for Analyst & operational planning)
-  const week1Sum = dailyForecastSeries.slice(0, 7).reduce((acc, p) => acc + p.dailyMean, 0);
-  const week4Sum = dailyForecastSeries.slice(21, 28).reduce((acc, p) => acc + p.dailyMean, 0);
-  const week8Sum = dailyForecastSeries.slice(49, 56).reduce((acc, p) => acc + p.dailyMean, 0);
-  const week12Sum = dailyForecastSeries.slice(77, 84).reduce((acc, p) => acc + p.dailyMean, 0);
 
   // Number & currency formatting helpers
   const formatNum = (val, decimals = 2) =>
@@ -561,7 +534,13 @@ export default function RawMaterialRequirements() {
     `$${val.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 
   return (
-    <section className="view" style={{ minWidth: 0, overflowX: 'hidden', boxSizing: 'border-box' }}>
+    <motion.section 
+      className="view" 
+      style={{ minWidth: 0, overflowX: 'hidden', boxSizing: 'border-box' }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       {/* ==================================================================== */}
       {/* A. SHARED PAGE HEADER WITH CANONICAL RM PROPAGATION                 */}
       {/* ==================================================================== */}
@@ -583,7 +562,7 @@ export default function RawMaterialRequirements() {
           )
         }
         actions={
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               className="btn btn-primary"
@@ -605,11 +584,11 @@ export default function RawMaterialRequirements() {
       {/* ==================================================================== */}
       {/* B. SHARED SELECTED RAW MATERIAL CONTEXT BLOCK                       */}
       {/* ==================================================================== */}
-      <div className="card">
+      <div className="card mb-4">
         <div className="card__head" style={{ marginBottom: 14 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-              <h2 className="card__title" style={{ fontSize: 16, margin: 0 }}>
+            <div className="flex flex-wrap items-center gap-2.5 mb-1">
+              <h2 className="card__title text-base m-0 text-slate-900 dark:text-slate-100 font-bold">
                 {selectedMaterial.id} · {name}
               </h2>
               <Badge tone={abcClass === 'A' ? 'accent' : 'neutral'}>
@@ -619,8 +598,8 @@ export default function RawMaterialRequirements() {
                 {belowReorderPoint ? '● Below Planning Reorder Point (Replenishment Trigger)' : '● Covered (Above Planning Reorder Point)'}
               </Badge>
             </div>
-            <p className="card__sub">
-              {plant} · Category: <strong>{category}</strong> · Supplier: <strong>{meta.supplier}</strong> · Lead Time: <strong>{leadTimeDays} days ({leadTimeWeeks.toFixed(1)} wks)</strong> · Downstream Dependency: <strong>{meta.downstream}</strong>
+            <p className="card__sub text-xs text-slate-500 dark:text-slate-400">
+              {plant} · Category: <strong className="text-slate-700 dark:text-slate-200">{category}</strong> · Supplier: <strong className="text-slate-700 dark:text-slate-200">{meta.supplier}</strong> · Lead Time: <strong className="text-slate-700 dark:text-slate-200">{leadTimeDays} days ({leadTimeWeeks.toFixed(1)} wks)</strong> · Downstream Dependency: <strong className="text-slate-700 dark:text-slate-200">{meta.downstream}</strong>
             </p>
           </div>
           <Badge tone={abcClass === 'A' ? 'accent' : 'neutral'}>
@@ -704,18 +683,13 @@ export default function RawMaterialRequirements() {
       {/* D. DEDICATED VISIBLE DAILY FORECAST GRAPH SECTION (NEXT 84 DAYS)     */}
       {/* ==================================================================== */}
       <div
-        className="card"
-        style={{
-          border: '2px solid var(--accent, #0284C7)',
-          boxShadow: '0 6px 28px rgba(2, 132, 199, 0.12)',
-          marginBottom: 16,
-          padding: '18px 20px',
-        }}
+        className="card mb-4 border-2 border-cyan-500/60 shadow-lg"
+        style={{ padding: '18px 20px' }}
       >
-        <div className="card__head" style={{ borderBottom: '1px solid var(--line)', paddingBottom: 12, marginBottom: 14, flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-              <h2 className="card__title" style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--ink)' }}>
+        <div className="card__head flex-wrap gap-3 border-b border-slate-200 dark:border-navy-700 pb-3 mb-3.5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5 mb-1">
+              <h2 className="card__title text-lg font-bold text-slate-900 dark:text-slate-100 m-0">
                 Daily Forecast — Next 84 Days
               </h2>
               <Badge tone="accent">84-Day Time Series</Badge>
@@ -725,32 +699,19 @@ export default function RawMaterialRequirements() {
                 aria-expanded={showDailySchedule}
                 aria-controls="daily-schedule-table"
                 onClick={() => setShowDailySchedule((prev) => !prev)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '3px 10px',
-                  fontSize: 11.5,
-                  fontWeight: 600,
-                  color: showDailySchedule ? '#fff' : '#0284C7',
-                  background: showDailySchedule ? '#0284C7' : 'transparent',
-                  border: '1.5px solid #0284C7',
-                  borderRadius: 20,
-                  cursor: 'pointer',
-                  transition: 'background 0.15s, color 0.15s',
-                  lineHeight: 1.4,
-                  userSelect: 'none',
-                }}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full border border-cyan-500 transition-all ${
+                  showDailySchedule ? 'bg-cyan-600 text-white' : 'bg-transparent text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/30'
+                }`}
               >
                 {showDailySchedule ? 'Hide Day-by-Day Resolution' : 'View Day-by-Day Resolution'}
-                <span aria-hidden="true" style={{ fontSize: 10, display: 'inline-block', transform: showDailySchedule ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>▼</span>
+                <span className={`text-[10px] transform transition-transform ${showDailySchedule ? 'rotate-180' : 'rotate-0'}`}>▼</span>
               </button>
             </div>
-            <p className="card__sub" style={{ fontSize: 13.5, margin: 0, color: 'var(--text-muted, #64748B)' }}>
+            <p className="card__sub text-xs text-slate-500 dark:text-slate-400 m-0">
               Day-by-day multivariate demand forecast for the selected raw material
             </p>
           </div>
-          <div className="chart-legend" style={{ marginTop: 0, gap: 14, flexWrap: 'wrap', flexShrink: 0 }}>
+          <div className="chart-legend mt-0 gap-3.5 flex-wrap shrink-0 text-xs">
             <span><span className="legend-dot" style={{ background: '#94A3B8' }} />Historical Actual Demand (56 Days)</span>
             <span><span className="legend-dot" style={{ background: '#0284C7', height: 4, width: 14, borderRadius: 2 }} />Daily Forecast Trajectory (84 Days)</span>
             <span><span className="legend-dot" style={{ background: '#BAE6FD', border: '1px dashed #38BDF8' }} />Planning Envelope (Z=1.65)</span>
@@ -758,8 +719,8 @@ export default function RawMaterialRequirements() {
           </div>
         </div>
 
-        {/* Dedicated Graph Container - unobstructed, prominent hero */}
-        <div style={{ width: '100%', position: 'relative' }}>
+        {/* Dedicated Graph Container */}
+        <div className="w-full relative">
           <DailyForecastChart
             dailyForecastSeries={dailyForecastSeries}
             baseDailyDemand={baseDailyDemand}
@@ -771,122 +732,142 @@ export default function RawMaterialRequirements() {
         </div>
 
         {/* Persona-Specific Graph Trajectory Interpretation Strip */}
-        {persona === 'ds' && (
-          <div className="grid-4" style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                1. Daily Series Resolution
+        <AnimatePresence mode="wait">
+          {persona === 'ds' && (
+            <motion.div
+              key="ds-strip"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="grid-4 mt-3.5 pt-3 border-t border-slate-200 dark:border-navy-700 text-xs"
+            >
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  1. Daily Series Resolution
+                </div>
+                <div className="text-slate-800 dark:text-slate-200 font-mono">
+                  84 discrete daily forecast points across 12-week horizon ($t = 1 \dots 84$), anchored to <strong>{formatNum(baseDailyDemand, 2)} {uom}/d</strong> baseline.
+                </div>
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                84 discrete daily forecast points across 12-week horizon ($t = 1 \dots 84$), anchored to <strong>{formatNum(baseDailyDemand, 2)} {uom}/d</strong> baseline.
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  2. Linear Daily Slope (β_d)
+                </div>
+                <div className="text-slate-800 dark:text-slate-200 font-mono">
+                  Daily slope is <strong>{trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day</strong>. Day 1: {formatNum(day1Forecast, 2)} {uom}/d; Day 84: {formatNum(day84Forecast, 2)} {uom}/d ({formatNum(week12ProjectedMean, 1)} {uom}/wk).
+                </div>
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                2. Linear Daily Slope (β_d)
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  3. Daily Band Expansion (Z·σ_d·√h)
+                </div>
+                <div className="text-slate-800 dark:text-slate-200 font-mono">
+                  Z = 1.65 planning factor expands: ±{formatNum(dailyForecastSeries[0].bandHalfWidth, 2)} {uom}/d at Day 1 to ±{formatNum(dailyForecastSeries[83].bandHalfWidth, 2)} {uom}/d at Day 84.
+                </div>
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                Daily slope is <strong>{trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day</strong>. Day 1: {formatNum(day1Forecast, 2)} {uom}/d; Day 84: {formatNum(day84Forecast, 2)} {uom}/d ({formatNum(week12ProjectedMean, 1)} {uom}/wk).
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  4. Lead-Time Window
+                </div>
+                <div className="text-slate-800 dark:text-slate-200 font-mono">
+                  Supplier replenishment latency sits at <strong>Day +{leadTimeDays} (+{leadTimeWeeks.toFixed(1)} wks)</strong>, covering {formatNum(leadTimeDemand, 1)} {uom} base demand.
+                </div>
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                3. Daily Band Expansion (Z·σ_d·√h)
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                Z = 1.65 planning factor expands: ±{formatNum(dailyForecastSeries[0].bandHalfWidth, 2)} {uom}/d at Day 1 to ±{formatNum(dailyForecastSeries[83].bandHalfWidth, 2)} {uom}/d at Day 84.
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                4. Lead-Time Window
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                Supplier replenishment latency sits at <strong>Day +{leadTimeDays} (+{leadTimeWeeks.toFixed(1)} wks)</strong>, covering {formatNum(leadTimeDemand, 1)} {uom} base demand.
-              </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
 
-        {persona === 'analyst' && (
-          <div className="grid-4" style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                1. Daily Consumption Trajectory
+          {persona === 'analyst' && (
+            <motion.div
+              key="analyst-strip"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="grid-4 mt-3.5 pt-3 border-t border-slate-200 dark:border-navy-700 text-xs"
+            >
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  1. Daily Consumption Trajectory
+                </div>
+                <div className="text-slate-800 dark:text-slate-200">
+                  Day 1 starts at <strong>{formatNum(day1Forecast, 2)} {uom}/day</strong>, trending to <strong>{formatNum(day84Forecast, 2)} {uom}/day</strong> at Day 84 ({trendPerWeek >= 0.003 ? 'ramping demand' : trendPerWeek <= -0.003 ? 'declining demand' : 'steady pace'}).
+                </div>
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                Day 1 starts at <strong>{formatNum(day1Forecast, 2)} {uom}/day</strong>, trending to <strong>{formatNum(day84Forecast, 2)} {uom}/day</strong> at Day 84 ({trendPerWeek >= 0.003 ? 'ramping demand' : trendPerWeek <= -0.003 ? 'declining demand' : 'steady pace'}).
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  2. 84-Day Horizon Total
+                </div>
+                <div className="text-slate-800 dark:text-slate-200">
+                  Sum of all 84 daily forecasts: <strong>{formatNum(cumulativeHorizonDemand, 0)} {uom}</strong> (averaging {formatNum(avgDailyForecast, 2)} {uom}/day).
+                </div>
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                2. 84-Day Horizon Total
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  3. Lead-Time Arrival Marker
+                </div>
+                <div className="text-slate-800 dark:text-slate-200">
+                  Order placed today arrives at <strong>Day +{leadTimeDays} (+{leadTimeWeeks.toFixed(1)} wks)</strong> from {meta.supplier.split('(')[0].trim()}.
+                </div>
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                Sum of all 84 daily forecasts: <strong>{formatNum(cumulativeHorizonDemand, 0)} {uom}</strong> (averaging {formatNum(avgDailyForecast, 2)} {uom}/day).
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  4. Replenishment Status
+                </div>
+                <div className="text-slate-800 dark:text-slate-200">
+                  {belowReorderPoint ? `On-hand stock is ${formatNum(ropGap, 1)} ${uom} below Planning ROP.` : `On-hand stock maintains a +${formatNum(ropBuffer, 1)} ${uom} protective buffer.`}
+                </div>
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                3. Lead-Time Arrival Marker
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                Order placed today arrives at <strong>Day +{leadTimeDays} (+{leadTimeWeeks.toFixed(1)} wks)</strong> from {meta.supplier.split('(')[0].trim()}.
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                4. Replenishment Status
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                {belowReorderPoint ? `On-hand stock is ${formatNum(ropGap, 1)} ${uom} below Planning ROP.` : `On-hand stock maintains a +${formatNum(ropBuffer, 1)} ${uom} protective buffer.`}
-              </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
 
-        {persona === 'exec' && (
-          <div className="grid-4" style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                1. Annual Spend Baseline
+          {persona === 'exec' && (
+            <motion.div
+              key="exec-strip"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="grid-4 mt-3.5 pt-3 border-t border-slate-200 dark:border-navy-700 text-xs"
+            >
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  1. Annual Spend Baseline
+                </div>
+                <div className="text-slate-800 dark:text-slate-200">
+                  Annual consumption run-rate: <strong>{formatCurrency(annualConsumptionValue)}/yr</strong> ({formatNum(demand, 0)} {uom}/yr).
+                </div>
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                Annual consumption run-rate: <strong>{formatCurrency(annualConsumptionValue)}/yr</strong> ({formatNum(demand, 0)} {uom}/yr).
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  2. 12-Week Horizon Spend
+                </div>
+                <div className="text-slate-800 dark:text-slate-200">
+                  Estimated 84-day demand value from daily series: <strong>{formatCurrency(cumulativeHorizonValue)}</strong> ({formatNum(cumulativeHorizonDemand, 0)} {uom}).
+                </div>
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                2. 12-Week Horizon Spend
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  3. Working Capital Sunk
+                </div>
+                <div className="text-slate-800 dark:text-slate-200">
+                  On-hand inventory holds <strong>{formatCurrency(onHandValue)}</strong> in active working capital.
+                </div>
               </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                Estimated 84-day demand value from daily series: <strong>{formatCurrency(cumulativeHorizonValue)}</strong> ({formatNum(cumulativeHorizonDemand, 0)} {uom}).
+              <div>
+                <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
+                  4. Supply Vulnerability
+                </div>
+                <div className="text-slate-800 dark:text-slate-200">
+                  {leadTimeDays}-day supplier replenishment window from <strong>{meta.supplier.split('(')[0].trim()}</strong>.
+                </div>
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                3. Working Capital Sunk
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                On-hand inventory holds <strong>{formatCurrency(onHandValue)}</strong> in active working capital.
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2 }}>
-                4. Supply Vulnerability
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-                {leadTimeDays}-day supplier replenishment window from <strong>{meta.supplier.split('(')[0].trim()}</strong>.
-              </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
-          <span style={{ fontSize: 12, color: 'var(--muted)', minWidth: 0, flex: '1 1 auto' }}>
+        <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-navy-700 flex flex-wrap justify-between items-start gap-2">
+          <span className="text-xs text-slate-500 dark:text-slate-400 flex-1 min-w-0">
             {persona === 'ds' ? (
               <>
-                <strong>Analytical Scope Note:</strong> Model training: 104 weeks · Displayed history: 56 daily points (8 wks) · Forecast horizon: 84 discrete daily points (12 wks). The shaded envelope represents a planning buffer derived from a one-sided 95% service-level factor (Z = 1.65) and daily demand variance (CV = {(demandCV * 100).toFixed(1)}%) expanding over time (sigma_d * sqrt(t/7)), rather than a conventional two-sided 95% statistical confidence interval.
+                <strong>Analytical Scope Note:</strong> Model training: 104 weeks · Displayed history: 56 daily points (8 wks) · Forecast horizon: 84 discrete daily points (12 wks). The shaded envelope represents a planning buffer derived from a one-sided 95% service-level factor (Z = 1.65) and daily demand variance (CV = {(demandCV * 100).toFixed(1)}%) expanding over time (σ_d · √(t/7)), rather than a conventional two-sided 95% statistical confidence interval.
               </>
             ) : persona === 'analyst' ? (
               <>
@@ -898,7 +879,7 @@ export default function RawMaterialRequirements() {
               </>
             )}
           </span>
-          <span style={{ fontSize: 11.5, color: '#0284C7', fontWeight: 600, flexShrink: 0 }}>
+          <span className="text-xs text-cyan-600 dark:text-cyan-400 font-semibold shrink-0">
             Hover over chart to inspect any of the 84 individual calendar days
           </span>
         </div>
@@ -907,944 +888,577 @@ export default function RawMaterialRequirements() {
         {/* 84-DAY DAILY FORECAST INSPECTION TABLE — EXPAND/COLLAPSE         */}
         {/* ================================================================ */}
         {showDailySchedule && (
-          <div
+          <motion.div
             id="daily-schedule-table"
             role="region"
             aria-label="84-Day Daily Forecast Schedule"
-            style={{
-              marginTop: 16,
-              paddingTop: 14,
-              borderTop: '2px solid var(--accent, #0284C7)',
-            }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-4 pt-3.5 border-t-2 border-cyan-500"
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap', minWidth: 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>84-Day Forecast Schedule · Days 1 – 84</span>
-              <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>Source: <code style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 10.5 }}>dailyForecastSeries</code> · {dailyForecastSeries.length} daily points · Sep 9 – Dec 1, 2026</span>
-              <span style={{ marginLeft: 'auto', fontSize: 11, color: '#0284C7', fontWeight: 600, flexWrap: 'wrap', minWidth: 0 }}>
+            <div className="flex flex-wrap items-center gap-2.5 mb-2.5">
+              <span className="text-sm font-bold text-slate-900 dark:text-slate-100">84-Day Forecast Schedule · Days 1 – 84</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">Source: <code className="font-mono text-[11px] bg-slate-100 dark:bg-navy-800 px-1 py-0.5 rounded">dailyForecastSeries</code> · {dailyForecastSeries.length} daily points · Sep 9 – Dec 1, 2026</span>
+              <span className="ml-auto text-xs text-cyan-600 dark:text-cyan-400 font-mono font-semibold">
                 Day 1 = {formatNum(day1Forecast, 2)} {uom}/d · Avg = {formatNum(avgDailyForecast, 2)} {uom}/d · Day 84 = {formatNum(day84Forecast, 2)} {uom}/d · Total = {formatNum(cumulativeHorizonDemand, 0)} {uom}
               </span>
             </div>
-            <div className="table-wrap" style={{ maxHeight: 340, overflowY: 'auto', overflowX: 'auto' }}>
-              <table style={{ minWidth: 780 }}>
-                <thead>
-                  <tr>
-                    <th style={{ whiteSpace: 'nowrap' }}>Day #</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>Day of Week</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>Calendar Date</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>Week #</th>
-                    <th className="text-right" style={{ whiteSpace: 'nowrap' }}>Daily Forecast ({uom}/d)</th>
-                    <th className="text-right" style={{ whiteSpace: 'nowrap' }}>Envelope Lower ({uom}/d)</th>
-                    <th className="text-right" style={{ whiteSpace: 'nowrap' }}>Envelope Upper ({uom}/d)</th>
-                    <th className="text-right" style={{ whiteSpace: 'nowrap' }}>Cumulative Total ({uom})</th>
-                  </tr>
-                </thead>
-                <tbody>
+            
+            <div className="max-h-[340px] overflow-y-auto overflow-x-auto border border-slate-200 dark:border-navy-700 rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">Day #</TableHead>
+                    <TableHead className="whitespace-nowrap">Day of Week</TableHead>
+                    <TableHead className="whitespace-nowrap">Calendar Date</TableHead>
+                    <TableHead className="whitespace-nowrap">Week #</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Daily Forecast ({uom}/d)</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Envelope Lower ({uom}/d)</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Envelope Upper ({uom}/d)</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Cumulative Total ({uom})</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {dailyForecastSeries.map((p) => (
-                    <tr
+                    <TableRow
                       key={p.day}
-                      style={{
-                        background:
-                          p.day === 1
-                            ? 'rgba(2,132,199,0.06)'
-                            : p.day === leadTimeDays
-                            ? '#FFFBEB'
-                            : p.day === 84
-                            ? 'rgba(3,105,161,0.06)'
-                            : p.day % 7 === 0
-                            ? 'rgba(0,0,0,0.02)'
-                            : 'transparent',
-                      }}
+                      className={
+                        p.day === 1
+                          ? 'bg-cyan-500/10'
+                          : p.day === leadTimeDays
+                          ? 'bg-amber-50 dark:bg-amber-950/20'
+                          : p.day === 84
+                          ? 'bg-sky-500/10'
+                          : p.day % 7 === 0
+                          ? 'bg-slate-500/5'
+                          : undefined
+                      }
                     >
-                      <td className="font-semibold" style={{ whiteSpace: 'nowrap' }}>
+                      <TableCell className="font-semibold whitespace-nowrap font-mono">
                         Day {p.day}
-                        {p.day === 1 && <span style={{ marginLeft: 5, fontSize: 10, color: '#0284C7', fontWeight: 700 }}>◀ Next-Day</span>}
-                        {p.day === leadTimeDays && p.day !== 1 && p.day !== 84 && <span style={{ marginLeft: 5, fontSize: 10, color: '#B7791F', fontWeight: 700 }}>▲ Order Arrival</span>}
-                        {p.day === 84 && <span style={{ marginLeft: 5, fontSize: 10, color: '#0369A1', fontWeight: 700 }}>◀ Wk 12 End</span>}
-                      </td>
-                      <td style={{ whiteSpace: 'nowrap', color: 'var(--muted)', fontSize: 12 }}>{p.dayOfWeek}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{p.date}, 2026</td>
-                      <td style={{ whiteSpace: 'nowrap' }}>Wk {p.weekNum}</td>
-                      <td className="num text-right font-semibold" style={{ color: p.day === 1 ? '#0284C7' : p.day === 84 ? '#0369A1' : 'var(--ink)' }}>
+                        {p.day === 1 && <span className="ml-1.5 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold font-sans">◀ Next-Day</span>}
+                        {p.day === leadTimeDays && p.day !== 1 && p.day !== 84 && <span className="ml-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-bold font-sans">▲ Order Arrival</span>}
+                        {p.day === 84 && <span className="ml-1.5 text-[10px] text-sky-600 dark:text-sky-400 font-bold font-sans">◀ Wk 12 End</span>}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-slate-500 text-xs">{p.dayOfWeek}</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs font-mono">{p.date}, 2026</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs font-mono">Wk {p.weekNum}</TableCell>
+                      <TableCell className={`text-right font-mono font-semibold text-xs ${p.day === 1 ? 'text-cyan-600 dark:text-cyan-400' : p.day === 84 ? 'text-sky-600 dark:text-sky-400' : 'text-slate-900 dark:text-slate-100'}`}>
                         {formatNum(p.dailyMean, 2)}
-                      </td>
-                      <td className="num text-right" style={{ color: 'var(--muted)', fontSize: 11.5 }}>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-slate-500 text-xs">
                         {formatNum(p.lowerBand, 2)}
-                      </td>
-                      <td className="num text-right" style={{ color: 'var(--muted)', fontSize: 11.5 }}>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-slate-500 text-xs">
                         {formatNum(p.upperBand, 2)}
-                      </td>
-                      <td className="num text-right" style={{ fontWeight: p.day % 7 === 0 || p.day === 84 ? 700 : 400 }}>
+                      </TableCell>
+                      <TableCell className={`text-right font-mono text-xs ${p.day % 7 === 0 || p.day === 84 ? 'font-bold text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400'}`}>
                         {formatNum(p.cumulativeDemand, 1)}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr style={{ background: 'var(--bg)', borderTop: '2px solid var(--line)' }}>
-                    <td colSpan={4} className="font-semibold" style={{ paddingTop: 8, fontSize: 12 }}>84-Day Totals (Verification)</td>
-                    <td className="num text-right font-semibold" style={{ color: '#0284C7', fontSize: 12, paddingTop: 8 }}>
+                </TableBody>
+                <TableFooter>
+                  <TableRow className="bg-slate-100/80 dark:bg-navy-900/80 border-t-2 border-slate-300 dark:border-navy-600 font-semibold text-xs">
+                    <TableCell colSpan={4}>84-Day Totals (Verification)</TableCell>
+                    <TableCell className="text-right text-cyan-600 dark:text-cyan-400 font-mono">
                       Avg: {formatNum(avgDailyForecast, 2)}
-                    </td>
-                    <td className="text-right" style={{ paddingTop: 8 }} />
-                    <td className="text-right" style={{ paddingTop: 8 }} />
-                    <td className="num text-right font-semibold" style={{ color: '#0284C7', fontSize: 12, paddingTop: 8 }}>
+                    </TableCell>
+                    <TableCell />
+                    <TableCell />
+                    <TableCell className="text-right text-cyan-600 dark:text-cyan-400 font-mono">
                       {formatNum(cumulativeHorizonDemand, 1)} {uom}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
             </div>
-            <p className="footnote" style={{ marginTop: 8 }}>
+            <p className="text-[11px] text-slate-400 mt-2">
               Planning Envelope (Z = 1.65): Lower = max(0, d(t) − Z·σ_d·√(t/7)) · Upper = d(t) + Z·σ_d·√(t/7). All 84 daily values reconcile with the 4 primary KPIs above.
             </p>
-          </div>
+          </motion.div>
         )}
       </div>
 
       {/* ==================================================================== */}
-      {/* D. PERSONA-SPECIFIC SUMMARY KPIS & DIAGNOSTIC INTELLIGENCE          */}
+      {/* E. PERSONA-SPECIFIC SUMMARY KPIS & DIAGNOSTIC INTELLIGENCE          */}
       {/* ==================================================================== */}
-      {persona === 'ds' && (
-        <div className="grid-3" style={{ marginBottom: 14 }}>
-          <KpiTile
-            label="1. Baseline Demand (d_0 · W_0) [Observed / Derived]"
-            value={`${formatNum(baseDailyDemand, 2)} ${uom}/d`}
-            delta={`${formatNum(avgWeekly, 1)} ${uom}/wk baseline`}
-            deltaTone="flat"
-            sub={`104-week training baseline from catalog demand (${formatNum(demand, 0)} ${uom}/yr)`}
-          />
-          <KpiTile
-            label="2. Modeled Slope (β_d · β_w) [Model Output]"
-            value={`${trendPerDay > 0 ? '+' : ''}${formatNum(trendMagnitudeDailyPct, 4)}%/day`}
-            valueStyle={{ color: Math.abs(trendPerWeek) >= 0.003 ? 'var(--accent)' : 'var(--text)' }}
-            delta={`${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk slope`}
-            deltaTone={trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat'}
-            sub={`Linear daily slope: trendPerDay = ${trendPerDay >= 0 ? '+' : ''}${formatNum(trendPerDay, 5)} across 84-day horizon`}
-          />
-          <KpiTile
-            label="3. 12-Week Forecast Total (84 Days) [Time Series]"
-            value={`${formatNum(cumulativeHorizonDemand, 1)} ${uom}`}
-            delta={`Next-Day: ${formatNum(day1Forecast, 2)} ${uom}/d · Wk 12: ${formatNum(week12ForecastDaily, 2)} ${uom}/d`}
-            deltaTone={trendPerWeek > 0 ? 'up' : 'flat'}
-            sub={`Sum of 84 daily points · Avg daily: ${formatNum(avgDailyForecast, 2)} ${uom}/d (${formatNum(week12ProjectedMean, 1)} ${uom}/wk endpoint)`}
-          />
-          <KpiTile
-            label="4. Model Fit (R²) [In-Sample Diagnostic]"
-            value={`R² = ${formatNum(modelR2, 2)}`}
-            valueStyle={{ color: modelR2 >= 0.90 ? 'var(--success)' : modelR2 >= 0.80 ? 'var(--accent)' : 'var(--watch)' }}
-            delta={`${(modelR2 * 100).toFixed(1)}% variance explained`}
-            deltaTone={modelR2 >= 0.85 ? 'up' : 'flat'}
-            sub="In-sample fit diagnostic across 104 trailing weeks (not out-of-sample accuracy)"
-          />
-          <KpiTile
-            label="5. Residual Error (RMSE) [Model Diagnostic]"
-            value={`${formatNum(rmse, 2)} ${uom}/wk`}
-            valueStyle={{ color: rmseRatio <= 0.12 ? 'var(--success)' : 'var(--watch)' }}
-            delta={`${formatNum(rmseRatio * 100, 1)}% of weekly mean`}
-            deltaTone={rmseRatio <= 0.12 ? 'up' : 'down'}
-            sub={`Model residual error magnitude relative to ${formatNum(avgWeekly, 1)} ${uom}/wk baseline`}
-          />
-          <KpiTile
-            label="6. Demand Dispersion (CV) [Derived Metric]"
-            value={`CV ${(demandCV * 100).toFixed(1)}%`}
-            valueStyle={{ color: demandCV <= 0.15 ? 'var(--success)' : 'var(--watch)' }}
-            delta={`Std Dev: ±${formatNum(sigmaDaily, 2)} ${uom}/d (±${formatNum(sigmaWeekly, 1)}/wk)`}
-            deltaTone={demandCV <= 0.15 ? 'up' : 'down'}
-            sub={`Historical coefficient of variation driving Z=1.65 planning band expansion`}
-          />
-        </div>
-      )}
-
-      {persona === 'analyst' && (
-        <div className="grid-3" style={{ marginBottom: 14 }}>
-          <KpiTile
-            label="1. Baseline Daily Demand [Operational Run-Rate]"
-            value={`${formatNum(baseDailyDemand, 2)} ${uom}/day`}
-            delta={`${formatNum(avgWeekly, 1)} ${uom}/wk`}
-            deltaTone="flat"
-            sub={`Baseline production withdrawal rate across ${meta.downstream.split('(')[0].trim()}`}
-          />
-          <KpiTile
-            label="2. 84-Day Forecast Total [Daily Time Series]"
-            value={`${formatNum(cumulativeHorizonDemand, 0)} ${uom}`}
-            valueStyle={{ color: 'var(--ink)' }}
-            delta={`Next-Day: ${formatNum(day1Forecast, 2)} ${uom}/d · Avg: ${formatNum(avgDailyForecast, 2)} ${uom}/d`}
-            deltaTone={trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat'}
-            sub={`Sum of 84 daily points · Day 84: ${formatNum(day84Forecast, 2)} ${uom}/d (${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk)`}
-          />
-          <KpiTile
-            label="3. On-Hand Coverage (Days of Supply)"
-            value={`${formatNum(daysOfSupply, 1)} Days`}
-            valueStyle={{ color: belowReorderPoint ? 'var(--risk)' : 'var(--success)' }}
-            delta={
-              daysOfSupply < leadTimeDays
-                ? `LEAN: ${formatNum(leadTimeDays - daysOfSupply, 1)}d below lead time`
-                : `Covered: +${formatNum(daysOfSupply - leadTimeDays, 1)}d buffer`
-            }
-            deltaTone={daysOfSupply < leadTimeDays ? 'down' : 'up'}
-            sub={`Supplier lead time from ${meta.supplier.split('(')[0].trim()} is ${leadTimeDays} days`}
-          />
-          <KpiTile
-            label="4. Expected Lead-Time Demand"
-            value={`${formatNum(leadTimeDemand, 1)} ${uom}`}
-            delta={`${leadTimeDays} days of consumption`}
-            deltaTone="flat"
-            sub={`Required baseline volume to support operations during ${leadTimeDays}-day replenishment cycle`}
-          />
-          <KpiTile
-            label="5. Planning Reorder Point (ROP)"
-            value={`${formatNum(reorderPoint, 1)} ${uom}`}
-            delta={`Includes ${formatNum(safetyStock, 1)} ${uom} safety stock`}
-            deltaTone="flat"
-            sub={`Trigger threshold: ${formatNum(leadTimeDemand, 1)} ${uom} LT demand + ${formatNum(safetyStock, 1)} ${uom} safety buffer`}
-          />
-          <KpiTile
-            label="6. Replenishment Action Status"
-            value={belowReorderPoint ? 'Replenishment Trigger Active' : 'Coverage Protected'}
-            valueStyle={{ color: belowReorderPoint ? 'var(--risk)' : 'var(--success)' }}
-            delta={
-              belowReorderPoint
-                ? `Coverage Gap: -${formatNum(ropGap, 1)} ${uom}`
-                : `Protective Buffer: +${formatNum(ropBuffer, 1)} ${uom}`
-            }
-            deltaTone={belowReorderPoint ? 'down' : 'up'}
-            sub={
-              belowReorderPoint
-                ? `On-hand stock (${formatNum(onHandQty, 0)} ${uom}) is below Planning ROP (${formatNum(reorderPoint, 1)} ${uom})`
-                : `On-hand stock (${formatNum(onHandQty, 0)} ${uom}) exceeds Planning ROP (${formatNum(reorderPoint, 1)} ${uom})`
-            }
-          />
-        </div>
-      )}
-
-      {persona === 'exec' && (
-        <div className="grid-3" style={{ marginBottom: 14 }}>
-          <KpiTile
-            label="1. Annual Consumption Run-Rate [Spend]"
-            value={formatCurrency(annualConsumptionValue)}
-            delta={`${formatNum(demand, 0)} ${uom}/yr`}
-            deltaTone="flat"
-            sub={`Physical unit cost: ${formatCurrency(unitCost)}/${uom} · Class ${abcClass} Material`}
-          />
-          <KpiTile
-            label="2. Physical Inventory Carrying Capital"
-            value={formatCurrency(onHandValue)}
-            delta={`${formatNum(onHandQty, 0)} ${uom} on-hand`}
-            deltaTone="flat"
-            sub={`Currently turning at ${formatNum(annualTurns, 2)} turns/year`}
-          />
-          <KpiTile
-            label="3. 12-Week Horizon Spend (84 Days) [Demand Outlook]"
-            value={formatCurrency(cumulativeHorizonValue)}
-            valueStyle={{ color: 'var(--ink)' }}
-            delta={`${formatNum(cumulativeHorizonDemand, 0)} ${uom} total across 84 days`}
-            deltaTone={trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat'}
-            sub={`Next-Day: ${formatNum(day1Forecast, 2)} ${uom}/d · Avg: ${formatNum(avgDailyForecast, 2)} ${uom}/d (${trendPerWeek >= 0.003 ? 'Expansion' : trendPerWeek <= -0.003 ? 'Contraction' : 'Stable'})`}
-          />
-          <KpiTile
-            label="4. Inventory Coverage Duration"
-            value={`${formatNum(daysOfSupply, 1)} Days`}
-            valueStyle={{ color: belowReorderPoint ? 'var(--risk)' : 'var(--success)' }}
-            delta={
-              daysOfSupply < leadTimeDays
-                ? `Exposure: ${formatNum(leadTimeDays - daysOfSupply, 1)}d below lead time`
-                : `Protected: +${formatNum(daysOfSupply - leadTimeDays, 1)}d beyond lead time`
-            }
-            deltaTone={daysOfSupply < leadTimeDays ? 'down' : 'up'}
-            sub={`Supplier replenishment lead time: ${leadTimeDays} days`}
-          />
-          <KpiTile
-            label="5. Protective Safety Buffer Capital"
-            value={formatCurrency(safetyStockValue)}
-            delta={`${formatNum(safetyStock, 1)} ${uom} planning buffer`}
-            deltaTone="flat"
-            sub="Working capital allocated to protect against demand and lead-time variability"
-          />
-          <KpiTile
-            label="6. Executive Supply Signal"
-            value={belowReorderPoint ? 'Replenishment Action Indicated' : 'Supply Continuity Stable'}
-            valueStyle={{ color: belowReorderPoint ? 'var(--risk)' : 'var(--success)' }}
-            delta={
-              belowReorderPoint
-                ? `Exposure: -${formatCurrency(ropGap * unitCost)} gap`
-                : `Buffer: +${formatCurrency(ropBuffer * unitCost)} above ROP`
-            }
-            deltaTone={belowReorderPoint ? 'down' : 'up'}
-            sub={
-              belowReorderPoint
-                ? `Supply exposure identified across ${meta.downstream.split('(')[0].trim()}`
-                : `Operating inventory provides adequate buffer across ${meta.downstream.split('(')[0].trim()}`
-            }
-          />
-        </div>
-      )}
-
-      {/* ==================================================================== */}
-      {/* E. DATA SCIENTIST ONLY: MODEL DIAGNOSTICS & STATISTICAL UNCERTAINTY  */}
-      {/* ==================================================================== */}
-      {persona === 'ds' && (
-        <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
-            {/* Forecast Trajectory & Demand Movement */}
-            <div className="card" style={{ minWidth: 0 }}>
-              <div className="card__head" style={{ marginBottom: 10 }}>
-                <div>
-                  <Badge tone={Math.abs(trendPerWeek) >= 0.003 ? 'accent' : 'neutral'}>Trajectory Intelligence</Badge>
-                  <h2 className="card__title" style={{ marginTop: 8 }}>
-                    Forecast Trajectory & Demand Movement
-                  </h2>
-                  <p className="card__sub">
-                    Modeled demand progression across the 12-week forward planning horizon
-                  </p>
-                </div>
-              </div>
-
-              <div className="table-wrap">
-                <table>
-                  <tbody>
-                    <tr>
-                      <td>Baseline Daily Demand (d_0)</td>
-                      <td className="num text-right font-semibold">{formatNum(baseDailyDemand, 2)} {uom}/day</td>
-                    </tr>
-                    <tr>
-                      <td>Baseline Weekly Demand (W_0)</td>
-                      <td className="num text-right">{formatNum(avgWeekly, 1)} {uom}/wk</td>
-                    </tr>
-                    <tr>
-                      <td>Estimated Linear Daily Slope (beta_d)</td>
-                      <td className="num text-right font-semibold">
-                        {trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day ({trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk)
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Trend Classification</td>
-                      <td className="num text-right">
-                        {trendPerWeek >= 0.003
-                          ? 'Ramping Demand Signal'
-                          : trendPerWeek <= -0.003
-                          ? 'Declining Demand Signal'
-                          : 'Steady-State Consumption'}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Next-Day Expected Demand (Day 1)</td>
-                      <td className="num text-right font-semibold">{formatNum(day1Forecast, 2)} {uom}/day</td>
-                    </tr>
-                    <tr>
-                      <td>Mid-Horizon Expected Demand (Day 42 / Wk 6)</td>
-                      <td className="num text-right">{formatNum(dailyForecastSeries[41].dailyMean, 2)} {uom}/day ({formatNum(dailyForecastSeries[41].dailyMean * 7, 1)} {uom}/wk)</td>
-                    </tr>
-                    <tr>
-                      <td>Horizon Endpoint Demand (Day 84 / Wk 12)</td>
-                      <td className="num text-right font-semibold">{formatNum(day84Forecast, 2)} {uom}/day ({formatNum(week12ProjectedMean, 1)} {uom}/wk)</td>
-                    </tr>
-                    <tr>
-                      <td>Average Daily Forecast across 84 Days</td>
-                      <td className="num text-right font-semibold">{formatNum(avgDailyForecast, 2)} {uom}/day</td>
-                    </tr>
-                    <tr>
-                      <td>Cumulative 84-Day Forecast Sum</td>
-                      <td className="num text-right font-semibold">{formatNum(cumulativeHorizonDemand, 1)} {uom} ({formatCurrency(cumulativeHorizonValue)})</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <p className="footnote" style={{ marginTop: 10 }}>
-                <strong>Trend Modeling Note:</strong> Trend is evaluated as a pure linear daily slope (trendPerDay = {trendPerDay >= 0 ? '+' : ''}{formatNum(trendPerDay, 5)}/day, trendPerWeek = {trendPerWeek >= 0 ? '+' : ''}{formatNum(trendPerWeek, 4)}/wk), representing an estimated average linear slope across historical observations rather than an exponential or compounding process. Day 84 rate ({formatNum(day84Forecast, 2)} {uom}/d × 7 = {formatNum(week12ProjectedMean, 1)} {uom}/wk) exactly reconciles with the Week-12 endpoint.
-              </p>
-            </div>
-
-            {/* Forecast Reliability & Model Diagnostics */}
-            <div className="card" style={{ minWidth: 0 }}>
-              <div className="card__head" style={{ marginBottom: 10 }}>
-                <div>
-                  <Badge tone="accent">Model Diagnostics</Badge>
-                  <h2 className="card__title" style={{ marginTop: 8 }}>
-                    Forecast Reliability & Diagnostic Fit
-                  </h2>
-                  <p className="card__sub">
-                    Specification parameters and goodness-of-fit metrics from historical model training
-                  </p>
-                </div>
-              </div>
-
-              <div className="table-wrap">
-                <table>
-                  <tbody>
-                    <tr>
-                      <td>Model Architecture</td>
-                      <td className="num text-right font-semibold">Ridge Regression (alpha = 1.0)</td>
-                    </tr>
-                    <tr>
-                      <td>Autoregressive Feature Set</td>
-                      <td className="num text-right">Lag-1, Lag-7, Lag-30 Demand History</td>
-                    </tr>
-                    <tr>
-                      <td>Feature Normalization</td>
-                      <td className="num text-right">Standard Normal Variate (SNV)</td>
-                    </tr>
-                    <tr>
-                      <td>Training History Window</td>
-                      <td className="num text-right">104 Weeks (2 Years Trailing)</td>
-                    </tr>
-                    <tr>
-                      <td>Model Fit (R²)</td>
-                      <td className="num text-right font-semibold" style={{ color: modelR2 >= 0.90 ? 'var(--success)' : 'var(--accent)' }}>
-                        {formatNum(modelR2, 2)} ({(modelR2 * 100).toFixed(1)}% variance explained)
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Model Residual Error (RMSE)</td>
-                      <td className="num text-right font-semibold">
-                        {formatNum(rmse, 2)} {uom}/wk ({(rmseRatio * 100).toFixed(1)}% of mean)
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Historical Demand CV</td>
-                      <td className="num text-right">{(demandCV * 100).toFixed(1)}% (Std Dev: ±{formatNum(sigmaWeekly, 1)} {uom}/wk)</td>
-                    </tr>
-                    <tr>
-                      <td>Demand Standard Deviation (σ)</td>
-                      <td className="num text-right font-semibold">Daily σ_d = ±{formatNum(sigmaDaily, 2)} {uom}/day</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <p className="footnote" style={{ marginTop: 10 }}>
-                <strong>Technical Definitions & Methodology:</strong> R² = {formatNum(modelR2, 2)} is an in-sample model fit diagnostic measuring historical variance explained across the 104-week training window (not future forecast accuracy). RMSE = {formatNum(rmse, 2)} {uom}/wk measures in-sample residual error magnitude. CV = {(demandCV * 100).toFixed(1)}% measures demand variability relative to average demand. Standard deviation (σ_d = ±{formatNum(sigmaDaily, 2)} {uom}/day) is the demand variability measure used in planning calculations.
-              </p>
-            </div>
-          </div>
-
-          {/* Full Statistical Uncertainty Analysis Table */}
-          <div className="card">
-            <div className="card__head">
-              <div>
-                <h2 className="card__title">Forecast Uncertainty & Risk Exposure Analysis</h2>
-                <p className="card__sub">
-                  Evaluates how demand volatility, supplier lead time, and model residual error contribute to planning uncertainty
-                </p>
-              </div>
-              <Badge tone="neutral">Uncertainty Dimensions</Badge>
-            </div>
-
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Uncertainty Driver</th>
-                    <th>Observed Metric</th>
-                    <th>Planning Interpretation</th>
-                    <th>Inventory Buffer Implication</th>
-                    <th className="text-right">Provenance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Demand Volatility (CV)</td>
-                    <td className="num font-semibold">{(demandCV * 100).toFixed(1)}% CV</td>
-                    <td>
-                      Demand variability relative to average demand (CV = σ / μ). {demandCV <= 0.15 ? 'Low volatility indicates stable, predictable consumption velocity.' : 'Elevated demand dispersion increases variation in weekly requirements.'}
-                    </td>
-                    <td>Establishes relative variance scaling factor across forward horizon</td>
-                    <td className="text-right"><span className="badge badge-accent">Derived Metric</span></td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Demand Standard Deviation (σ)</td>
-                    <td className="num font-semibold">±{formatNum(sigmaDaily, 2)} {uom}/day</td>
-                    <td>
-                      Demand variability measure used in planning calculations (daily σ_d = avgDaily × CV; weekly σ_w = ±{formatNum(sigmaWeekly, 1)} {uom}/wk).
-                    </td>
-                    <td>Direct dispersion input into safety stock formula: SS = Z × σ_d × √L</td>
-                    <td className="text-right"><span className="badge badge-accent">Derived Metric</span></td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Supplier Lead Time (L)</td>
-                    <td className="num font-semibold">{leadTimeDays} Days ({leadTimeWeeks.toFixed(1)} wks)</td>
-                    <td>
-                      Supplier replenishment duration from {meta.supplier.split('(')[0].trim()} used in planning; longer lead time extends exposure window before order arrival.
-                    </td>
-                    <td>Lead-time demand requires {formatNum(leadTimeDemand, 1)} {uom} base coverage; scales safety buffer by √L</td>
-                    <td className="text-right"><span className="badge badge-neutral">Source Data</span></td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Planning Service Factor (Z)</td>
-                    <td className="num font-semibold">Z = 1.65 (95% target)</td>
-                    <td>
-                      One-sided 95% service-level planning factor under standard normal distribution assumption; not a two-sided confidence interval.
-                    </td>
-                    <td>Sets planning safety buffer to {formatNum(safetyStock, 1)} {uom} ({formatCurrency(safetyStockValue)})</td>
-                    <td className="text-right"><span className="badge badge-watch">Planning Assumption</span></td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Model Residual Error (RMSE)</td>
-                    <td className="num font-semibold">{formatNum(rmse, 2)} {uom}/wk</td>
-                    <td>
-                      In-sample root mean squared error representing model residual error magnitude relative to fitted baseline (not future forecast error).
-                    </td>
-                    <td>Reflects {(rmseRatio * 100).toFixed(1)}% residual dispersion relative to weekly mean</td>
-                    <td className="text-right"><span className="badge badge-accent">Model Diagnostic</span></td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Modeled Linear Trend (β)</td>
-                    <td className="num font-semibold">{trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day ({trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk)</td>
-                    <td>
-                      Linear daily demand slope (β_d = {trendPerDay >= 0 ? '+' : ''}{formatNum(trendPerDay, 5)}/day, β_w = {trendPerWeek >= 0 ? '+' : ''}{formatNum(trendPerWeek, 4)}/wk); represents estimated average linear slope across historical observations, not compounding growth.
-                    </td>
-                    <td>Projects 84-day daily trajectory reaching Day 84 ({formatNum(day84Forecast, 2)} {uom}/d · {formatNum(week12ProjectedMean, 1)} {uom}/wk at W12) without recalculating base ROP</td>
-                    <td className="text-right"><span className="badge badge-accent">Model Trajectory</span></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <p className="footnote" style={{ marginTop: 10 }}>
-              <strong>Analytical Principle:</strong> Higher demand variability widens planning uncertainty and requires larger safety stock buffers to maintain target service factors. Forecast uncertainty should always be evaluated alongside supplier delivery performance, lead times, and available days of supply.
-            </p>
-          </div>
-        </>
-      )}
-
-      {/* ==================================================================== */}
-      {/* F. ANALYST ONLY: OPERATIONAL REPLENISHMENT CHAIN & ACTION CENTER     */}
-      {/* ==================================================================== */}
-      {persona === 'analyst' && (
-        <>
-          <div className="card">
-            <div className="card__head">
-              <div>
-                <h2 className="card__title">Operational Replenishment & Inventory Coverage Chain</h2>
-                <p className="card__sub">
-                  Translates baseline demand consumption and supplier lead time into planning replenishment requirements, contextualized by the forward forecast trajectory for <strong>{selectedMaterial.id}</strong>.
-                </p>
-              </div>
-              <Badge tone={belowReorderPoint ? 'risk' : 'success'}>
-                {belowReorderPoint ? 'Replenishment Trigger Active' : 'Inventory Position Stable'}
-              </Badge>
-            </div>
-
-            {/* 5-Step Operational Analytical Chain */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
-              {/* Step 1 */}
-              <div style={{ padding: '12px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }}>
-                  1. Current Inventory
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>
-                  {formatNum(onHandQty, 0)} {uom}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text)' }}>
-                  {formatCurrency(onHandValue)}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
-                  {formatNum(daysOfSupply, 1)} days of supply
-                </div>
-              </div>
-
-              {/* Step 2 */}
-              <div style={{ padding: '12px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }}>
-                  2. Baseline Consumption
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>
-                  {formatNum(avgDaily, 2)} {uom}/day
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text)' }}>
-                  {formatNum(avgWeekly, 1)} {uom}/wk
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
-                  CV = {(demandCV * 100).toFixed(1)}% volatility
-                </div>
-              </div>
-
-              {/* Step 3 */}
-              <div style={{ padding: '12px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }}>
-                  3. Lead-Time Demand
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>
-                  {formatNum(leadTimeDemand, 1)} {uom}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text)' }}>
-                  Across {leadTimeDays}d lead time
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
-                  {formatNum(avgDaily, 2)} {uom}/d × {leadTimeDays}d
-                </div>
-              </div>
-
-              {/* Step 4 */}
-              <div style={{ padding: '12px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 4 }}>
-                  4. Planning Safety Stock
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#0C7EBE', marginBottom: 2 }}>
-                  {formatNum(safetyStock, 1)} {uom}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text)' }}>
-                  {formatCurrency(safetyStockValue)} value
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
-                  Z=1.65 × σ_d × √LeadTime
-                </div>
-              </div>
-
-              {/* Step 5 */}
-              <div style={{ padding: '12px 14px', background: belowReorderPoint ? 'var(--risk-bg)' : 'var(--success-bg)', borderRadius: 'var(--radius-sm)', border: `1px solid ${belowReorderPoint ? 'var(--risk)' : 'var(--success)'}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: belowReorderPoint ? 'var(--risk)' : 'var(--success)', marginBottom: 4 }}>
-                  5. Planning Reorder Point
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: belowReorderPoint ? 'var(--risk)' : 'var(--success)', marginBottom: 2 }}>
-                  {formatNum(reorderPoint, 1)} {uom}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 600 }}>
-                  {belowReorderPoint ? `Exposure Gap: -${formatNum(ropGap, 1)} ${uom}` : `Buffer: +${formatNum(ropBuffer, 1)} ${uom}`}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
-                  Lead Demand + Safety Stock
-                </div>
-              </div>
-            </div>
-
-            {/* Detailed Operational Banner */}
-            <div
-              style={{
-                padding: '12px 16px',
-                background: belowReorderPoint ? 'var(--risk-bg)' : 'var(--success-bg)',
-                borderRadius: 'var(--radius-sm)',
-                border: `1px solid ${belowReorderPoint ? 'var(--risk)' : 'var(--success)'}`,
-                fontSize: 12.5,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                <strong style={{ color: 'var(--ink)', fontSize: 13 }}>
-                  {belowReorderPoint ? 'Planning Replenishment Trigger:' : 'Coverage Evaluation:'}
-                </strong>
-                <span style={{ color: 'var(--text)' }}>
-                  {belowReorderPoint
-                    ? `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatNum(daysOfSupply, 1)} days of supply) sits ${formatNum(ropGap, 1)} ${uom} (${formatCurrency(ropGap * unitCost)}) below the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) relative to the ${leadTimeDays}-day supplier lead time.`
-                    : `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatNum(daysOfSupply, 1)} days of supply) buffers the ${leadTimeDays}-day supplier lead time, exceeding Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) by +${formatNum(ropBuffer, 1)} ${uom} (+${formatCurrency(ropBuffer * unitCost)}).`}
-                </span>
-              </div>
-              <div style={{ color: 'var(--text)' }}>
-                <strong>Operational Implication:</strong> {belowReorderPoint
-                  ? `Being below the Planning Reorder Point indicates a replenishment trigger during the ${leadTimeDays}-day lead-time window. Evaluate replenishment to close the planning coverage gap; final purchase order quantity should be determined in EOQ and Optimization considering lot sizing, supplier MOQs, open supply, and downstream scheduling constraints.`
-                  : `Current inventory is above the Planning Reorder Point, indicating no immediate replenishment trigger under current operating assumptions. Continue monitoring baseline consumption velocity and forward forecast signals.`}
-              </div>
-            </div>
-          </div>
-
-          {/* Operational Forecast & Statistical Parameters Card */}
-          <div className="card">
-            <div className="card__head">
-              <div>
-                <h2 className="card__title">Operational Forecast & Statistical Planning Parameters</h2>
-                <p className="card__sub">
-                  Core statistical metrics translated into operational supply chain meaning and replenishment implications for <strong>{selectedMaterial.id}</strong>.
-                </p>
-              </div>
-              <Badge tone="accent">Operational Intelligence</Badge>
-            </div>
-
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Planning Metric</th>
-                    <th>Current Value</th>
-                    <th>What It Means (Operational Meaning)</th>
-                    <th>Operational Implication</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="font-semibold">Model Explanatory Fit (R²)</td>
-                    <td className="num font-semibold">R² = {formatNum(modelR2, 2)}</td>
-                    <td>
-                      Higher R² indicates better in-sample fit across historical demand, but does <strong>not</strong> guarantee future forecast accuracy.
-                    </td>
-                    <td>
-                      Supports baseline demand trajectory; unexpected demand shifts and supplier disruptions still require active operational monitoring.
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="font-semibold">Model Residual Error (RMSE)</td>
-                    <td className="num font-semibold">{formatNum(rmse, 2)} {uom}/wk</td>
-                    <td>
-                      Average historical model residual error magnitude ({(rmseRatio * 100).toFixed(1)}% of weekly baseline); not future forecast error.
-                    </td>
-                    <td>
-                      Higher RMSE indicates larger historical model residuals; forecast should be interpreted with more caution and protected by safety stock.
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="font-semibold">Demand Volatility (CV)</td>
-                    <td className="num font-semibold">CV = {(demandCV * 100).toFixed(1)}%</td>
-                    <td>
-                      Demand variability relative to average consumption rate ({demandCV <= 0.15 ? 'stable demand flow' : 'elevated demand dispersion'}).
-                    </td>
-                    <td>
-                      Higher CV means demand is more variable, creating greater planning uncertainty and driving higher protective buffer requirements.
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="font-semibold">Daily Standard Deviation (σ_d)</td>
-                    <td className="num font-semibold">±{formatNum(sigmaDaily, 2)} {uom}/day</td>
-                    <td>
-                      Daily demand dispersion around baseline consumption (±{formatNum(sigmaWeekly, 1)} {uom}/wk).
-                    </td>
-                    <td>
-                      Statistical measure used in planning calculations; directly sizes the safety-stock component required to buffer lead-time variation.
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="font-semibold">Planning Service Factor (Z)</td>
-                    <td className="num font-semibold">Z = 1.65 (95% service target)</td>
-                    <td>
-                      One-sided planning factor used to size the safety-stock component; not a two-sided confidence interval.
-                    </td>
-                    <td>
-                      Sets planning safety stock at {formatNum(safetyStock, 1)} {uom} ({formatCurrency(safetyStockValue)}) to buffer demand variations before replenishment arrives.
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="font-semibold">Supplier Lead Time (L)</td>
-                    <td className="num font-semibold">{leadTimeDays} Days ({leadTimeWeeks.toFixed(1)} wks)</td>
-                    <td>
-                      Supplier replenishment duration from {meta.supplier.split('(')[0].trim()} used in planning calculations.
-                    </td>
-                    <td>
-                      Longer lead time creates greater demand exposure ({formatNum(leadTimeDemand, 1)} {uom}) before replenishment arrives, requiring earlier replenishment triggers.
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="font-semibold">Demand Trend Direction (β)</td>
-                    <td className="num font-semibold">{trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk</td>
-                    <td>
-                      Estimated linear weekly slope of demand; not compounding growth.
-                    </td>
-                    <td>
-                      {trendPerWeek >= 0.003
-                        ? 'Positive trend indicates expected demand direction is increasing; evaluate higher forward replenishment requirements in Optimization.'
-                        : trendPerWeek <= -0.003
-                        ? 'Negative trend indicates expected demand direction is declining; avoid over-ordering to prevent excess inventory buildup.'
-                        : 'Steady trend indicates stable demand flow; maintain standard replenishment review cadence.'}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <p className="footnote" style={{ marginTop: 10 }}>
-              <strong>Analyst Guidance:</strong> Statistical metrics establish baseline planning parameters, but operational execution requires balancing supplier lot sizes, minimum order quantities (MOQs), open orders, and downstream production schedules in Optimization Plan.
-            </p>
-          </div>
-
-          {/* Operational Action Center Card */}
-          <div className="card">
-            <div className="card__head">
-              <div>
-                <h2 className="card__title">Operational Action Center & Scenario Roadmap</h2>
-                <p className="card__sub">
-                  Recommended supply chain analyst actions and scenario priorities for {selectedMaterial.id}
-                </p>
-              </div>
-              <Badge tone="neutral">Operational Guidance</Badge>
-            </div>
-
-            <div className="grid-3" style={{ marginBottom: 0 }}>
-              <div style={{ padding: '12px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>
-                  1. Replenishment Action
-                </div>
-                <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
-                  {belowReorderPoint
-                    ? `Review open purchase orders from ${meta.supplier.split('(')[0].trim()} and evaluate replenishment to address the planning coverage gap in Optimization Plan; final order quantity should consider EOQ lot sizing, supplier MOQs, open supply, and downstream demand.`
-                    : `Current stock of ${formatNum(onHandQty, 0)} ${uom} is healthy. Maintain standard review cadence; no immediate PO required.`}
-                </p>
-              </div>
-              <div style={{ padding: '12px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>
-                  2. Lead-Time Vulnerability
-                </div>
-                <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
-                  Supplier lead time is {leadTimeDays} days. Higher demand variability (CV {(demandCV * 100).toFixed(1)}%) requires holding {formatNum(safetyStock, 1)} {uom} in safety stock.
-                </p>
-              </div>
-              <div style={{ padding: '12px 14px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--line)' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>
-                  3. What-If Stress Testing
-                </div>
-                <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
-                  Transition to What-If Simulation to stress-test how a +20% demand surge or +15d supplier latency affects stockout exposure.
-                </p>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ==================================================================== */}
-      {/* G. C-SUITE ONLY: FINANCIAL IMPACT & SUPPLY CONTINUITY MATRIX         */}
-      {/* ==================================================================== */}
-      {persona === 'exec' && (
-        <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
-            {/* Working Capital Valuation Card */}
-            <div className="card" style={{ minWidth: 0 }}>
-              <div className="card__head" style={{ marginBottom: 10 }}>
-                <div>
-                  <Badge tone="accent">Financial Valuation</Badge>
-                  <h2 className="card__title" style={{ marginTop: 8 }}>
-                    Working Capital & Inventory Valuation
-                  </h2>
-                  <p className="card__sub">
-                    Capital allocation and carrying cost structure for {selectedMaterial.id}
-                  </p>
-                </div>
-              </div>
-
-              <div className="table-wrap">
-                <table>
-                  <tbody>
-                    <tr>
-                      <td>Annual Catalog Consumption Value</td>
-                      <td className="num text-right font-semibold">{formatCurrency(annualConsumptionValue)}/yr</td>
-                    </tr>
-                    <tr>
-                      <td>Current Physical Carrying Capital</td>
-                      <td className="num text-right font-semibold">{formatCurrency(onHandValue)}</td>
-                    </tr>
-                    <tr>
-                      <td>Capital Allocated to Planning Safety Stock</td>
-                      <td className="num text-right">{formatCurrency(safetyStockValue)} ({formatNum(safetyStock, 1)} {uom})</td>
-                    </tr>
-                    <tr>
-                      <td>Expected Lead-Time Consumption Value</td>
-                      <td className="num text-right">{formatCurrency(leadTimeDemandValue)} ({formatNum(leadTimeDemand, 1)} {uom})</td>
-                    </tr>
-                    <tr>
-                      <td>Estimated 84-Day (12-Week) Demand Value from Daily Forecast Trajectory</td>
-                      <td className="num text-right font-semibold">{formatCurrency(cumulativeHorizonValue)} ({formatNum(cumulativeHorizonDemand, 0)} {uom})</td>
-                    </tr>
-                    <tr>
-                      <td>Annual Inventory Turn Velocity</td>
-                      <td className="num text-right font-semibold">{formatNum(annualTurns, 2)} turns/yr</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Supply Continuity & Product Protection Card */}
-            <div className="card" style={{ minWidth: 0 }}>
-              <div className="card__head" style={{ marginBottom: 10 }}>
-                <div>
-                  <Badge tone={belowReorderPoint ? 'risk' : 'success'}>Supply Continuity</Badge>
-                  <h2 className="card__title" style={{ marginTop: 8 }}>
-                    Supply Continuity & Product Line Protection
-                  </h2>
-                  <p className="card__sub">
-                    Operational exposure across finished production lines at {plant}
-                  </p>
-                </div>
-              </div>
-
-              <div className="table-wrap">
-                <table>
-                  <tbody>
-                    <tr>
-                      <td>Strategic Governance Priority</td>
-                      <td className="num text-right font-semibold">{meta.strategicPriority}</td>
-                    </tr>
-                    <tr>
-                      <td>Downstream Finished Goods Exposure</td>
-                      <td className="num text-right">{meta.downstream}</td>
-                    </tr>
-                    <tr>
-                      <td>Primary Sourcing Dependency</td>
-                      <td className="num text-right">{meta.supplier}</td>
-                    </tr>
-                    <tr>
-                      <td>Replenishment Lead Time Duration</td>
-                      <td className="num text-right font-semibold">{leadTimeDays} Days ({leadTimeWeeks.toFixed(1)} wks)</td>
-                    </tr>
-                    <tr>
-                      <td>Current Inventory Coverage Window</td>
-                      <td className="num text-right font-semibold" style={{ color: belowReorderPoint ? 'var(--risk)' : 'var(--success)' }}>
-                        {formatNum(daysOfSupply, 1)} Days of Supply
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>Executive Action Status</td>
-                      <td className="num text-right font-semibold" style={{ color: belowReorderPoint ? 'var(--risk)' : 'var(--success)' }}>
-                        {belowReorderPoint ? 'Replenishment Action Required' : 'Standard Operating Cadence'}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          {/* Executive Summary Decision Banner */}
-          <div
-            style={{
-              padding: '14px 18px',
-              background: belowReorderPoint ? 'var(--risk-bg)' : 'var(--success-bg)',
-              borderRadius: 'var(--radius-sm)',
-              border: `1px solid ${belowReorderPoint ? 'var(--risk)' : 'var(--success)'}`,
-              fontSize: 13,
-              marginBottom: 14,
-            }}
+      <AnimatePresence mode="wait">
+        {persona === 'ds' && (
+          <motion.div
+            key="ds-kpi"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="grid-3 mb-3.5"
           >
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-              <strong style={{ color: 'var(--ink)', fontSize: 13.5 }}>
-                {belowReorderPoint ? 'Executive Risk Trigger:' : 'Executive Supply Status:'}
-              </strong>
-              <span style={{ color: 'var(--text)' }}>
-                {belowReorderPoint
-                  ? `On-hand stock (${formatNum(onHandQty, 0)} ${uom} / ${formatCurrency(onHandValue)}) covers ${formatNum(daysOfSupply, 1)} days of supply against a ${leadTimeDays}-day supplier lead time from ${meta.supplier.split('(')[0].trim()}. Replenishment exposure gap is ${formatNum(ropGap, 1)} ${uom} (${formatCurrency(ropGap * unitCost)}).`
-                  : `On-hand stock (${formatNum(onHandQty, 0)} ${uom} / ${formatCurrency(onHandValue)}) covers ${formatNum(daysOfSupply, 1)} days of supply, safely buffering the ${leadTimeDays}-day supplier lead time from ${meta.supplier.split('(')[0].trim()} with a +${formatNum(ropBuffer, 1)} ${uom} (+${formatCurrency(ropBuffer * unitCost)}) buffer.`}
-              </span>
-            </div>
-            <div style={{ color: 'var(--text)' }}>
-              <strong>Strategic Recommendation:</strong> {belowReorderPoint
-                ? `Authorize replenishment in Decision Intelligence and review multi-echelon order schedules in Optimization Plan to avert line stoppage across ${meta.downstream.split('(')[0].trim()}.`
-                : `Current stock position indicates no immediate replenishment trigger under current operating assumptions. Maintain standard inventory turnover cadence.`}
-            </div>
-          </div>
-        </>
-      )}
+            <KpiTile
+              label="1. Baseline Demand (d_0 · W_0) [Observed / Derived]"
+              value={`${formatNum(baseDailyDemand, 2)} ${uom}/d`}
+              delta={`${formatNum(avgWeekly, 1)} ${uom}/wk baseline`}
+              deltaTone="flat"
+              sub={`104-week training baseline from catalog demand (${formatNum(demand, 0)} ${uom}/yr)`}
+            />
+            <KpiTile
+              label="2. Modeled Slope (β_d · β_w) [Model Output]"
+              value={`${trendPerDay > 0 ? '+' : ''}${formatNum(trendMagnitudeDailyPct, 4)}%/day`}
+              valueStyle={{ color: Math.abs(trendPerWeek) >= 0.003 ? 'var(--accent)' : 'var(--text)' }}
+              delta={`${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk slope`}
+              deltaTone={trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat'}
+              sub={`Linear daily slope: trendPerDay = ${trendPerDay >= 0 ? '+' : ''}${formatNum(trendPerDay, 5)} across 84-day horizon`}
+            />
+            <KpiTile
+              label="3. 12-Week Forecast Total (84 Days) [Time Series]"
+              value={`${formatNum(cumulativeHorizonDemand, 1)} ${uom}`}
+              delta={`Next-Day: ${formatNum(day1Forecast, 2)} ${uom}/d · Wk 12: ${formatNum(week12ForecastDaily, 2)} ${uom}/d`}
+              deltaTone={trendPerWeek > 0 ? 'up' : 'flat'}
+              sub={`Sum of 84 daily points · Avg daily: ${formatNum(avgDailyForecast, 2)} ${uom}/d (${formatNum(week12ProjectedMean, 1)} ${uom}/wk endpoint)`}
+            />
+            <KpiTile
+              label="4. Model Fit (R²) [In-Sample Diagnostic]"
+              value={`R² = ${formatNum(modelR2, 2)}`}
+              valueStyle={{ color: modelR2 >= 0.90 ? 'var(--success)' : modelR2 >= 0.80 ? 'var(--accent)' : 'var(--watch)' }}
+              delta={`${(modelR2 * 100).toFixed(1)}% variance explained`}
+              deltaTone={modelR2 >= 0.85 ? 'up' : 'flat'}
+              sub="In-sample fit diagnostic across 104 trailing weeks (not out-of-sample accuracy)"
+            />
+            <KpiTile
+              label="5. Residual Error (RMSE) [Model Diagnostic]"
+              value={`${formatNum(rmse, 2)} ${uom}/wk`}
+              valueStyle={{ color: rmseRatio <= 0.12 ? 'var(--success)' : 'var(--watch)' }}
+              delta={`${formatNum(rmseRatio * 100, 1)}% of weekly mean`}
+              deltaTone={rmseRatio <= 0.12 ? 'up' : 'down'}
+              sub={`Model residual error magnitude relative to ${formatNum(avgWeekly, 1)} ${uom}/wk baseline`}
+            />
+            <KpiTile
+              label="6. Demand Dispersion (CV) [Derived Metric]"
+              value={`CV ${(demandCV * 100).toFixed(1)}%`}
+              valueStyle={{ color: demandCV <= 0.15 ? 'var(--success)' : 'var(--watch)' }}
+              delta={`Std Dev: ±${formatNum(sigmaDaily, 2)} ${uom}/d (±${formatNum(sigmaWeekly, 1)}/wk)`}
+              deltaTone={demandCV <= 0.15 ? 'up' : 'down'}
+              sub={`Historical coefficient of variation driving Z=1.65 planning band expansion`}
+            />
+          </motion.div>
+        )}
+
+        {persona === 'analyst' && (
+          <motion.div
+            key="analyst-kpi"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="grid-3 mb-3.5"
+          >
+            <KpiTile
+              label="1. Baseline Daily Demand [Operational Run-Rate]"
+              value={`${formatNum(baseDailyDemand, 2)} ${uom}/day`}
+              delta={`${formatNum(avgWeekly, 1)} ${uom}/wk`}
+              deltaTone="flat"
+              sub={`Baseline production withdrawal rate across ${meta.downstream.split('(')[0].trim()}`}
+            />
+            <KpiTile
+              label="2. 84-Day Forecast Total [Daily Time Series]"
+              value={`${formatNum(cumulativeHorizonDemand, 0)} ${uom}`}
+              valueStyle={{ color: 'var(--ink)' }}
+              delta={`Next-Day: ${formatNum(day1Forecast, 2)} ${uom}/d · Avg: ${formatNum(avgDailyForecast, 2)} ${uom}/d`}
+              deltaTone={trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat'}
+              sub={`Sum of 84 daily points · Day 84: ${formatNum(day84Forecast, 2)} ${uom}/d (${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk)`}
+            />
+            <KpiTile
+              label="3. On-Hand Coverage (Days of Supply)"
+              value={`${formatNum(daysOfSupply, 1)} Days`}
+              valueStyle={{ color: belowReorderPoint ? 'var(--risk)' : 'var(--success)' }}
+              delta={
+                daysOfSupply < leadTimeDays
+                  ? `LEAN: ${formatNum(leadTimeDays - daysOfSupply, 1)}d below lead time`
+                  : `Covered: +${formatNum(daysOfSupply - leadTimeDays, 1)}d buffer`
+              }
+              deltaTone={daysOfSupply < leadTimeDays ? 'down' : 'up'}
+              sub={`Supplier lead time from ${meta.supplier.split('(')[0].trim()} is ${leadTimeDays} days`}
+            />
+            <KpiTile
+              label="4. Expected Lead-Time Demand"
+              value={`${formatNum(leadTimeDemand, 1)} ${uom}`}
+              delta={`${leadTimeDays} days of consumption`}
+              deltaTone="flat"
+              sub={`Required baseline volume to support operations during ${leadTimeDays}-day replenishment cycle`}
+            />
+            <KpiTile
+              label="5. Planning Reorder Point (ROP)"
+              value={`${formatNum(reorderPoint, 1)} ${uom}`}
+              delta={`Includes ${formatNum(safetyStock, 1)} ${uom} safety stock`}
+              deltaTone="flat"
+              sub={`Trigger threshold: ${formatNum(leadTimeDemand, 1)} ${uom} LT demand + ${formatNum(safetyStock, 1)} ${uom} safety buffer`}
+            />
+            <KpiTile
+              label="6. Replenishment Action Status"
+              value={belowReorderPoint ? 'Replenishment Trigger Active' : 'Coverage Protected'}
+              valueStyle={{ color: belowReorderPoint ? 'var(--risk)' : 'var(--success)' }}
+              delta={
+                belowReorderPoint
+                  ? `Coverage Gap: -${formatNum(ropGap, 1)} ${uom}`
+                  : `Protective Buffer: +${formatNum(ropBuffer, 1)} ${uom}`
+              }
+              deltaTone={belowReorderPoint ? 'down' : 'up'}
+              sub={
+                belowReorderPoint
+                  ? `On-hand stock (${formatNum(onHandQty, 0)} ${uom}) is below Planning ROP (${formatNum(reorderPoint, 1)} ${uom})`
+                  : `On-hand stock (${formatNum(onHandQty, 0)} ${uom}) exceeds Planning ROP (${formatNum(reorderPoint, 1)} ${uom})`
+              }
+            />
+          </motion.div>
+        )}
+
+        {persona === 'exec' && (
+          <motion.div
+            key="exec-kpi"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="grid-3 mb-3.5"
+          >
+            <KpiTile
+              label="1. Annual Consumption Run-Rate [Spend]"
+              value={formatCurrency(annualConsumptionValue)}
+              delta={`${formatNum(demand, 0)} ${uom}/yr`}
+              deltaTone="flat"
+              sub={`Physical unit cost: ${formatCurrency(unitCost)}/${uom} · Class ${abcClass} Material`}
+            />
+            <KpiTile
+              label="2. Physical Inventory Carrying Capital"
+              value={formatCurrency(onHandValue)}
+              delta={`${formatNum(onHandQty, 0)} ${uom} on-hand`}
+              deltaTone="flat"
+              sub={`Currently turning at ${formatNum(annualTurns, 2)} turns/year`}
+            />
+            <KpiTile
+              label="3. 12-Week Horizon Spend (84 Days) [Demand Outlook]"
+              value={formatCurrency(cumulativeHorizonValue)}
+              valueStyle={{ color: 'var(--ink)' }}
+              delta={`${formatNum(cumulativeHorizonDemand, 0)} ${uom} total across 84 days`}
+              deltaTone={trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat'}
+              sub={`Next-Day: ${formatNum(day1Forecast, 2)} ${uom}/d · Avg: ${formatNum(avgDailyForecast, 2)} ${uom}/d (${trendPerWeek >= 0.003 ? 'Expansion' : trendPerWeek <= -0.003 ? 'Contraction' : 'Stable'})`}
+            />
+            <KpiTile
+              label="4. Inventory Coverage Duration"
+              value={`${formatNum(daysOfSupply, 1)} Days`}
+              valueStyle={{ color: belowReorderPoint ? 'var(--risk)' : 'var(--success)' }}
+              delta={
+                daysOfSupply < leadTimeDays
+                  ? `Exposure: ${formatNum(leadTimeDays - daysOfSupply, 1)}d below lead time`
+                  : `Protected: +${formatNum(daysOfSupply - leadTimeDays, 1)}d beyond lead time`
+              }
+              deltaTone={daysOfSupply < leadTimeDays ? 'down' : 'up'}
+              sub={`Supplier replenishment lead time: ${leadTimeDays} days`}
+            />
+            <KpiTile
+              label="5. Protective Safety Buffer Capital"
+              value={formatCurrency(safetyStockValue)}
+              delta={`${formatNum(safetyStock, 1)} ${uom} planning buffer`}
+              deltaTone="flat"
+              sub="Working capital allocated to protect against demand and lead-time variability"
+            />
+            <KpiTile
+              label="6. Executive Supply Signal"
+              value={belowReorderPoint ? 'Replenishment Action Indicated' : 'Supply Continuity Stable'}
+              valueStyle={{ color: belowReorderPoint ? 'var(--risk)' : 'var(--success)' }}
+              delta={
+                belowReorderPoint
+                  ? `Exposure: -${formatCurrency(ropGap * unitCost)} gap`
+                  : `Buffer: +${formatCurrency(ropBuffer * unitCost)} above ROP`
+              }
+              deltaTone={belowReorderPoint ? 'down' : 'up'}
+              sub={
+                belowReorderPoint
+                  ? `Supply exposure identified across ${meta.downstream.split('(')[0].trim()}`
+                  : `Operating inventory provides adequate buffer across ${meta.downstream.split('(')[0].trim()}`
+              }
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ==================================================================== */}
-      {/* H. PERSONA-SPECIFIC STRATEGIC INTELLIGENCE LENSES                    */}
+      {/* F. PERSONA-SPECIFIC DEEP-DIVE TABLES & DIAGNOSTICS                   */}
       {/* ==================================================================== */}
       {persona === 'ds' && (
-        <Insight label="Data Scientist Lens · Model Specification, Generalization & Diagnostics">
-          The multivariate demand trajectory for <span className="metric">{selectedMaterial.id}</span> is generated by an autoregressive Ridge regression model (<span className="metric">alpha = 1.0</span>) fitted over a <span className="metric">104-week</span> training window with Standard Normal Variate (SNV) normalization. The model incorporates lag-1, lag-7, and lag-30 feature vectors. Model explanatory fit achieves <span className="metric">R² = {formatNum(modelR2, 2)}</span> with in-sample residual <span className="metric">RMSE = {formatNum(rmse, 2)} {uom}/wk</span> ({(rmseRatio * 100).toFixed(2)}% of weekly mean). R² is an in-sample fit diagnostic measuring historical variance explained by the fitted model, and is not a guaranteed out-of-sample forecast accuracy measure. The 95% service planning envelope expands with forecast horizon via <span className="metric">± Z · d_0 · CV · sqrt(t/7)</span> (Z = 1.65).
-        </Insight>
+        <div className="flex flex-col gap-3.5 mb-4">
+          <div className="card">
+            <div className="card__head mb-2.5">
+              <div>
+                <Badge tone={Math.abs(trendPerWeek) >= 0.003 ? 'accent' : 'neutral'}>Trajectory Intelligence</Badge>
+                <h2 className="card__title mt-2">
+                  Forecast Trajectory & Demand Movement
+                </h2>
+                <p className="card__sub">
+                  Modeled demand progression across the 12-week forward planning horizon
+                </p>
+              </div>
+            </div>
+
+            <div className="border border-slate-200 dark:border-navy-700 rounded-lg overflow-hidden">
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Baseline Daily Demand (d_0)</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-slate-100">{formatNum(baseDailyDemand, 2)} {uom}/day</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Baseline Weekly Demand (W_0)</TableCell>
+                    <TableCell className="text-right font-mono text-slate-900 dark:text-slate-100">{formatNum(avgWeekly, 1)} {uom}/wk</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Estimated Linear Daily Slope (β_d)</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-cyan-600 dark:text-cyan-400">
+                      {trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day ({trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk)
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Trend Classification</TableCell>
+                    <TableCell className="text-right font-medium text-slate-900 dark:text-slate-100">
+                      {trendPerWeek >= 0.003
+                        ? 'Ramping Demand Signal'
+                        : trendPerWeek <= -0.003
+                        ? 'Declining Demand Signal'
+                        : 'Steady-State Consumption'}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Next-Day Expected Demand (Day 1)</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-slate-100">{formatNum(day1Forecast, 2)} {uom}/day</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Mid-Horizon Expected Demand (Day 42 / Wk 6)</TableCell>
+                    <TableCell className="text-right font-mono text-slate-900 dark:text-slate-100">{formatNum(dailyForecastSeries[41].dailyMean, 2)} {uom}/day ({formatNum(dailyForecastSeries[41].dailyMean * 7, 1)} {uom}/wk)</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Horizon Endpoint Demand (Day 84 / Wk 12)</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-slate-100">{formatNum(day84Forecast, 2)} {uom}/day ({formatNum(week12ProjectedMean, 1)} {uom}/wk)</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Average Daily Forecast across 84 Days</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-cyan-600 dark:text-cyan-400">{formatNum(avgDailyForecast, 2)} {uom}/day</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Cumulative 84-Day Forecast Sum</TableCell>
+                    <TableCell className="text-right font-mono font-bold text-slate-900 dark:text-slate-100">{formatNum(cumulativeHorizonDemand, 1)} {uom} ({formatCurrency(cumulativeHorizonValue)})</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2.5">
+              <strong>Trend Modeling Note:</strong> Trend is evaluated as a pure linear daily slope (trendPerDay = {trendPerDay >= 0 ? '+' : ''}{formatNum(trendPerDay, 5)}/day, trendPerWeek = {trendPerWeek >= 0 ? '+' : ''}{formatNum(trendPerWeek, 4)}/wk), representing an estimated average linear slope across historical observations rather than an exponential or compounding process. Day 84 rate ({formatNum(day84Forecast, 2)} {uom}/d × 7 = {formatNum(week12ProjectedMean, 1)} {uom}/wk) exactly reconciles with the Week-12 endpoint.
+            </p>
+          </div>
+
+          <div className="card">
+            <div className="card__head mb-2.5">
+              <div>
+                <Badge tone="accent">Model Diagnostics</Badge>
+                <h2 className="card__title mt-2">
+                  Forecast Reliability & Diagnostic Fit
+                </h2>
+                <p className="card__sub">
+                  Specification parameters and goodness-of-fit metrics from historical model training
+                </p>
+              </div>
+            </div>
+
+            <div className="border border-slate-200 dark:border-navy-700 rounded-lg overflow-hidden">
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Model Architecture</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-slate-100">Ridge Regression (alpha = 1.0)</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Autoregressive Feature Set</TableCell>
+                    <TableCell className="text-right font-mono text-slate-900 dark:text-slate-100">Lag-1, Lag-7, Lag-30 Demand History</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Feature Normalization</TableCell>
+                    <TableCell className="text-right font-mono text-slate-900 dark:text-slate-100">Standard Normal Variate (SNV)</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Training History Window</TableCell>
+                    <TableCell className="text-right font-mono text-slate-900 dark:text-slate-100">104 Weeks (2 Years Trailing)</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Model Fit (R²)</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                      {formatNum(modelR2, 2)} ({(modelR2 * 100).toFixed(1)}% variance explained)
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Model Residual Error (RMSE)</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-slate-100">
+                      {formatNum(rmse, 2)} {uom}/wk ({(rmseRatio * 100).toFixed(1)}% of mean)
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Historical Demand CV</TableCell>
+                    <TableCell className="text-right font-mono text-slate-900 dark:text-slate-100">{(demandCV * 100).toFixed(1)}% (Std Dev: ±{formatNum(sigmaWeekly, 1)} {uom}/wk)</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Demand Standard Deviation (σ)</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-slate-100">Daily σ_d = ±{formatNum(sigmaDaily, 2)} {uom}/day</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2.5">
+              <strong>Technical Definitions & Methodology:</strong> R² = {formatNum(modelR2, 2)} is an in-sample model fit diagnostic measuring historical variance explained across the 104-week training window (not future forecast accuracy). RMSE = {formatNum(rmse, 2)} {uom}/wk measures in-sample residual error magnitude. CV = {(demandCV * 100).toFixed(1)}% measures demand variability relative to average demand. Standard deviation (σ_d = ±{formatNum(sigmaDaily, 2)} {uom}/day) is the demand variability measure used in planning calculations.
+            </p>
+          </div>
+        </div>
       )}
 
       {persona === 'analyst' && (
-        <Insight label="Supply Chain Analyst Lens · Replenishment Execution & Scenario Governance">
-          For <span className="metric">{selectedMaterial.id}</span> ({name}), baseline demand velocity is <span className="metric">{formatNum(baseDailyDemand, 2)} {uom}/day</span> ({formatNum(avgWeekly, 1)} {uom}/wk) with a modeled trend of <span className="metric">{trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day</span> ({trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk), generating a cumulative 84-day horizon demand of <span className="metric">{formatNum(cumulativeHorizonDemand, 0)} {uom}</span> (averaging {formatNum(avgDailyForecast, 2)} {uom}/day). Planning Reorder Point is <span className="metric">{formatNum(reorderPoint, 1)} {uom}</span> ({formatNum(leadTimeDemand, 1)} {uom} lead-time demand + {formatNum(safetyStock, 1)} {uom} planning safety stock). Current physical stock of <span className="metric">{formatNum(onHandQty, 0)} {uom}</span> provides <span className="metric">{formatNum(daysOfSupply, 1)} days</span> of supply. {belowReorderPoint ? `Inventory is currently below the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) with an exposure gap of ${formatNum(ropGap, 1)} ${uom}. Recommended action: Evaluate replenishment against the planning reorder point and coverage gap; final order quantity should be determined using EOQ/MOQ, open purchase orders, supplier constraints, and downstream demand in Optimization.` : `Inventory remains above the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) by a buffer of +${formatNum(ropBuffer, 1)} ${uom}, indicating no immediate replenishment trigger under current assumptions.`} Recommended action: Test sensitivity to lead-time extensions (+15d) and demand surges (+20%) in What-If Simulation.
-        </Insight>
+        <div className="card mb-4">
+          <div className="card__head">
+            <div>
+              <h2 className="card__title">Operational Replenishment & Inventory Coverage Chain</h2>
+              <p className="card__sub">
+                Translates baseline demand consumption and supplier lead time into planning replenishment requirements, contextualized by the forward forecast trajectory for <strong>{selectedMaterial.id}</strong>.
+              </p>
+            </div>
+            <Badge tone={belowReorderPoint ? 'risk' : 'success'}>
+              {belowReorderPoint ? 'Replenishment Trigger Active' : 'Inventory Position Stable'}
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-3.5">
+            <div className="p-3 bg-slate-50 dark:bg-navy-900/60 rounded-md border border-slate-200 dark:border-navy-700">
+              <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">1. Current Inventory</div>
+              <div className="text-base font-bold text-slate-900 dark:text-slate-100 font-mono mb-0.5">{formatNum(onHandQty, 0)} {uom}</div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 font-mono">{formatCurrency(onHandValue)}</div>
+              <div className="text-[11px] text-slate-400 mt-1 font-mono">{formatNum(daysOfSupply, 1)} days supply</div>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-navy-900/60 rounded-md border border-slate-200 dark:border-navy-700">
+              <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">2. Baseline Consumption</div>
+              <div className="text-base font-bold text-slate-900 dark:text-slate-100 font-mono mb-0.5">{formatNum(avgDaily, 2)} {uom}/d</div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 font-mono">{formatNum(avgWeekly, 1)} {uom}/wk</div>
+              <div className="text-[11px] text-slate-400 mt-1 font-mono">CV = {(demandCV * 100).toFixed(1)}%</div>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-navy-900/60 rounded-md border border-slate-200 dark:border-navy-700">
+              <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">3. Lead-Time Demand</div>
+              <div className="text-base font-bold text-slate-900 dark:text-slate-100 font-mono mb-0.5">{formatNum(leadTimeDemand, 1)} {uom}</div>
+              <div className="text-xs text-slate-600 dark:text-slate-400">{leadTimeDays}d lead time</div>
+              <div className="text-[11px] text-slate-400 mt-1 font-mono">{formatNum(avgDaily, 2)}/d × {leadTimeDays}d</div>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-navy-900/60 rounded-md border border-slate-200 dark:border-navy-700">
+              <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">4. Safety Stock</div>
+              <div className="text-base font-bold text-cyan-600 dark:text-cyan-400 font-mono mb-0.5">{formatNum(safetyStock, 1)} {uom}</div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 font-mono">{formatCurrency(safetyStockValue)}</div>
+              <div className="text-[11px] text-slate-400 mt-1 font-mono">Z=1.65 · σ_d · √L</div>
+            </div>
+
+            <div className={`p-3 rounded-md border ${belowReorderPoint ? 'bg-rose-50/70 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/50' : 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50'}`}>
+              <div className={`text-[11px] font-bold uppercase mb-1 ${belowReorderPoint ? 'text-rose-600' : 'text-emerald-600'}`}>5. Reorder Point (ROP)</div>
+              <div className={`text-base font-bold font-mono mb-0.5 ${belowReorderPoint ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatNum(reorderPoint, 1)} {uom}</div>
+              <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 font-mono">
+                {belowReorderPoint ? `Gap: -${formatNum(ropGap, 1)} ${uom}` : `Buffer: +${formatNum(ropBuffer, 1)} ${uom}`}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1">Lead Demand + SS</div>
+            </div>
+          </div>
+
+          <div className={`p-3.5 rounded-md text-xs leading-relaxed border ${belowReorderPoint ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800' : 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'}`}>
+            <strong className="text-slate-900 dark:text-slate-100">
+              {belowReorderPoint ? 'Planning Replenishment Trigger: ' : 'Coverage Evaluation: '}
+            </strong>
+            <span className="text-slate-700 dark:text-slate-300">
+              {belowReorderPoint
+                ? `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatNum(daysOfSupply, 1)} days of supply) sits ${formatNum(ropGap, 1)} ${uom} (${formatCurrency(ropGap * unitCost)}) below the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) relative to the ${leadTimeDays}-day supplier lead time.`
+                : `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatNum(daysOfSupply, 1)} days of supply) buffers the ${leadTimeDays}-day supplier lead time, exceeding Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) by +${formatNum(ropBuffer, 1)} ${uom} (+${formatCurrency(ropBuffer * unitCost)}).`}
+            </span>
+          </div>
+        </div>
       )}
 
       {persona === 'exec' && (
-        <Insight label="C-Suite Executive Lens · Working Capital Velocity & Revenue Protection">
-          Forward demand intelligence for <span className="metric">{selectedMaterial.id}</span> indicates an annual consumption run-rate of <span className="metric">{formatCurrency(annualConsumptionValue)}/yr</span> ({formatNum(demand, 0)} {uom}/yr at {formatCurrency(unitCost)}/{uom}). Forward 84-day (12-week) cumulative demand outlook totals <span className="metric">{formatCurrency(cumulativeHorizonValue)}</span> ({formatNum(cumulativeHorizonDemand, 0)} {uom}) across the daily time series. Physical on-hand inventory carries <span className="metric">{formatCurrency(onHandValue)}</span> in working capital. Sizing the 95% service planning buffer at <span className="metric">{formatNum(safetyStock, 1)} {uom}</span> allocates <span className="metric">{formatCurrency(safetyStockValue)}</span> in protective cycle capital to buffer supplier lead times ({leadTimeDays} days). {belowReorderPoint ? `Stock position presents replenishment exposure across ${meta.downstream}, warranting purchase authorization in Decision Intelligence to avert potential operational interruption.` : `Current inventory is above the planning reorder point, indicating no immediate replenishment trigger under current operating assumptions, supporting standard inventory turnover.`}
-        </Insight>
+        <div className="flex flex-col gap-3.5 mb-4">
+          <div className="card">
+            <div className="card__head mb-2.5">
+              <div>
+                <Badge tone="accent">Financial Valuation</Badge>
+                <h2 className="card__title mt-2">
+                  Working Capital & Inventory Valuation
+                </h2>
+                <p className="card__sub">
+                  Capital allocation and carrying cost structure for {selectedMaterial.id}
+                </p>
+              </div>
+            </div>
+
+            <div className="border border-slate-200 dark:border-navy-700 rounded-lg overflow-hidden">
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Annual Catalog Consumption Value</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(annualConsumptionValue)}/yr</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Current Physical Carrying Capital</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(onHandValue)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Capital Allocated to Planning Safety Stock</TableCell>
+                    <TableCell className="text-right font-mono text-slate-900 dark:text-slate-100">{formatCurrency(safetyStockValue)} ({formatNum(safetyStock, 1)} {uom})</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Expected Lead-Time Consumption Value</TableCell>
+                    <TableCell className="text-right font-mono text-slate-900 dark:text-slate-100">{formatCurrency(leadTimeDemandValue)} ({formatNum(leadTimeDemand, 1)} {uom})</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Estimated 84-Day Demand Value from Forecast</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-cyan-600 dark:text-cyan-400">{formatCurrency(cumulativeHorizonValue)} ({formatNum(cumulativeHorizonDemand, 0)} {uom})</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-slate-600 dark:text-slate-300">Annual Inventory Turn Velocity</TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-slate-900 dark:text-slate-100">{formatNum(annualTurns, 2)} turns/yr</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ==================================================================== */}
-      {/* I. PERSONA-SPECIFIC WHY DISCLOSURE                                   */}
+      {/* G. PERSONA-SPECIFIC STRATEGIC INTELLIGENCE LENSES                    */}
       {/* ==================================================================== */}
-      <div className="card">
-        <h2 className="card__title">
+      <div className="mb-4">
+        {persona === 'ds' && (
+          <Insight label="Data Scientist Lens · Model Specification, Generalization & Diagnostics">
+            The multivariate demand trajectory for <span className="metric">{selectedMaterial.id}</span> is generated by an autoregressive Ridge regression model (<span className="metric">alpha = 1.0</span>) fitted over a <span className="metric">104-week</span> training window with Standard Normal Variate (SNV) normalization. The model incorporates lag-1, lag-7, and lag-30 feature vectors. Model explanatory fit achieves <span className="metric">R² = {formatNum(modelR2, 2)}</span> with in-sample residual <span className="metric">RMSE = {formatNum(rmse, 2)} {uom}/wk</span> ({(rmseRatio * 100).toFixed(2)}% of weekly mean). R² is an in-sample fit diagnostic measuring historical variance explained by the fitted model, and is not a guaranteed out-of-sample forecast accuracy measure. The 95% service planning envelope expands with forecast horizon via <span className="metric">± Z · d_0 · CV · sqrt(t/7)</span> (Z = 1.65).
+          </Insight>
+        )}
+
+        {persona === 'analyst' && (
+          <Insight label="Supply Chain Analyst Lens · Replenishment Execution & Scenario Governance">
+            For <span className="metric">{selectedMaterial.id}</span> ({name}), baseline demand velocity is <span className="metric">{formatNum(baseDailyDemand, 2)} {uom}/day</span> ({formatNum(avgWeekly, 1)} {uom}/wk) with a modeled trend of <span className="metric">{trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day</span> ({trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk), generating a cumulative 84-day horizon demand of <span className="metric">{formatNum(cumulativeHorizonDemand, 0)} {uom}</span> (averaging {formatNum(avgDailyForecast, 2)} {uom}/day). Planning Reorder Point is <span className="metric">{formatNum(reorderPoint, 1)} {uom}</span> ({formatNum(leadTimeDemand, 1)} {uom} lead-time demand + {formatNum(safetyStock, 1)} {uom} planning safety stock). Current physical stock of <span className="metric">{formatNum(onHandQty, 0)} {uom}</span> provides <span className="metric">{formatNum(daysOfSupply, 1)} days</span> of supply. {belowReorderPoint ? `Inventory is currently below the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) with an exposure gap of ${formatNum(ropGap, 1)} ${uom}. Recommended action: Evaluate replenishment against the planning reorder point and coverage gap; final order quantity should be determined using EOQ/MOQ, open purchase orders, supplier constraints, and downstream demand in Optimization.` : `Inventory remains above the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) by a buffer of +${formatNum(ropBuffer, 1)} ${uom}, indicating no immediate replenishment trigger under current assumptions.`} Recommended action: Test sensitivity to lead-time extensions (+15d) and demand surges (+20%) in What-If Simulation.
+          </Insight>
+        )}
+
+        {persona === 'exec' && (
+          <Insight label="C-Suite Executive Lens · Working Capital Velocity & Revenue Protection">
+            Forward demand intelligence for <span className="metric">{selectedMaterial.id}</span> indicates an annual consumption run-rate of <span className="metric">{formatCurrency(annualConsumptionValue)}/yr</span> ({formatNum(demand, 0)} {uom}/yr at {formatCurrency(unitCost)}/{uom}). Forward 84-day (12-week) cumulative demand outlook totals <span className="metric">{formatCurrency(cumulativeHorizonValue)}</span> ({formatNum(cumulativeHorizonDemand, 0)} {uom}) across the daily time series. Physical on-hand inventory carries <span className="metric">{formatCurrency(onHandValue)}</span> in working capital. Sizing the 95% service planning buffer at <span className="metric">{formatNum(safetyStock, 1)} {uom}</span> allocates <span className="metric">{formatCurrency(safetyStockValue)}</span> in protective cycle capital to buffer supplier lead times ({leadTimeDays} days). {belowReorderPoint ? `Stock position presents replenishment exposure across ${meta.downstream}, warranting purchase authorization in Decision Intelligence to avert potential operational interruption.` : `Current inventory is above the planning reorder point, indicating no immediate replenishment trigger under current operating assumptions, supporting standard inventory turnover.`}
+          </Insight>
+        )}
+      </div>
+
+      {/* ==================================================================== */}
+      {/* H. PERSONA-SPECIFIC WHY DISCLOSURE                                   */}
+      {/* ==================================================================== */}
+      <div className="card mb-4">
+        <h2 className="card__title mb-3">
           {persona === 'ds'
             ? `Model Behavior & Statistical Driver Breakdown for ${selectedMaterial.id}`
             : persona === 'analyst'
@@ -1883,7 +1497,7 @@ export default function RawMaterialRequirements() {
             summary="Operational replenishment drivers, coverage duration, and recommended next steps"
             drivers={[
               `Physical consumption velocity is ${formatNum(avgDaily, 2)} ${uom}/day (${formatNum(avgWeekly, 1)} ${uom}/wk) across catalog baseline.`,
-              `Estimated trend of ${trendPerDay > 0 ? '+' : ''}${formatNum(trendMagnitudeDailyPct, 4)}%/day (${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk) projects 84-day (12-week) cumulative consumption at ${formatNum(cumulativeHorizonDemand, 0)} ${uom} across daily series.`,
+              `Estimated trend of ${trendPerDay > 0 ? '+' : ''}${formatNum(trendMagnitudeDailyPct, 4)}%/day (${trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk) projects 84-day (12-week) cumulative consumption at ${formatNum(cumulativeHorizonDemand, 0)} ${uom} across daily series.`,
               `Supplier lead time is ${leadTimeDays} days (${leadTimeWeeks.toFixed(1)} wks), generating ${formatNum(leadTimeDemand, 1)} ${uom} lead-time demand.`,
               `Planning safety stock is sized at ${formatNum(safetyStock, 1)} ${uom} (${formatCurrency(safetyStockValue)}) using a Z = 1.65 service factor and demand CV of ${(demandCV * 100).toFixed(1)}%.`,
             ]}
@@ -1943,10 +1557,10 @@ export default function RawMaterialRequirements() {
       </div>
 
       {/* ==================================================================== */}
-      {/* J. PERSONA-AWARE DOWNSTREAM WORKFLOW & HANDOFF                       */}
+      {/* I. PERSONA-AWARE DOWNSTREAM WORKFLOW & HANDOFF                       */}
       {/* ==================================================================== */}
       <div className="card">
-        <div className="card__head">
+        <div className="card__head mb-3">
           <div>
             <h2 className="card__title">Analytical Workflow & Downstream Handoff</h2>
             <p className="card__sub">
@@ -1960,58 +1574,58 @@ export default function RawMaterialRequirements() {
           <Badge tone="accent">Forward Handoff Package</Badge>
         </div>
 
-        <div className="table-wrap" style={{ marginBottom: 14 }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Canonical Parameter</th>
-                <th>Selected RM Baseline</th>
-                <th>Analytical Role in What-If</th>
-                <th>Downstream Role in Optimization</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="font-semibold">Selected Material</td>
-                <td>{selectedMaterial.id} · {name}</td>
-                <td>Maintains single source of truth context</td>
-                <td>Input SKU for multi-echelon planning</td>
-              </tr>
-              <tr>
-                <td className="font-semibold">Daily Forecast Series</td>
-                <td>84 explicit daily points ({formatNum(day1Forecast, 2)} {uom}/d at Day 1 to {formatNum(day84Forecast, 2)} {uom}/d at Day 84; 84-day total = {formatNum(cumulativeHorizonDemand, 0)} {uom})</td>
-                <td>Time-series baseline for demand surge and latency stress-testing</td>
-                <td>Deterministic daily demand input for replenishment lot sizing</td>
-              </tr>
-              <tr>
-                <td className="font-semibold">Linear Daily Slope</td>
-                <td>{trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day ({trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk)</td>
-                <td>Trajectory parameter for multi-period simulation</td>
-                <td>Demand drift constraint across forward horizon</td>
-              </tr>
-              <tr>
-                <td className="font-semibold">Supplier Lead Time</td>
-                <td>{leadTimeDays} Days ({meta.supplier.split('(')[0].trim()})</td>
-                <td>Base lever for supplier disruption simulations (+15d)</td>
-                <td>Lead-time constraint in purchase scheduling</td>
-              </tr>
-              <tr>
-                <td className="font-semibold">Planning Safety Stock</td>
-                <td>{formatNum(safetyStock, 1)} {uom} (Z = 1.65)</td>
-                <td>Buffer response recomputed dynamically</td>
-                <td>Minimum safety stock floor constraint</td>
-              </tr>
-              <tr>
-                <td className="font-semibold">Reorder Status</td>
-                <td>{belowReorderPoint ? `Exposure Gap (-${formatNum(ropGap, 1)} ${uom})` : `Covered (+${formatNum(ropBuffer, 1)} ${uom})`}</td>
-                <td>Evaluates stockout exposure and service impact</td>
-                <td>Input for constrained replenishment scheduling</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="border border-slate-200 dark:border-navy-700 rounded-lg overflow-hidden mb-3.5">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Canonical Parameter</TableHead>
+                <TableHead>Selected RM Baseline</TableHead>
+                <TableHead>Analytical Role in What-If</TableHead>
+                <TableHead>Downstream Role in Optimization</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-semibold text-slate-900 dark:text-slate-100">Selected Material</TableCell>
+                <TableCell className="font-mono text-xs">{selectedMaterial.id} · {name}</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Maintains single source of truth context</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Input SKU for multi-echelon planning</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-semibold text-slate-900 dark:text-slate-100">Daily Forecast Series</TableCell>
+                <TableCell className="font-mono text-xs">84 explicit daily points ({formatNum(day1Forecast, 2)} {uom}/d to {formatNum(day84Forecast, 2)} {uom}/d; Total = {formatNum(cumulativeHorizonDemand, 0)} {uom})</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Time-series baseline for demand surge and latency stress-testing</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Deterministic daily demand input for replenishment lot sizing</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-semibold text-slate-900 dark:text-slate-100">Linear Daily Slope</TableCell>
+                <TableCell className="font-mono text-xs">{trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day ({trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk)</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Trajectory parameter for multi-period simulation</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Demand drift constraint across forward horizon</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-semibold text-slate-900 dark:text-slate-100">Supplier Lead Time</TableCell>
+                <TableCell className="font-mono text-xs">{leadTimeDays} Days ({meta.supplier.split('(')[0].trim()})</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Base lever for supplier disruption simulations (+15d)</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Lead-time constraint in purchase scheduling</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-semibold text-slate-900 dark:text-slate-100">Planning Safety Stock</TableCell>
+                <TableCell className="font-mono text-xs">{formatNum(safetyStock, 1)} {uom} (Z = 1.65)</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Buffer response recomputed dynamically</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Minimum safety stock floor constraint</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-semibold text-slate-900 dark:text-slate-100">Reorder Status</TableCell>
+                <TableCell className="font-mono text-xs">{belowReorderPoint ? `Exposure Gap (-${formatNum(ropGap, 1)} ${uom})` : `Covered (+${formatNum(ropBuffer, 1)} ${uom})`}</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Evaluates stockout exposure and service impact</TableCell>
+                <TableCell className="text-xs text-slate-600 dark:text-slate-300">Input for constrained replenishment scheduling</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             className="btn btn-primary"
@@ -2042,6 +1656,6 @@ export default function RawMaterialRequirements() {
           </button>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

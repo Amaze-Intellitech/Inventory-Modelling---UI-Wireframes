@@ -1,6 +1,30 @@
 # AITEK Inventory Intelligence Platform
 
-An enterprise-grade **Inventory Intelligence & Multi-Echelon Analytics** application built with React 18, Vite 5, and vanilla CSS design tokens. 
+An interactive **Inventory Intelligence and Multi-Echelon Analytics** UI prototype built with React 18 and Vite. It demonstrates how supply-chain teams can move from raw-material data preparation to inventory analysis, scenario modelling, optimization, and decision governance in one workspace.
+
+The application is currently a front-end wireframe with illustrative data. It is intended to validate workflows, information architecture, and interaction patterns before production data integrations are connected.
+
+## What This Is
+
+The platform models raw-material inventory as the starting point for downstream production and replenishment decisions. It brings together:
+
+- Data-source onboarding and material selection
+- Descriptive inventory and demand analysis
+- ABC value segmentation with supply and dependency context
+- EOQ calibration and replenishment policy comparison
+- Raw-material lifecycle and stagnation-risk management
+- Demand forecasting and what-if scenario analysis
+- Multi-plant production optimization
+- Decision queues for operational and executive review
+
+The interface supports executive, supply-chain analyst, and data-science perspectives through persona-aware views and shared platform context.
+
+## Prototype Scope
+
+- Screens use mock data from `src/data/mockData.js`.
+- Routes and interactions are implemented for UI exploration.
+- ERP, SQL warehouse, authentication, and production optimization services are not connected yet.
+- Charts are rendered as responsive React/SVG components for the wireframe experience.
 
 The platform models raw-material inventory dynamics, downstream multi-product demand propagation, empirical Pareto segmentation, stochastic lot-sizing calibration, lifecycle phase management, multivariate demand forecasting, and decision governance.
 
@@ -67,8 +91,12 @@ The platform models raw-material inventory dynamics, downstream multi-product de
 │   │       ├── Rail.jsx       # Left navigation sidebar
 │   │       └── TopBar.jsx     # Plant scope, role selection, and persona switch
 │   └── pages/
-│       ├── onboarding/      # Login, Solution, Secondary Auth, Material Selector
-│       └── app/             # 10 core analytics & modelling views
+│       └── app/             # All onboarding & analytics views
+│           ├── PrimaryLogin.jsx
+│           ├── SolutionSelection.jsx
+│           ├── SecondaryLogin.jsx
+│           ├── MaterialSelection.jsx
+│           ├── DataSourceConnections.jsx
 │           ├── Overview.jsx
 │           ├── Descriptive.jsx
 │           ├── AbcClassification.jsx
