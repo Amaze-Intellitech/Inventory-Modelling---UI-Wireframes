@@ -48,6 +48,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SQL_TABLE_OPTIONS } from '../../data/mockData';
+import { Stepper, AlertBar } from '../../components/CommonUI';
+import { ONBOARDING_ROUTES } from '../../components/layout/OnboardingShell';
+import { usePlatform } from '../../context/PlatformContext';
+import { requiredConnectors } from '../../data/parameterCatalog';
 import aitekLogo from '../../components/aitek_logo_bg_removed-removebg-preview.png';
 
 const sqlFormSchema = z.object({
@@ -131,12 +135,12 @@ const CONNECTORS_CONFIG = [
     platforms: ['SAP S/4HANA', 'Oracle NetSuite', 'Microsoft Dynamics', '+ More'],
     sectionLabel: 'SUPPORTED PLATFORMS',
     theme: {
-      iconBg: 'bg-[#E0F2FE]',
-      iconBorder: 'border-[#BAE6FD]',
-      iconColor: 'text-[#0284C7]',
-      btnBorder: 'border-[#0284C7]',
-      btnText: 'text-[#0284C7]',
-      btnHover: 'hover:bg-[#F0F9FF]',
+      iconBg: 'bg-info-bg',
+      iconBorder: 'border-border',
+      iconColor: 'text-info-tx',
+      btnBorder: 'border-primary',
+      btnText: 'text-primary',
+      btnHover: 'hover:bg-info-bg',
     },
     icon: Server,
     ctaText: 'Connect ERP',
@@ -149,12 +153,12 @@ const CONNECTORS_CONFIG = [
     platforms: ['PostgreSQL', 'MySQL', 'SQL Server', '+ More'],
     sectionLabel: 'SUPPORTED PLATFORMS',
     theme: {
-      iconBg: 'bg-[#CCFBF1]',
-      iconBorder: 'border-[#99F6E4]',
-      iconColor: 'text-[#0D9488]',
-      btnBorder: 'border-[#0D9488]',
-      btnText: 'text-[#0D9488]',
-      btnHover: 'hover:bg-[#F0FDF4]',
+      iconBg: 'bg-info-bg',
+      iconBorder: 'border-border',
+      iconColor: 'text-info-tx',
+      btnBorder: 'border-primary',
+      btnText: 'text-primary',
+      btnHover: 'hover:bg-info-bg',
     },
     icon: Database,
     ctaText: 'Connect Database',
@@ -167,12 +171,12 @@ const CONNECTORS_CONFIG = [
     platforms: ['Snowflake', 'BigQuery', 'Redshift', '+ More'],
     sectionLabel: 'SUPPORTED PLATFORMS',
     theme: {
-      iconBg: 'bg-[#F3E8FF]',
-      iconBorder: 'border-[#DDD6FE]',
-      iconColor: 'text-[#7C3AED]',
-      btnBorder: 'border-[#7C3AED]',
-      btnText: 'text-[#7C3AED]',
-      btnHover: 'hover:bg-[#FAF5FF]',
+      iconBg: 'bg-info-bg',
+      iconBorder: 'border-border',
+      iconColor: 'text-info-tx',
+      btnBorder: 'border-primary',
+      btnText: 'text-primary',
+      btnHover: 'hover:bg-info-bg',
     },
     icon: Cloud,
     ctaText: 'Connect Warehouse',
@@ -185,12 +189,12 @@ const CONNECTORS_CONFIG = [
     platforms: ['CSV', 'Excel (XLSX)', 'Parquet', '+ More'],
     sectionLabel: 'SUPPORTED FORMATS',
     theme: {
-      iconBg: 'bg-[#FFEDD5]',
-      iconBorder: 'border-[#FED7AA]',
-      iconColor: 'text-[#EA580C]',
-      btnBorder: 'border-[#EA580C]',
-      btnText: 'text-[#EA580C]',
-      btnHover: 'hover:bg-[#FFF7ED]',
+      iconBg: 'bg-info-bg',
+      iconBorder: 'border-border',
+      iconColor: 'text-info-tx',
+      btnBorder: 'border-primary',
+      btnText: 'text-primary',
+      btnHover: 'hover:bg-info-bg',
     },
     icon: FileText,
     ctaText: 'Upload File',
@@ -203,12 +207,12 @@ const CONNECTORS_CONFIG = [
     platforms: ['OpenAPI 3.0', 'GraphQL', 'Webhooks', '+ More'],
     sectionLabel: 'SUPPORTED PROTOCOLS',
     theme: {
-      iconBg: 'bg-[#E0E7FF]',
-      iconBorder: 'border-[#C7D2FE]',
-      iconColor: 'text-[#4F46E5]',
-      btnBorder: 'border-[#4F46E5]',
-      btnText: 'text-[#4F46E5]',
-      btnHover: 'hover:bg-[#EEF2FF]',
+      iconBg: 'bg-info-bg',
+      iconBorder: 'border-border',
+      iconColor: 'text-info-tx',
+      btnBorder: 'border-primary',
+      btnText: 'text-primary',
+      btnHover: 'hover:bg-info-bg',
     },
     icon: Globe,
     ctaText: 'Configure REST API',
@@ -221,12 +225,12 @@ const CONNECTORS_CONFIG = [
     platforms: ['Apache Kafka', 'AWS Kinesis', 'RabbitMQ', '+ More'],
     sectionLabel: 'STREAM ENGINES',
     theme: {
-      iconBg: 'bg-[#DCFCE7]',
-      iconBorder: 'border-[#BBF7D0]',
-      iconColor: 'text-[#16A34A]',
-      btnBorder: 'border-[#16A34A]',
-      btnText: 'text-[#16A34A]',
-      btnHover: 'hover:bg-[#F0FDF4]',
+      iconBg: 'bg-info-bg',
+      iconBorder: 'border-border',
+      iconColor: 'text-info-tx',
+      btnBorder: 'border-primary',
+      btnText: 'text-primary',
+      btnHover: 'hover:bg-info-bg',
     },
     icon: Activity,
     ctaText: 'Connect Stream',
@@ -239,12 +243,12 @@ const CONNECTORS_CONFIG = [
     platforms: ['Amazon S3', 'Azure Blob', 'Google GCS', '+ More'],
     sectionLabel: 'STORAGE PROVIDERS',
     theme: {
-      iconBg: 'bg-[#FEF3C7]',
-      iconBorder: 'border-[#FDE68A]',
-      iconColor: 'text-[#D97706]',
-      btnBorder: 'border-[#D97706]',
-      btnText: 'text-[#D97706]',
-      btnHover: 'hover:bg-[#FFFBEB]',
+      iconBg: 'bg-info-bg',
+      iconBorder: 'border-border',
+      iconColor: 'text-info-tx',
+      btnBorder: 'border-primary',
+      btnText: 'text-primary',
+      btnHover: 'hover:bg-info-bg',
     },
     icon: HardDrive,
     ctaText: 'Mount Bucket',
@@ -308,17 +312,41 @@ export default function DataSourceConnections() {
   }, []);
 
   // Connector States
-  const [erpConnected, setErpConnected] = useState(false);
-  const [whConnected, setWhConnected] = useState(false);
-  const [fileConnected, setFileConnected] = useState(false);
-  const [restConnected, setRestConnected] = useState(false);
-  const [streamingConnected, setStreamingConnected] = useState(false);
-  const [storageConnected, setStorageConnected] = useState(false);
+  // The parameters chosen on the previous step decide which sources are required.
+  const { parameterSelection, connectedSources, setConnectedSources } = usePlatform();
+  const wasConnected = (id) => connectedSources.includes(id);
+  const [erpConnected, setErpConnected] = useState(() => wasConnected('erp'));
+  const [whConnected, setWhConnected] = useState(() => wasConnected('warehouse'));
+  const [fileConnected, setFileConnected] = useState(() => wasConnected('file'));
+  const [restConnected, setRestConnected] = useState(() => wasConnected('rest'));
+  const [streamingConnected, setStreamingConnected] = useState(() => wasConnected('streaming'));
+  const [storageConnected, setStorageConnected] = useState(() => wasConnected('storage'));
 
   // SQL Connector State & Modal
   const [sqlDialogOpen, setSqlDialogOpen] = useState(false);
-  const [sqlConnected, setSqlConnected] = useState(false);
+  const [sqlConnected, setSqlConnected] = useState(() => wasConnected('sql'));
   const [sqlConnStr, setSqlConnStr] = useState('');
+
+  const connectedNow = [
+    erpConnected && 'erp',
+    sqlConnected && 'sql',
+    whConnected && 'warehouse',
+    fileConnected && 'file',
+    restConnected && 'rest',
+    streamingConnected && 'streaming',
+    storageConnected && 'storage',
+  ].filter(Boolean);
+
+  useEffect(() => {
+    setConnectedSources(connectedNow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectedNow.join('|')]);
+
+  const required = requiredConnectors(parameterSelection.rows);
+  const requiredIds = required.map((r) => r.id);
+  const missing = required.filter((r) => !connectedNow.includes(r.id));
+  const parameterCount = required.reduce((n, r) => n + r.count, 0);
+  const canContinue = missing.length === 0;
   const [tableMappings, setTableMappings] = useState({
     inventory: SQL_TABLE_OPTIONS.inventory[0],
     transactions: SQL_TABLE_OPTIONS.transactions[0],
@@ -467,9 +495,10 @@ export default function DataSourceConnections() {
       return matchesSearch && c.categories.includes(activeFilter);
     }
 
-    // When default 'All' with no search, show the standard 4 primary cards for 16:9 desktop balance
+    // When default 'All' with no search, show the standard 4 primary cards for 16:9 desktop balance,
+    // plus any source the chosen parameters need (or that is already connected) so it is never hidden behind "More".
     if (activeFilter === 'All') {
-      return ['erp', 'sql', 'warehouse', 'file'].includes(c.id);
+      return ['erp', 'sql', 'warehouse', 'file'].includes(c.id) || requiredIds.includes(c.id) || connectedNow.includes(c.id);
     }
 
     return c.categories.includes(activeFilter);
@@ -477,7 +506,7 @@ export default function DataSourceConnections() {
 
   return (
     <div
-      className="h-screen max-h-screen w-full flex flex-col justify-between relative overflow-hidden bg-[#F8FAFC] select-none text-[#0F172A]"
+      className="min-h-screen w-full flex flex-col justify-between relative overflow-hidden bg-bg select-none text-ink"
       style={{
         fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
@@ -489,14 +518,14 @@ export default function DataSourceConnections() {
         <div
           className="absolute -top-[15%] -left-[10%] w-[50vw] h-[50vw] rounded-full"
           style={{
-            background: 'radial-gradient(circle, rgba(2, 132, 199, 0.04) 0%, rgba(224, 242, 254, 0.02) 60%, transparent 80%)',
+            background: 'radial-gradient(circle, rgba(91, 147, 255, 0.04) 0%, rgba(224, 242, 254, 0.02) 60%, transparent 80%)',
             filter: 'blur(50px)',
           }}
         />
         <div
           className="absolute -bottom-[15%] -right-[10%] w-[50vw] h-[50vw] rounded-full"
           style={{
-            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.05) 0%, rgba(240, 249, 255, 0.02) 60%, transparent 80%)',
+            background: 'radial-gradient(circle, rgba(91, 147, 255, 0.05) 0%, rgba(240, 249, 255, 0.02) 60%, transparent 80%)',
             filter: 'blur(50px)',
           }}
         />
@@ -505,7 +534,8 @@ export default function DataSourceConnections() {
       {/* ========================================================================= */}
       {/* 1. ENTERPRISE HEADER (Clean, well-spaced white bar)                       */}
       {/* ========================================================================= */}
-      <header className="h-16 sm:h-[68px] bg-white border-b border-[#E2E8F0] px-6 sm:px-10 lg:px-14 xl:px-16 flex items-center justify-between z-20 relative shrink-0">
+      <header className="h-16 sm:h-[68px] bg-surface border-b border-border z-20 relative shrink-0">
+        <div className="page-wrap h-full flex items-center justify-between">
         {/* Left: Brand Identity */}
         <div className="flex items-center gap-3">
           <img
@@ -513,11 +543,11 @@ export default function DataSourceConnections() {
             alt="AITEK Logo"
             className="h-[44px] sm:h-[48px] w-auto object-contain"
           />
-          <span className="text-[22px] sm:text-[25px] font-extrabold text-[#0B1727] tracking-tight leading-none">
+          <span className="text-[22px] sm:text-[25px] font-extrabold text-ink tracking-tight leading-none">
             AITEK
           </span>
-          <span className="text-[#CBD5E1] mx-1 text-lg font-light">|</span>
-          <span className="text-[14px] sm:text-[15px] font-semibold text-[#0284C7] tracking-tight">
+          <span className="text-subtle mx-1 text-lg font-light">|</span>
+          <span className="text-[14px] sm:text-[15px] font-semibold text-primary tracking-tight">
             Inventory Modelling
           </span>
         </div>
@@ -525,84 +555,75 @@ export default function DataSourceConnections() {
         {/* Right: User Profile & Help */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5 cursor-pointer group">
-            <div className="w-8 h-8 rounded-full bg-[#E0F2FE] border border-[#BAE6FD] text-[#0284C7] font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="w-8 h-8 rounded-full bg-info-bg border border-border text-primary font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
               AV
             </div>
             <div className="hidden sm:flex flex-col text-left">
-              <span className="text-[12.5px] font-bold text-[#0B1727] leading-tight group-hover:text-[#0284C7] transition-colors">
+              <span className="text-[12.5px] font-bold text-ink leading-tight group-hover:text-primary transition-colors">
                 Alex Vance
               </span>
-              <span className="text-[10.5px] text-[#64748B] leading-tight">
+              <span className="text-xs text-subtle leading-tight">
                 Enterprise Corp
               </span>
             </div>
-            <ChevronDown size={13} className="text-[#64748B] group-hover:text-[#0B1727] transition-colors hidden sm:block" />
+            <ChevronDown size={13} className="text-subtle group-hover:text-ink transition-colors hidden sm:block" />
           </div>
 
-          <div className="w-[1px] h-5 bg-[#E2E8F0]" />
+          <div className="w-[1px] h-5 bg-border" />
 
           <button
             type="button"
             onClick={() => toast.info('AITEK Platform Help Center & Knowledge Base')}
-            className="w-7 h-7 rounded-full border border-[#E2E8F0] text-[#64748B] hover:text-[#0B1727] hover:bg-[#F8FAFC] flex items-center justify-center transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-full border border-border text-subtle hover:text-ink hover:bg-bg flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Help & Documentation"
           >
             <HelpCircle size={15} />
           </button>
         </div>
+        </div>
       </header>
 
       {/* ========================================================================= */}
-      {/* 2. TWO-STEP PROGRESS BAR                                                  */}
+      {/* 2. PROGRESS: Material → Parameters → Data sources → Ingestion             */}
       {/* ========================================================================= */}
-      <div className="w-full bg-white border-b border-[#E2E8F0]/80 py-2.5 px-6 sm:px-10 lg:px-14 shrink-0 relative z-10">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          
-          {/* Step 1: Material Selection (Completed) */}
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold shadow-2xs">
-              <Check size={11} strokeWidth={3} />
-            </div>
-            <span className="text-[12px] font-semibold text-[#0B1727]">
-              1. Material Selection
-            </span>
-          </div>
-
-          {/* Line 1 (Active) */}
-          <div className="flex-1 h-[2px] bg-[#0284C7] mx-4 rounded-full" />
-
-          {/* Step 2: Data Sources (Active) */}
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-[#0284C7] text-white flex items-center justify-center text-[10px] font-bold ring-3 ring-[#E0F2FE] shadow-2xs">
-              2
-            </div>
-            <span className="text-[12px] font-bold text-[#0B1727]">
-              2. Data Sources
-            </span>
-          </div>
-
+      <div className="w-full bg-surface border-b border-border py-2.5 px-6 sm:px-10 lg:px-14 shrink-0 relative z-10">
+        <div className="max-w-xl mx-auto">
+          <Stepper steps={['Material', 'Parameters', 'Data sources', 'Ingestion']} current={3} className="mb-0" onStepClick={(n) => navigate(ONBOARDING_ROUTES[n - 1])} />
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* 3. MAIN CONTENT CONTAINER (Zero Scroll Budget)                            */}
       {/* ========================================================================= */}
-      <main className="flex-1 w-full max-w-[1660px] mx-auto px-6 sm:px-10 lg:px-14 xl:px-18 py-3 sm:py-3.5 relative z-10 flex flex-col justify-between overflow-hidden my-auto">
+      <main className="flex-1 page-wrap py-3 sm:py-3.5 relative z-10 flex flex-col justify-between overflow-hidden my-auto">
         <div>
           
           {/* Header Introduction */}
           <div className="mb-2.5">
-            <div className="text-[11px] font-bold text-[#0284C7] uppercase tracking-wider mb-0.5">
+            <div className="text-xs font-bold text-primary uppercase tracking-wider mb-0.5">
               DATA SOURCES
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-[32px] font-extrabold text-[#0B1727] tracking-tight leading-tight mb-1">
+            <h1 className="text-2xl sm:text-3xl lg:text-[32px] font-extrabold text-ink tracking-tight leading-tight mb-1">
               Connect your data sources
             </h1>
-            <p className="text-[13px] sm:text-[13.5px] text-[#5B6B82] leading-snug max-w-3xl font-normal">
-              Bring your inventory data from across your enterprise. Connect one or more data sources
-              to build a comprehensive and accurate inventory model.
+            <p className="text-[13px] sm:text-[13.5px] text-subtle leading-snug max-w-3xl font-normal">
+              Connect the sources your chosen parameters come from. Anything else is optional.
             </p>
           </div>
+
+          {required.length === 0 ? (
+            <AlertBar tone="info" title="No sources needed yet">
+              You have not chosen any parameters with a source. Go back to choose them, or connect sources for later.
+            </AlertBar>
+          ) : (
+            <AlertBar
+              tone={canContinue ? 'success' : 'warning'}
+              title={canContinue ? 'Every source your parameters need is connected' : `Needed for your ${parameterCount} selected parameters`}
+            >
+              {required.map((r) => `${r.label} (${r.count})`).join(' · ')}
+              {canContinue ? '' : ` — still to connect: ${missing.map((m) => m.label).join(', ')}.`}
+            </AlertBar>
+          )}
 
           {/* Search + Filter Toolbar */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-3">
@@ -610,20 +631,20 @@ export default function DataSourceConnections() {
             <div className="relative w-full max-w-[500px]">
               <Search
                 size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle pointer-events-none"
               />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search data sources (e.g., SAP, Snowflake, SQL, Kafka, S3)"
-                className="w-full h-[36px] pl-9 pr-3.5 rounded-lg border border-[#CBD5E1] bg-white text-[12.5px] text-[#0B1727] placeholder:text-[#94A3B8] outline-none transition-all focus:border-[#0284C7] focus:ring-2 focus:ring-[#E0F2FE]"
+                className="w-full h-[36px] pl-9 pr-3.5 rounded-lg border border-border-strong bg-surface text-[12.5px] text-ink placeholder:text-subtle outline-none transition-all focus:border-primary focus:ring-2 focus:ring-border"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#0B1727] p-0.5 rounded cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-subtle hover:text-ink p-0.5 rounded cursor-pointer"
                 >
                   <X size={13} />
                 </button>
@@ -639,10 +660,10 @@ export default function DataSourceConnections() {
                     key={filter}
                     type="button"
                     onClick={() => setActiveFilter(filter)}
-                    className={`px-3 py-1 rounded-full text-[11.5px] font-semibold transition-all cursor-pointer ${
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-[#0284C7] text-white shadow-2xs'
-                        : 'bg-white border border-[#E2E8F0] text-[#0B1727] hover:bg-[#F8FAFC]'
+                        ? 'bg-primary-solid text-white shadow-2xs'
+                        : 'bg-surface border border-border text-ink hover:bg-bg'
                     }`}
                   >
                     {filter}
@@ -655,27 +676,27 @@ export default function DataSourceConnections() {
                 <button
                   type="button"
                   onClick={() => setMoreDropdownOpen((prev) => !prev)}
-                  className={`px-3 py-1 rounded-full text-[11.5px] font-semibold border flex items-center gap-1 transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 transition-all cursor-pointer ${
                     isMoreFilterActive || moreDropdownOpen
-                      ? 'bg-[#0284C7] text-white border-[#0284C7] shadow-2xs'
-                      : 'bg-white border-[#E2E8F0] text-[#0B1727] hover:bg-[#F8FAFC]'
+                      ? 'bg-primary-solid text-white border-primary shadow-2xs'
+                      : 'bg-surface border-border text-ink hover:bg-bg'
                   }`}
                 >
                   <span>{isMoreFilterActive ? activeFilter : 'More'}</span>
                   <ChevronDown
                     size={11}
                     className={`transition-transform ${moreDropdownOpen ? 'rotate-180' : ''} ${
-                      isMoreFilterActive || moreDropdownOpen ? 'text-white' : 'text-[#64748B]'
+                      isMoreFilterActive || moreDropdownOpen ? 'text-white' : 'text-subtle'
                     }`}
                   />
                 </button>
 
                 {/* In-place Dropdown Popup */}
                 {moreDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-[0_12px_36px_rgba(15,23,42,0.16)] border border-[#E2E8F0] py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-3.5 py-1 text-[10px] font-bold text-[#64748B] uppercase tracking-wider flex items-center justify-between border-b border-[#F1F5F9] pb-1.5 mb-1">
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-surface rounded-xl shadow-[0_12px_36px_rgba(15,23,42,0.16)] border border-border py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3.5 py-1 text-xs font-bold text-subtle uppercase tracking-wider flex items-center justify-between border-b border-border pb-1.5 mb-1">
                       <span>Additional Categories</span>
-                      <span className="text-[9.5px] font-semibold text-[#0284C7] bg-[#E0F2FE] px-1.5 py-0.2 rounded">
+                      <span className="text-xs font-semibold text-primary bg-info-bg px-1.5 py-0.2 rounded">
                         3 Filters
                       </span>
                     </div>
@@ -693,15 +714,15 @@ export default function DataSourceConnections() {
                               setMoreDropdownOpen(false);
                             }}
                             className={`w-full text-left px-2.5 py-2 rounded-lg transition-colors flex items-center justify-between group cursor-pointer ${
-                              isCatActive ? 'bg-[#E0F2FE] text-[#0284C7]' : 'hover:bg-[#F8FAFC] text-[#0B1727]'
+                              isCatActive ? 'bg-info-bg text-primary' : 'hover:bg-bg text-ink'
                             }`}
                           >
                             <div className="flex items-center gap-2.5">
                               <div
                                 className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 border ${
                                   isCatActive
-                                    ? 'bg-[#0284C7] text-white border-[#0284C7]'
-                                    : 'bg-[#F1F5F9] border-[#E2E8F0] text-[#64748B] group-hover:text-[#0284C7] group-hover:bg-[#E0F2FE]'
+                                    ? 'bg-primary-solid text-white border-primary'
+                                    : 'bg-muted-fill border-border text-subtle group-hover:text-primary group-hover:bg-info-bg'
                                 }`}
                               >
                                 <Icon size={14} />
@@ -710,26 +731,26 @@ export default function DataSourceConnections() {
                                 <span className="text-[12px] font-bold leading-tight">
                                   {cat.label}
                                 </span>
-                                <span className="text-[10px] text-[#64748B] leading-tight">
+                                <span className="text-xs text-subtle leading-tight">
                                   {cat.desc}
                                 </span>
                               </div>
                             </div>
-                            {isCatActive && <Check size={13} className="text-[#0284C7] shrink-0" />}
+                            {isCatActive && <Check size={13} className="text-primary shrink-0" />}
                           </button>
                         );
                       })}
                     </div>
 
                     {/* Bottom Action inside Popover */}
-                    <div className="mt-1 pt-1.5 border-t border-[#F1F5F9] px-2">
+                    <div className="mt-1 pt-1.5 border-t border-border px-2">
                       <button
                         type="button"
                         onClick={() => {
                           setMoreDropdownOpen(false);
                           setRequestModalOpen(true);
                         }}
-                        className="w-full h-7 px-2.5 rounded-md bg-[#F0F9FF] hover:bg-[#E0F2FE] text-[#0284C7] font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        className="w-full h-7 px-2.5 rounded-md bg-info-bg hover:bg-info-bg text-primary font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <Plus size={12} />
                         <span>Request Custom Adapter...</span>
@@ -782,8 +803,8 @@ export default function DataSourceConnections() {
                     initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.15 + index * 0.05 }}
-                    className={`bg-white rounded-xl border p-4 sm:p-4.5 shadow-2xs hover:shadow-subtle transition-all flex flex-col justify-between min-h-[295px] ${
-                      isConnected ? 'border-emerald-300 bg-emerald-50/10' : 'border-[#E2E8F0]'
+                    className={`bg-surface rounded-xl border p-4 sm:p-4.5 shadow-2xs hover:shadow-subtle transition-all flex flex-col justify-between min-h-[295px] ${
+                      isConnected ? 'border-success bg-[color-mix(in_srgb,var(--success-bg)_10%,transparent)]' : 'border-border'
                     }`}
                   >
                     <div>
@@ -795,15 +816,15 @@ export default function DataSourceConnections() {
                           <IconComponent size={18} />
                         </div>
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                             isConnected
-                              ? 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]'
-                              : 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]'
+                              ? 'bg-success-bg text-success-tx border-success'
+                              : 'bg-muted-fill text-subtle border-border'
                           }`}
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
-                              isConnected ? 'bg-emerald-500' : 'bg-[#94A3B8]'
+                              isConnected ? 'bg-success' : 'bg-subtle'
                             }`}
                           />
                           <span>{isConnected ? 'Connected' : 'Not connected'}</span>
@@ -811,16 +832,21 @@ export default function DataSourceConnections() {
                       </div>
 
                       {/* Title & Description */}
-                      <h3 className="text-[16px] font-bold text-[#0B1727] tracking-tight mb-0.5">
+                      <h3 className="text-[16px] font-bold text-ink tracking-tight mb-0.5 flex items-center gap-2 flex-wrap">
                         {c.title}
+                        {requiredIds.includes(c.id) && (
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-info-bg text-info-tx">
+                            Required · {required.find((r) => r.id === c.id).count}
+                          </span>
+                        )}
                       </h3>
-                      <p className="text-[11.5px] text-[#5B6B82] leading-snug mb-3">
+                      <p className="text-xs text-subtle leading-snug mb-3">
                         {c.desc}
                       </p>
 
                       {/* Platforms / Formats */}
                       <div className="mb-2">
-                        <span className="text-[9.5px] font-bold text-[#94A3B8] uppercase tracking-wider mb-1.5 block">
+                        <span className="text-xs font-bold text-subtle uppercase tracking-wider mb-1.5 block">
                           {c.sectionLabel}
                         </span>
                         <div className="flex flex-wrap gap-1">
@@ -838,10 +864,10 @@ export default function DataSourceConnections() {
                                     });
                                   }
                                 }}
-                                className={`text-[10.5px] font-medium px-2 py-0.5 rounded-md transition-colors ${
+                                className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${
                                   isMoreBadge
-                                    ? 'bg-[#E0F2FE] border border-[#BAE6FD] text-[#0284C7] hover:bg-[#BAE6FD] cursor-pointer font-bold'
-                                    : 'bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] cursor-default'
+                                    ? 'bg-info-bg border border-border text-primary hover:bg-info-bg cursor-pointer font-bold'
+                                    : 'bg-bg border border-border text-ink cursor-default'
                                 }`}
                               >
                                 {p}
@@ -855,13 +881,13 @@ export default function DataSourceConnections() {
                     {/* Button / Action Area */}
                     {c.id === 'sql' && sqlConnected ? (
                       <div className="space-y-1 mt-2">
-                        <div className="text-[10px] font-mono text-[#5B6B82] bg-[#F8FAFC] p-1 rounded-md border border-[#E2E8F0] truncate">
+                        <div className="text-xs font-mono text-subtle bg-bg p-1 rounded-md border border-border truncate">
                           {sqlConnStr}
                         </div>
                         <button
                           type="button"
                           onClick={handleSqlDisconnect}
-                          className="w-full h-8 rounded-lg border border-red-300 bg-red-50 hover:bg-red-100 text-red-700 font-semibold text-[11.5px] flex items-center justify-center gap-1 transition-all cursor-pointer"
+                          className="w-full h-8 rounded-lg border border-error bg-error-bg hover:bg-error-bg text-error-tx font-semibold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
                         >
                           <Unlink size={12} />
                           <span>Disconnect SQL</span>
@@ -873,8 +899,8 @@ export default function DataSourceConnections() {
                         onClick={handleCardCta}
                         className={`w-full h-9 rounded-lg border font-semibold text-[12.5px] flex items-center justify-between px-3 transition-all cursor-pointer group mt-2 ${
                           isConnected
-                            ? 'border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                            : `bg-white ${c.theme.btnBorder} ${c.theme.btnText} ${c.theme.btnHover}`
+                            ? 'border-success bg-success-bg text-success-tx hover:bg-success-bg'
+                            : `bg-surface ${c.theme.btnBorder} ${c.theme.btnText} ${c.theme.btnHover}`
                         }`}
                       >
                         <div className="flex items-center gap-1.5">
@@ -911,12 +937,12 @@ export default function DataSourceConnections() {
               })}
             </div>
           ) : (
-            <div className="w-full bg-white rounded-xl border border-[#E2E8F0] p-8 my-4 text-center flex flex-col items-center justify-center">
-              <div className="w-12 h-12 rounded-full bg-[#F1F5F9] text-[#64748B] flex items-center justify-center mb-2">
+            <div className="w-full bg-surface rounded-xl border border-border p-8 my-4 text-center flex flex-col items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-muted-fill text-subtle flex items-center justify-center mb-2">
                 <Search size={20} />
               </div>
-              <h4 className="text-[15px] font-bold text-[#0B1727]">No data sources found</h4>
-              <p className="text-xs text-[#5B6B82] mt-0.5 mb-3">
+              <h4 className="text-[15px] font-bold text-ink">No data sources found</h4>
+              <p className="text-xs text-subtle mt-0.5 mb-3">
                 No connectors match your filter &quot;{activeFilter}&quot; {searchQuery ? `or search &quot;${searchQuery}&quot;` : ''}.
               </p>
               <button
@@ -925,7 +951,7 @@ export default function DataSourceConnections() {
                   setActiveFilter('All');
                   setSearchQuery('');
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-[#0284C7] font-semibold text-xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-strong bg-surface hover:bg-bg text-primary font-semibold text-xs transition-colors cursor-pointer"
               >
                 <RotateCcw size={13} />
                 <span>Reset Filters</span>
@@ -936,16 +962,16 @@ export default function DataSourceConnections() {
           {/* ===================================================================== */}
           {/* 4. BOTTOM INFORMATION PANEL                                           */}
           {/* ===================================================================== */}
-          <div className="bg-[#F0F9FF] border border-[#BAE6FD] rounded-xl p-2.5 px-4 sm:px-5 flex flex-col sm:flex-row items-center justify-between gap-3 mb-2.5 shadow-2xs">
+          <div className="bg-info-bg border border-border rounded-xl p-2.5 px-4 sm:px-5 flex flex-col sm:flex-row items-center justify-between gap-3 mb-2.5 shadow-2xs">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-[#E0F2FE] text-[#0284C7] flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-full bg-info-bg text-primary flex items-center justify-center shrink-0">
                 <Info size={15} />
               </div>
               <div className="text-[12px] leading-snug">
-                <span className="font-bold text-[#0B1727] mr-1.5">
+                <span className="font-bold text-ink mr-1.5">
                   Don't see your system?
                 </span>
-                <span className="text-[#5B6B82]">
+                <span className="text-subtle">
                   Any source reachable by a standard connector or API can be added here — this step prepares your data pipeline.
                 </span>
               </div>
@@ -954,25 +980,41 @@ export default function DataSourceConnections() {
             <button
               type="button"
               onClick={() => setRequestModalOpen(true)}
-              className="border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-[#0B1727] font-semibold text-[11.5px] h-7 px-3 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              className="border border-border-strong bg-surface hover:bg-bg text-ink font-semibold text-xs h-7 px-3 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
             >
               <span>Request a Connector</span>
-              <ExternalLink size={12} className="text-[#64748B]" />
+              <ExternalLink size={12} className="text-subtle" />
             </button>
           </div>
 
           {/* ===================================================================== */}
           {/* 5. BOTTOM NAVIGATION (Continue Action)                                */}
           {/* ===================================================================== */}
-          <div className="flex items-center justify-end pt-0.5 mb-1">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-0.5 mb-1">
             <button
               type="button"
-              onClick={() => navigate('/app')}
-              className="h-9 px-6 rounded-lg bg-[#0284C7] hover:bg-[#0369A1] text-white font-semibold text-[13.5px] flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all cursor-pointer"
+              onClick={() => navigate('/parameter-mapping')}
+              className="text-[13px] font-semibold text-primary hover:text-ink underline underline-offset-4 cursor-pointer"
             >
-              <span>Continue to Configuration</span>
-              <ArrowRight size={15} />
+              ← Change parameters
             </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <span id="continue-reason" className="text-[13px] text-subtle" data-testid="continue-reason">
+                {canContinue
+                  ? `${connectedNow.length} connected. Next we load your data.`
+                  : `Connect ${missing.map((m) => m.label).join(' and ')} to load your ${parameterCount} selected parameters.`}
+              </span>
+              <button
+                type="button"
+                disabled={!canContinue}
+                aria-describedby="continue-reason"
+                onClick={() => navigate('/ingestion')}
+                className="h-9 px-6 rounded-lg bg-primary-solid hover:bg-info-tx text-white font-semibold text-[13.5px] flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-solid disabled:hover:shadow-sm"
+              >
+                <span>Continue to ingestion</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
           </div>
 
         </div>
@@ -981,34 +1023,34 @@ export default function DataSourceConnections() {
       {/* ========================================================================= */}
       {/* 6. ENTERPRISE FOOTER                                                      */}
       {/* ========================================================================= */}
-      <footer className="border-t border-[#E2E8F0] py-2 px-6 sm:px-10 lg:px-16 flex flex-col sm:flex-row justify-between items-center gap-1.5 text-[11.5px] text-[#64748B] z-20 relative bg-white/70 backdrop-blur-xs shrink-0">
+      <footer className="border-t border-border py-2 px-6 sm:px-10 lg:px-16 flex flex-col sm:flex-row justify-between items-center gap-1.5 text-xs text-subtle z-20 relative bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] backdrop-blur-xs shrink-0">
         <div className="flex items-center gap-2">
           <span>© 2026 AITEK. All rights reserved.</span>
-          <span className="text-[#CBD5E1] font-light">|</span>
+          <span className="text-subtle font-light">|</span>
           <span>Enterprise Inventory Intelligence</span>
         </div>
 
-        <div className="flex items-center gap-3.5 flex-wrap justify-center text-[11.5px]">
+        <div className="flex items-center gap-3.5 flex-wrap justify-center text-xs">
           <button
             type="button"
             onClick={() => toast.info('AITEK Enterprise Privacy Policy')}
-            className="text-[#0284C7] hover:underline font-medium cursor-pointer bg-transparent border-0 p-0"
+            className="text-primary hover:underline font-medium cursor-pointer bg-transparent border-0 p-0"
           >
             Privacy Policy
           </button>
-          <span className="text-[#CBD5E1] font-light">|</span>
+          <span className="text-subtle font-light">|</span>
           <button
             type="button"
             onClick={() => toast.info('AITEK Platform Terms of Service')}
-            className="text-[#0284C7] hover:underline font-medium cursor-pointer bg-transparent border-0 p-0"
+            className="text-primary hover:underline font-medium cursor-pointer bg-transparent border-0 p-0"
           >
             Terms of Service
           </button>
-          <span className="text-[#CBD5E1] font-light">|</span>
+          <span className="text-subtle font-light">|</span>
           <button
             type="button"
             onClick={() => toast.info('AITEK Technical Support: support@aitek.ai')}
-            className="text-[#0284C7] hover:underline font-medium cursor-pointer bg-transparent border-0 p-0"
+            className="text-primary hover:underline font-medium cursor-pointer bg-transparent border-0 p-0"
           >
             Support
           </button>
@@ -1021,18 +1063,18 @@ export default function DataSourceConnections() {
       <Dialog open={sqlDialogOpen} onOpenChange={setSqlDialogOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold text-[#0B1727]">
-              <Database size={17} className="text-[#0284C7]" />
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-ink">
+              <Database size={17} className="text-primary" />
               <span>Connect SQL Database</span>
             </DialogTitle>
-            <DialogDescription className="text-xs text-[#5B6B82]">
+            <DialogDescription className="text-xs text-subtle">
               Provide database credentials to ingest inventory snapshots and transactional movement logs.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onSqlConnectSubmit)} className="space-y-3 py-1 text-xs">
             <div>
-              <label className="text-xs font-semibold text-[#0F172A] block mb-1">Database Engine</label>
+              <label className="text-xs font-semibold text-ink block mb-1">Database Engine</label>
               <Select value={engineValue} onValueChange={(val) => setValue('engine', val)}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
@@ -1047,63 +1089,63 @@ export default function DataSourceConnections() {
 
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2">
-                <label className="text-xs font-semibold text-[#0F172A] block mb-1">Host</label>
+                <label className="text-xs font-semibold text-ink block mb-1">Host</label>
                 <Input
                   placeholder="db.company.internal"
                   {...register('host')}
-                  className={`h-8 text-xs ${errors.host ? 'border-red-500' : ''}`}
+                  className={`h-8 text-xs ${errors.host ? 'border-error' : ''}`}
                 />
-                {errors.host && <p className="text-[10px] text-red-500 mt-0.5">{errors.host.message}</p>}
+                {errors.host && <p className="text-xs text-error-tx mt-0.5">{errors.host.message}</p>}
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#0F172A] block mb-1">Port</label>
+                <label className="text-xs font-semibold text-ink block mb-1">Port</label>
                 <Input
                   placeholder="5432"
                   {...register('port')}
-                  className={`h-8 text-xs ${errors.port ? 'border-red-500' : ''}`}
+                  className={`h-8 text-xs ${errors.port ? 'border-error' : ''}`}
                 />
-                {errors.port && <p className="text-[10px] text-red-500 mt-0.5">{errors.port.message}</p>}
+                {errors.port && <p className="text-xs text-error-tx mt-0.5">{errors.port.message}</p>}
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[#0F172A] block mb-1">Database Name</label>
+              <label className="text-xs font-semibold text-ink block mb-1">Database Name</label>
               <Input
                 placeholder="inventory_prod"
                 {...register('dbName')}
-                className={`h-8 text-xs ${errors.dbName ? 'border-red-500' : ''}`}
+                className={`h-8 text-xs ${errors.dbName ? 'border-error' : ''}`}
               />
-              {errors.dbName && <p className="text-[10px] text-red-500 mt-0.5">{errors.dbName.message}</p>}
+              {errors.dbName && <p className="text-xs text-error-tx mt-0.5">{errors.dbName.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-semibold text-[#0F172A] block mb-1">Username</label>
+                <label className="text-xs font-semibold text-ink block mb-1">Username</label>
                 <Input placeholder="svc_inventory_ro" {...register('username')} className="h-8 text-xs" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#0F172A] block mb-1">Password</label>
+                <label className="text-xs font-semibold text-ink block mb-1">Password</label>
                 <Input type="password" placeholder="••••••••" {...register('password')} className="h-8 text-xs" />
               </div>
             </div>
 
             {/* Table Mappings Section */}
-            <div className="pt-2 border-t border-[#E2E8F0] space-y-1.5">
-              <div className="text-[11px] font-bold text-[#0B1727]">Target Table Mappings</div>
+            <div className="pt-2 border-t border-border space-y-1.5">
+              <div className="text-xs font-bold text-ink">Target Table Mappings</div>
               {[
                 { label: 'Inventory Master', key: 'inventory', options: SQL_TABLE_OPTIONS.inventory },
                 { label: 'Transactions / Movements', key: 'transactions', options: SQL_TABLE_OPTIONS.transactions },
                 { label: 'Bill of Materials', key: 'bom', options: SQL_TABLE_OPTIONS.bom },
               ].map(({ label, key, options }) => (
                 <div key={key}>
-                  <label className="text-[10px] font-semibold text-[#5B6B82] block mb-0.5">
+                  <label className="text-xs font-semibold text-subtle block mb-0.5">
                     {label}
                   </label>
                   <Select
                     value={tableMappings[key]}
                     onValueChange={(val) => setTableMappings((m) => ({ ...m, [key]: val }))}
                   >
-                    <SelectTrigger className="h-6 text-[10.5px] font-mono">
+                    <SelectTrigger className="h-6 text-xs font-mono">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1122,7 +1164,7 @@ export default function DataSourceConnections() {
               <Button type="button" variant="ghost" size="sm" onClick={() => setSqlDialogOpen(false)} className="text-xs h-8">
                 Cancel
               </Button>
-              <Button type="submit" variant="accent" size="sm" className="gap-1.5 text-xs h-8 bg-[#0284C7] hover:bg-[#0369A1] text-white">
+              <Button type="submit" variant="accent" size="sm" className="gap-1.5 text-xs h-8 bg-primary-solid hover:bg-info-tx text-white">
                 <Link2 size={13} />
                 <span>Test &amp; Connect</span>
               </Button>
@@ -1137,11 +1179,11 @@ export default function DataSourceConnections() {
       <Dialog open={!!platformModalData} onOpenChange={(open) => !open && setPlatformModalData(null)}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold text-[#0B1727]">
-              <Layers size={17} className="text-[#0284C7]" />
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-ink">
+              <Layers size={17} className="text-primary" />
               <span>Supported {platformModalData?.title} Platforms</span>
             </DialogTitle>
-            <DialogDescription className="text-xs text-[#5B6B82]">
+            <DialogDescription className="text-xs text-subtle">
               Native drivers and certified enterprise connectors available for this data source.
             </DialogDescription>
           </DialogHeader>
@@ -1150,9 +1192,9 @@ export default function DataSourceConnections() {
             {platformModalData?.platforms.map((p) => (
               <div
                 key={p}
-                className="flex items-center gap-2 p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-[12px] font-medium text-[#0B1727]"
+                className="flex items-center gap-2 p-2 rounded-lg bg-bg border border-border text-[12px] font-medium text-ink"
               >
-                <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <div className="w-2 h-2 rounded-full bg-success shrink-0" />
                 <span className="truncate">{p}</span>
               </div>
             ))}
@@ -1164,7 +1206,7 @@ export default function DataSourceConnections() {
               variant="default"
               size="sm"
               onClick={() => setPlatformModalData(null)}
-              className="w-full text-xs h-8 bg-[#0284C7] hover:bg-[#0369A1] text-white"
+              className="w-full text-xs h-8 bg-primary-solid hover:bg-info-tx text-white"
             >
               Close
             </Button>
@@ -1178,18 +1220,18 @@ export default function DataSourceConnections() {
       <Dialog open={requestModalOpen} onOpenChange={setRequestModalOpen}>
         <DialogContent className="sm:max-w-[460px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold text-[#0B1727]">
-              <Sparkles size={17} className="text-[#0284C7]" />
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-ink">
+              <Sparkles size={17} className="text-primary" />
               <span>Request Enterprise Connector</span>
             </DialogTitle>
-            <DialogDescription className="text-xs text-[#5B6B82]">
+            <DialogDescription className="text-xs text-subtle">
               Tell us about your system or internal API. Our solutions engineering team builds certified integrations.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleRequestFormSubmit} className="space-y-3 py-1 text-xs">
             <div>
-              <label className="text-xs font-semibold text-[#0F172A] block mb-1">
+              <label className="text-xs font-semibold text-ink block mb-1">
                 System / Provider Name *
               </label>
               <Input
@@ -1205,7 +1247,7 @@ export default function DataSourceConnections() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-semibold text-[#0F172A] block mb-1">
+                <label className="text-xs font-semibold text-ink block mb-1">
                   Connector Category
                 </label>
                 <Select
@@ -1229,7 +1271,7 @@ export default function DataSourceConnections() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#0F172A] block mb-1">
+                <label className="text-xs font-semibold text-ink block mb-1">
                   Contact Email
                 </label>
                 <Input
@@ -1244,7 +1286,7 @@ export default function DataSourceConnections() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[#0F172A] block mb-1">
+              <label className="text-xs font-semibold text-ink block mb-1">
                 Additional Notes / Pipeline Requirements
               </label>
               <textarea
@@ -1254,7 +1296,7 @@ export default function DataSourceConnections() {
                 onChange={(e) =>
                   setRequestFormData((prev) => ({ ...prev, notes: e.target.value }))
                 }
-                className="w-full rounded-md border border-[#CBD5E1] p-2 text-xs outline-none focus:border-[#0284C7] focus:ring-1 focus:ring-[#0284C7] bg-white resize-none"
+                className="w-full rounded-md border border-border-strong p-2 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-surface resize-none"
               />
             </div>
 
@@ -1272,7 +1314,7 @@ export default function DataSourceConnections() {
                 type="submit"
                 variant="accent"
                 size="sm"
-                className="gap-1.5 text-xs h-8 bg-[#0284C7] hover:bg-[#0369A1] text-white"
+                className="gap-1.5 text-xs h-8 bg-primary-solid hover:bg-info-tx text-white"
               >
                 <Send size={13} />
                 <span>Submit Request</span>

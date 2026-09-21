@@ -13,10 +13,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { usePlatform } from '../../context/PlatformContext';
+import RmlcLegs from '../../components/RmlcLegs';
 import { RMLC_STAGES, EOQ_INPUTS, FORECAST_INPUTS } from '../../data/mockData';
 
 const TONE_BADGE = { watch: 'watch', ok: 'success', risk: 'risk' };
-const TONE_BORDER = { watch: '#B7791F', ok: '#0F9D6C', risk: '#C0362C' };
+const TONE_BORDER = { watch: 'var(--warning)', ok: 'var(--success)', risk: 'var(--error)' };
 
 const MATERIAL_LIFECYCLE_PROFILES = {
   'MAT-1082': {
@@ -370,10 +371,10 @@ export default function RmlcLifecycle() {
   return (
     <section className="view max-w-7xl mx-auto">
       <ViewHead
-        title="Raw Material Lifecycle Intelligence"
+        title="RMLC Analysis · Raw Material Life Cycle"
         subtitle={
-          <p className="text-muted leading-relaxed">
-            Tracks materials across Accumulation, Active Circulation, At Risk, and Liquidation stages — evaluating transition triggers, value exposure, and prescribed operational interventions for <strong>{selectedMaterial.id}</strong>.
+          <p className="text-body-c leading-relaxed">
+            How long a raw-material purchase takes to become cash, and which leg of the cycle causes the delay. Below it, the stock-lifecycle stages (Accumulation to Liquidation) for <strong>{selectedMaterial.id}</strong>.
           </p>
         }
         actions={
@@ -389,9 +390,13 @@ export default function RmlcLifecycle() {
         }
       />
 
+      <RmlcLegs selectedId={selectedMaterial.id} />
+
+      <div className="section-title">Stock lifecycle stages</div>
+
       {/* Selected Material Header Card */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-line">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-border">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-base font-bold text-ink m-0">
@@ -404,7 +409,7 @@ export default function RmlcLifecycle() {
                 ● {profile.lifecycleStateLabel}
               </Badge>
             </div>
-            <p className="text-xs text-muted m-0">
+            <p className="text-xs text-body-c m-0">
               {plant} · Category: <strong>{category}</strong> · Supplier: <strong>{profile.supplier}</strong> · Lead Time: <strong>{profile.leadTimeDays} days</strong> · Downstream: <strong>{profile.downstreamDependency}</strong>
             </p>
           </div>
@@ -447,8 +452,8 @@ export default function RmlcLifecycle() {
               profile.lifecycleTone === 'ok'
                 ? 'var(--success)'
                 : profile.lifecycleTone === 'watch'
-                ? 'var(--watch)'
-                : 'var(--risk)',
+                ? 'var(--warning)'
+                : 'var(--error)',
           }}
           delta={`Stage ${profile.stageIndex + 1} of 4 · ${profile.agingClassification}`}
           deltaTone={profile.lifecycleTone === 'ok' ? 'up' : 'down'}
@@ -470,7 +475,7 @@ export default function RmlcLifecycle() {
         <KpiTile
           label="Inventory Value Exposure"
           value={profile.atRiskValue > 0 ? formatCurrency(profile.atRiskValue) : '$0.00'}
-          valueStyle={{ color: profile.atRiskValue > 0 ? 'var(--risk)' : 'var(--success)' }}
+          valueStyle={{ color: profile.atRiskValue > 0 ? 'var(--error)' : 'var(--success)' }}
           delta={
             profile.atRiskValue > 0
               ? `${formatNum((profile.atRiskValue / onHandValue) * 100, 1)}% of on-hand at risk`
@@ -482,7 +487,7 @@ export default function RmlcLifecycle() {
         <KpiTile
           label="Lifecycle Intervention Window"
           value={profile.preventionWindow.split('(')[0].trim()}
-          valueStyle={{ color: profile.earlyInterventionNeeded ? 'var(--accent)' : 'var(--ink)' }}
+          valueStyle={{ color: profile.earlyInterventionNeeded ? 'var(--primary)' : 'var(--ink)' }}
           delta={profile.interventionUrgency}
           deltaTone={profile.earlyInterventionNeeded ? 'down' : 'flat'}
           sub={profile.prescribedAction}
@@ -490,11 +495,11 @@ export default function RmlcLifecycle() {
       </div>
 
       {/* 4-Stage Visual Progression Grid */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <div className="card__head flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
           <div>
             <h2 className="card__title text-sm font-bold text-ink">Selected Material Lifecycle Position: {selectedMaterial.id}</h2>
-            <p className="card__sub text-xs text-muted">
+            <p className="card__sub text-xs text-body-c">
               Enterprise Lifecycle Model: <strong>Accumulation → Active Circulation → At Risk → Liquidation</strong>
             </p>
           </div>
@@ -511,12 +516,12 @@ export default function RmlcLifecycle() {
                 key={s.key}
                 className={`p-4 rounded-md border transition-all ${
                   isSelectedStage
-                    ? 'border-accent bg-accent-dim/30 shadow-subtle'
-                    : 'border-line bg-bg'
+                    ? 'border-primary bg-info-bg/30 shadow-subtle'
+                    : 'border-border bg-bg'
                 }`}
               >
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-[11px] font-bold text-muted uppercase tracking-wider">
+                  <span className="text-xs font-bold text-body-c uppercase tracking-wider">
                     Stage {idx + 1}
                   </span>
                   {isSelectedStage ? (
@@ -526,8 +531,8 @@ export default function RmlcLifecycle() {
                   )}
                 </div>
                 <div className="text-sm font-bold text-ink mb-1">{s.label}</div>
-                <p className="text-xs text-muted m-0 mb-3 leading-relaxed">{s.desc}</p>
-                <div className="text-[11px] text-muted-2 pt-2 border-t border-line">
+                <p className="text-xs text-body-c m-0 mb-3 leading-relaxed">{s.desc}</p>
+                <div className="text-xs text-subtle pt-2 border-t border-border">
                   {s.rule}
                 </div>
               </div>
@@ -536,33 +541,33 @@ export default function RmlcLifecycle() {
         </div>
 
         <div className={`p-3.5 rounded-md border text-xs leading-relaxed ${
-          profile.lifecycleTone === 'ok' ? 'bg-success-bg border-[#C6EFDE]' : profile.lifecycleTone === 'watch' ? 'bg-watch-bg border-[#F2DEBA]' : 'bg-risk-bg border-[#F8C8C4]'
+          profile.lifecycleTone === 'ok' ? 'bg-success-bg border-success' : profile.lifecycleTone === 'watch' ? 'bg-warning-bg border-warning' : 'bg-error-bg border-error'
         }`}>
           <div className="font-bold text-ink mb-1">
             Trigger Rule Classification for {selectedMaterial.id}: <span className="font-normal">{profile.triggerRule}</span>
           </div>
-          <div className="text-text mb-1">
+          <div className="text-ink mb-1">
             <strong>Observed Evidence:</strong> {profile.triggerEvidence}
           </div>
-          <div className="text-text">
+          <div className="text-ink">
             <strong>Next-State Transition &amp; Intervention:</strong> {profile.nextStateRisk} {profile.prescribedAction}
           </div>
         </div>
       </div>
 
       {/* Lifecycle Evidence Table */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <div className="card__head flex items-center justify-between mb-4">
           <div>
             <h2 className="card__title text-sm font-bold text-ink">Lifecycle Evidence &amp; Drivers ({selectedMaterial.id})</h2>
-            <p className="card__sub text-xs text-muted">
+            <p className="card__sub text-xs text-body-c">
               Empirical evidence distinguishing source data, derived metrics, lifecycle rules, and planning assumptions.
             </p>
           </div>
           <Badge tone="neutral">Evidence Base</Badge>
         </div>
 
-        <div className="rounded-sm border border-line overflow-hidden mb-3">
+        <div className="rounded-sm border border-border overflow-hidden mb-3">
           <Table>
             <TableHeader>
               <TableRow>
@@ -578,7 +583,7 @@ export default function RmlcLifecycle() {
                 <TableRow key={idx}>
                   <TableCell className="font-bold text-ink">{row.dimension}</TableCell>
                   <TableCell className="font-mono font-medium">{row.observed}</TableCell>
-                  <TableCell className="text-muted text-xs">{row.benchmark}</TableCell>
+                  <TableCell className="text-body-c text-xs">{row.benchmark}</TableCell>
                   <TableCell className="text-xs">{row.signal}</TableCell>
                   <TableCell className="text-right">
                     <Badge tone={row.tag === 'Source Data' ? 'neutral' : row.tag === 'Derived Metric' ? 'accent' : 'watch'}>
@@ -595,57 +600,57 @@ export default function RmlcLifecycle() {
       {/* Exposure & Transition Risk Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
         {/* Transition Risk */}
-        <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle">
+        <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle">
           <Badge tone={profile.lifecycleBadgeTone} className="mb-2">Transition Trajectory</Badge>
           <h2 className="card__title text-sm font-bold text-ink mb-1">What Happens Next? (Transition Risk)</h2>
-          <p className="card__sub text-xs text-muted mb-4">Expected trajectory if operating conditions and replenishment policies persist</p>
+          <p className="card__sub text-xs text-body-c mb-4">Expected trajectory if operating conditions and replenishment policies persist</p>
 
           <div className="space-y-3 text-xs">
-            <div className="p-3 bg-bg rounded border border-line">
-              <div className="font-bold uppercase tracking-wider text-[10.5px] text-muted mb-1">1. Current State &amp; Driver</div>
+            <div className="p-3 bg-bg rounded border border-border">
+              <div className="font-bold uppercase tracking-wider text-xs text-body-c mb-1">1. Current State &amp; Driver</div>
               <div className="text-ink"><strong>{profile.lifecycleStateLabel}:</strong> {profile.triggerEvidence}</div>
             </div>
-            <div className="p-3 bg-bg rounded border border-line">
-              <div className="font-bold uppercase tracking-wider text-[10.5px] text-muted mb-1">2. Potential Transition Risk</div>
+            <div className="p-3 bg-bg rounded border border-border">
+              <div className="font-bold uppercase tracking-wider text-xs text-body-c mb-1">2. Potential Transition Risk</div>
               <div className="text-ink">{profile.nextStateRisk}</div>
             </div>
-            <div className="p-3 bg-bg rounded border border-line">
-              <div className="font-bold uppercase tracking-wider text-[10.5px] text-muted mb-1">3. Prescribed Operational Intervention</div>
+            <div className="p-3 bg-bg rounded border border-border">
+              <div className="font-bold uppercase tracking-wider text-xs text-body-c mb-1">3. Prescribed Operational Intervention</div>
               <div className="text-ink font-semibold">{profile.prescribedAction}</div>
             </div>
           </div>
         </div>
 
         {/* Capital Valuation Table */}
-        <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle">
+        <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle">
           <Badge tone={profile.atRiskValue > 0 ? 'risk' : 'accent'} className="mb-2">Capital Exposure</Badge>
           <h2 className="card__title text-sm font-bold text-ink mb-1">Inventory Exposure &amp; Capital Valuation</h2>
-          <p className="card__sub text-xs text-muted mb-4">Grounded financial valuation of {selectedMaterial.id}'s on-hand inventory position</p>
+          <p className="card__sub text-xs text-body-c mb-4">Grounded financial valuation of {selectedMaterial.id}'s on-hand inventory position</p>
 
-          <div className="rounded-sm border border-line overflow-hidden mb-3">
+          <div className="rounded-sm border border-border overflow-hidden mb-3">
             <Table>
               <TableBody>
                 <TableRow>
-                  <TableCell className="text-xs text-muted">Total Physical On-Hand Carrying Value</TableCell>
+                  <TableCell className="text-xs text-body-c">Total Physical On-Hand Carrying Value</TableCell>
                   <TableCell className="text-right font-mono font-bold text-ink">{formatCurrency(onHandValue)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-xs text-muted">Active / Circulating Operating Capital</TableCell>
+                  <TableCell className="text-xs text-body-c">Active / Circulating Operating Capital</TableCell>
                   <TableCell className="text-right font-mono text-success">{formatCurrency(onHandValue - profile.atRiskValue)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-xs text-muted">Potential Value at Risk</TableCell>
-                  <TableCell className="text-right font-mono font-bold" style={{ color: profile.atRiskValue > 0 ? 'var(--risk)' : 'var(--text)' }}>
+                  <TableCell className="text-xs text-body-c">Potential Value at Risk</TableCell>
+                  <TableCell className="text-right font-mono font-bold" style={{ color: profile.atRiskValue > 0 ? 'var(--error)' : 'var(--ink)' }}>
                     {formatCurrency(profile.atRiskValue)}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="text-xs text-muted">Potentially Recoverable Value Opportunity</TableCell>
-                  <TableCell className="text-right font-mono text-accent font-semibold">{formatCurrency(profile.recoverableOpportunity)}</TableCell>
+                  <TableCell className="text-xs text-body-c">Potentially Recoverable Value Opportunity</TableCell>
+                  <TableCell className="text-right font-mono text-primary font-semibold">{formatCurrency(profile.recoverableOpportunity)}</TableCell>
                 </TableRow>
                 <TableRow className="bg-bg font-bold">
                   <TableCell className="text-ink">Annual Carrying-Cost Estimate (6.00%/yr)</TableCell>
-                  <TableCell className="text-right font-mono text-muted">{formatCurrency(annualHoldingCost)}/yr</TableCell>
+                  <TableCell className="text-right font-mono text-body-c">{formatCurrency(annualHoldingCost)}/yr</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -679,7 +684,7 @@ export default function RmlcLifecycle() {
       </motion.div>
 
       {/* Why Disclosure */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <h2 className="card__title text-sm font-bold text-ink mb-1">
           Why {selectedMaterial.id} ({name}) is in {profile.lifecycleStateLabel}
         </h2>
@@ -693,16 +698,16 @@ export default function RmlcLifecycle() {
       </div>
 
       {/* Enterprise Intervention Queue Table */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <div className="card__head flex items-center justify-between mb-4">
           <div>
             <h2 className="card__title text-sm font-bold text-ink">Portfolio Lifecycle Intervention Queue</h2>
-            <p className="card__sub text-xs text-muted">Multi-plant materials requiring lifecycle triage, alert triggers, and prescribed actions</p>
+            <p className="card__sub text-xs text-body-c">Multi-plant materials requiring lifecycle triage, alert triggers, and prescribed actions</p>
           </div>
           <Badge tone="risk">$2.10M Liquidation Exposure</Badge>
         </div>
 
-        <div className="rounded-sm border border-line overflow-hidden mb-4">
+        <div className="rounded-sm border border-border overflow-hidden mb-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -723,26 +728,26 @@ export default function RmlcLifecycle() {
                 return (
                   <TableRow
                     key={item.id}
-                    className={isSelected ? 'bg-accent-dim/40 border-l-2 border-l-accent' : ''}
+                    className={isSelected ? 'bg-info-bg/40 border-l-2 border-l-accent' : ''}
                   >
                     <TableCell>
                       <div className="flex items-center gap-1.5 font-bold text-ink">
                         <span>{item.id} · {item.name}</span>
-                        {isSelected && <Badge tone="accent" className="text-[10px]">Selected</Badge>}
+                        {isSelected && <Badge tone="accent" className="text-xs">Selected</Badge>}
                       </div>
                     </TableCell>
                     <TableCell>{item.plant}</TableCell>
                     <TableCell><Badge tone="neutral">Class {item.abcClass}</Badge></TableCell>
                     <TableCell><Badge tone={TONE_BADGE[item.stateTone]}>{item.state}</Badge></TableCell>
-                    <TableCell className="text-xs text-muted">{item.rule}</TableCell>
+                    <TableCell className="text-xs text-body-c">{item.rule}</TableCell>
                     <TableCell className={`text-right font-mono font-bold ${
-                      item.daysStagnant > 90 ? 'text-risk' : item.daysStagnant > 0 ? 'text-watch' : 'text-success'
+                      item.daysStagnant > 90 ? 'text-error-tx' : item.daysStagnant > 0 ? 'text-warning-tx' : 'text-success'
                     }`}>
                       {item.daysStagnant}
                     </TableCell>
                     <TableCell className="text-right font-mono">{item.qtyDisplay}</TableCell>
                     <TableCell className="text-right font-mono font-bold text-ink">{item.valueDisplay}</TableCell>
-                    <TableCell className={`text-xs ${isSelected ? 'font-semibold text-ink' : 'text-muted'}`}>{item.action}</TableCell>
+                    <TableCell className={`text-xs ${isSelected ? 'font-semibold text-ink' : 'text-body-c'}`}>{item.action}</TableCell>
                   </TableRow>
                 );
               })}

@@ -13,7 +13,7 @@ const Table = React.forwardRef(({ className, ...props }, ref) => (
 Table.displayName = 'Table';
 
 const TableHeader = React.forwardRef(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn('[&_tr]:border-b [&_tr]:border-line sticky top-0 bg-bg z-10', className)} {...props} />
+  <thead ref={ref} className={cn('[&_tr]:border-b [&_tr]:border-border sticky top-0 bg-bg z-10', className)} {...props} />
 ));
 TableHeader.displayName = 'TableHeader';
 
@@ -29,7 +29,7 @@ TableBody.displayName = 'TableBody';
 const TableFooter = React.forwardRef(({ className, ...props }, ref) => (
   <tfoot
     ref={ref}
-    className={cn('border-t-2 border-line-strong bg-bg font-semibold [&>tr]:last:border-b-0', className)}
+    className={cn('border-t-2 border-border-strong bg-bg font-semibold [&>tr]:last:border-b-0', className)}
     {...props}
   />
 ));
@@ -39,7 +39,7 @@ const TableRow = React.forwardRef(({ className, ...props }, ref) => (
   <tr
     ref={ref}
     className={cn(
-      'border-b border-line transition-colors hover:bg-[#FAFBFD] data-[state=selected]:bg-bg',
+      'border-b border-border transition-colors hover:bg-muted-fill data-[state=selected]:bg-bg',
       className
     )}
     {...props}
@@ -52,7 +52,7 @@ const TableHead = React.forwardRef(({ className, ...props }, ref) => (
     ref={ref}
     scope="col"
     className={cn(
-      'h-9 px-3.5 text-left align-middle text-[10.5px] font-bold uppercase tracking-[0.04em] text-muted-2 whitespace-nowrap bg-bg',
+      'h-9 px-3.5 text-left align-middle text-xs font-bold uppercase tracking-[0.04em] text-subtle whitespace-nowrap bg-bg',
       className
     )}
     {...props}
@@ -63,7 +63,7 @@ TableHead.displayName = 'TableHead';
 const TableCell = React.forwardRef(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn('p-3.5 align-middle whitespace-nowrap text-text', className)}
+    className={cn('p-3.5 align-middle whitespace-nowrap text-ink', className)}
     {...props}
   />
 ));
@@ -72,7 +72,7 @@ TableCell.displayName = 'TableCell';
 const TableCaption = React.forwardRef(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn('mt-4 text-xs text-muted', className)}
+    className={cn('mt-4 text-xs text-body-c', className)}
     {...props}
   />
 ));

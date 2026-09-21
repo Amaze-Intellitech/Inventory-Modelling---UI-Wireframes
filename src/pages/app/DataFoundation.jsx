@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Database, RefreshCw, CheckCircle2, Clock, Layers, Filter } from 'lucide-react';
-import { ViewHead, KpiTile, Badge, WhyDisclosure } from '../../components/CommonUI';
+import { ViewHead, KpiTile, Badge, WhyDisclosure, Insight } from '../../components/CommonUI';
+import IngestionStatus from '../../components/IngestionStatus';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -20,6 +23,7 @@ const SOURCES = [
 ];
 
 export default function DataFoundation() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredMaterials = useMemo(() => {
@@ -39,11 +43,27 @@ export default function DataFoundation() {
       <ViewHead
         title="Data Foundation"
         subtitle={
-          <p className="text-muted leading-relaxed">
+          <p className="text-body-c leading-relaxed">
             What the platform is reading from, at what scale, and how it's organized — before any analysis runs on top of it.
           </p>
         }
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/parameter-mapping')}>
+              Change parameters
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/data-sources')}>
+              Change data sources
+            </Button>
+          </div>
+        }
       />
+
+      <Insight label="Data readiness">
+        Your data is <span className="metric">99.8%</span> complete and ready for analysis, with two things to look at:
+        one material is missing its unit of measure (this must be fixed), and the supplier feed is 12% incomplete
+        (this can wait, but it will make Optimization less certain).
+      </Insight>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
         <KpiTile
@@ -68,14 +88,18 @@ export default function DataFoundation() {
         />
       </div>
 
+      <div className="mb-6">
+        <IngestionStatus onProceed={() => navigate('/app/univariate')} proceedLabel="Continue to Univariate Analysis" />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6">
         {/* Connected Sources */}
-        <div className="lg:col-span-7 bg-surface border border-line rounded-md p-5 shadow-subtle flex flex-col justify-between">
+        <div className="lg:col-span-7 bg-surface border border-border rounded-md p-5 shadow-subtle flex flex-col justify-between">
           <div>
             <div className="card__head flex items-start justify-between gap-4 mb-3">
               <div>
                 <h2 className="card__title text-sm font-bold text-ink">Connected sources</h2>
-                <p className="card__sub text-xs text-muted">Each source syncs on its own cadence into a single reconciled snapshot</p>
+                <p className="card__sub text-xs text-body-c">Each source syncs on its own cadence into a single reconciled snapshot</p>
               </div>
               <Badge tone="accent" className="gap-1">
                 <RefreshCw size={10} className="animate-spin-slow" />
@@ -83,7 +107,7 @@ export default function DataFoundation() {
               </Badge>
             </div>
 
-            <div className="rounded-sm border border-line overflow-hidden mb-3">
+            <div className="rounded-sm border border-border overflow-x-auto mb-3">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -98,9 +122,9 @@ export default function DataFoundation() {
                   {SOURCES.map((s) => (
                     <TableRow key={s.name}>
                       <TableCell className="font-bold text-ink">{s.name}</TableCell>
-                      <TableCell className="text-muted text-xs">{s.domain}</TableCell>
+                      <TableCell className="text-body-c text-xs">{s.domain}</TableCell>
                       <TableCell className="text-right font-mono font-medium">{s.records}</TableCell>
-                      <TableCell className="text-xs text-muted">{s.cadence}</TableCell>
+                      <TableCell className="text-xs text-body-c">{s.cadence}</TableCell>
                       <TableCell>
                         <Badge tone={s.status === 'ok' ? 'success' : 'watch'} className="gap-1">
                           {s.status === 'ok' ? <CheckCircle2 size={10} /> : <Clock size={10} />}
@@ -114,21 +138,21 @@ export default function DataFoundation() {
             </div>
           </div>
 
-          <p className="text-[11px] text-muted-2 m-0">
+          <p className="text-xs text-subtle m-0">
             Snapshot v2.40 · frozen at data-read time so every screen in this session reflects the same instant, not a live-moving feed.
           </p>
         </div>
 
         {/* Taxonomy in Scope */}
-        <div className="lg:col-span-5 bg-surface border border-line rounded-md p-5 shadow-subtle">
+        <div className="lg:col-span-5 bg-surface border border-border rounded-md p-5 shadow-subtle">
           <h2 className="card__title text-sm font-bold text-ink mb-1">Taxonomy in scope</h2>
-          <p className="card__sub text-xs text-muted mb-4">How every material is classified before any analytics run</p>
+          <p className="card__sub text-xs text-body-c mb-4">How every material is classified before any analytics run</p>
 
           <div className="space-y-4">
             <div>
-              <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2 flex items-center justify-between">
+              <div className="text-xs font-bold text-body-c uppercase tracking-wider mb-2 flex items-center justify-between">
                 <span>Material taxonomy</span>
-                <span className="text-[11px] font-normal text-muted-2">1,420 SKUs</span>
+                <span className="text-xs font-normal text-subtle">1,420 SKUs</span>
               </div>
               <ul className="space-y-1.5 text-xs">
                 {[
@@ -138,38 +162,38 @@ export default function DataFoundation() {
                   { label: 'Spare Parts & MRO', count: '260 SKUs', pct: 18.3 },
                   { label: 'Consumables', count: '120 SKUs', pct: 8.5 },
                 ].map((item) => (
-                  <li key={item.label} className="flex flex-col gap-1 p-1.5 rounded bg-bg/60 border border-line/60">
-                    <div className="flex justify-between items-center text-text font-medium">
+                  <li key={item.label} className="flex flex-col gap-1 p-1.5 rounded bg-bg/60 border border-border/60">
+                    <div className="flex justify-between items-center text-ink font-medium">
                       <span>{item.label}</span>
-                      <span className="font-mono text-muted">{item.count}</span>
+                      <span className="font-mono text-body-c">{item.count}</span>
                     </div>
-                    <div className="w-full bg-line h-1 rounded-full overflow-hidden">
-                      <div className="bg-accent h-full rounded-full" style={{ width: `${item.pct}%` }} />
+                    <div className="w-full bg-border h-1 rounded-full overflow-hidden">
+                      <div className="bg-primary-solid h-full rounded-full" style={{ width: `${item.pct}%` }} />
                     </div>
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div className="pt-2 border-t border-line">
-              <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
+            <div className="pt-2 border-t border-border">
+              <div className="text-xs font-bold text-body-c uppercase tracking-wider mb-2">
                 Organization &amp; cost-center taxonomy
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2 rounded bg-bg border border-line">
-                  <span className="text-muted block text-[11px]">Enterprise</span>
+                <div className="p-2 rounded bg-bg border border-border">
+                  <span className="text-body-c block text-xs">Enterprise</span>
                   <strong className="text-ink font-mono">1 Org</strong>
                 </div>
-                <div className="p-2 rounded bg-bg border border-line">
-                  <span className="text-muted block text-[11px]">Region</span>
+                <div className="p-2 rounded bg-bg border border-border">
+                  <span className="text-body-c block text-xs">Region</span>
                   <strong className="text-ink font-mono">3 Regions</strong>
                 </div>
-                <div className="p-2 rounded bg-bg border border-line">
-                  <span className="text-muted block text-[11px]">Plant</span>
+                <div className="p-2 rounded bg-bg border border-border">
+                  <span className="text-body-c block text-xs">Plant</span>
                   <strong className="text-ink font-mono">4 Plants</strong>
                 </div>
-                <div className="p-2 rounded bg-bg border border-line">
-                  <span className="text-muted block text-[11px]">Cost Center</span>
+                <div className="p-2 rounded bg-bg border border-border">
+                  <span className="text-body-c block text-xs">Cost Center</span>
                   <strong className="text-ink font-mono">22 Centers</strong>
                 </div>
               </div>
@@ -179,17 +203,17 @@ export default function DataFoundation() {
       </div>
 
       {/* Material Ledger Table with Live Filter */}
-      <div className="bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+      <div className="bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="card__title text-sm font-bold text-ink m-0">Material ledger</h2>
-            <p className="card__sub text-xs text-muted m-0 mt-0.5">
+            <p className="card__sub text-xs text-body-c m-0 mt-0.5">
               Inventory shown in both cost and quantity — the unit of measure always travels with the number
             </p>
           </div>
 
           <div className="relative w-full sm:w-80">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-2 h-4 w-4" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-subtle h-4 w-4" />
             <Input
               type="text"
               placeholder="Filter by material ID, name, plant..."
@@ -200,7 +224,7 @@ export default function DataFoundation() {
           </div>
         </div>
 
-        <div className="rounded-sm border border-line overflow-hidden mb-4">
+        <div className="rounded-sm border border-border overflow-hidden mb-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -238,7 +262,7 @@ export default function DataFoundation() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6 text-muted">
+                  <TableCell colSpan={7} className="text-center py-6 text-body-c">
                     No materials matching "{searchQuery}"
                   </TableCell>
                 </TableRow>

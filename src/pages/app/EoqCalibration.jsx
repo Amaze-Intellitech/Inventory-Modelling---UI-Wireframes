@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { EoqCurveChart } from '../../components/Charts';
+import EoqTimeSeries from '../../components/EoqTimeSeries';
 import { usePlatform } from '../../context/PlatformContext';
 import { EOQ_INPUTS, FORECAST_INPUTS } from '../../data/mockData';
 
@@ -113,9 +114,9 @@ export default function EoqCalibration() {
   return (
     <section className="view max-w-7xl mx-auto">
       <ViewHead
-        title="EOQ Calibration"
+        title="EOQ Analysis"
         subtitle={
-          <p className="text-muted leading-relaxed">
+          <p className="text-body-c leading-relaxed">
             Economic Order Quantity optimization and lot-size recalibration across Class A materials, balancing ordering setup costs against capital carrying costs to minimize total relevant inventory cost.
           </p>
         }
@@ -144,8 +145,8 @@ export default function EoqCalibration() {
       />
 
       {/* Selected SKU Context Header */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-line">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-border">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-base font-bold text-ink m-0">
@@ -155,7 +156,7 @@ export default function EoqCalibration() {
                 {meta.contextTag}
               </Badge>
             </div>
-            <p className="text-xs text-muted m-0">
+            <p className="text-xs text-body-c m-0">
               {plant} · Category: <strong>{category}</strong> · Primary Vendor: <strong>{meta.supplier}</strong> · Lead Time: <strong>{leadTimeDays} days</strong>
             </p>
           </div>
@@ -184,7 +185,7 @@ export default function EoqCalibration() {
             label="Calibrated EOQ (Q*)"
             value={`${formatNum(qStar, 0)} ${uom}`}
             sub={`${formatNum(recDaysOfSupply, 1)} days of supply (${formatNum(recOrderFreq, 1)} orders/yr)`}
-            valueStyle={{ color: 'var(--accent)' }}
+            valueStyle={{ color: 'var(--primary)' }}
           />
         </div>
       </div>
@@ -192,33 +193,33 @@ export default function EoqCalibration() {
       {/* Policy Comparison & Sensitivity Slider */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6">
         {/* Current ERP Policy Card */}
-        <div className="lg:col-span-4 bg-surface border border-line rounded-md p-5 shadow-subtle flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-surface border border-border rounded-md p-5 shadow-subtle flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-line">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
               <h3 className="text-sm font-bold text-ink m-0">Current ERP Policy</h3>
               <Badge tone="neutral">Lot: {formatNum(currentBatchQty, 0)} {uom}</Badge>
             </div>
-            <div className="rounded-sm border border-line overflow-hidden mb-3">
+            <div className="rounded-sm border border-border overflow-hidden mb-3">
               <Table>
                 <TableBody>
                   <TableRow>
-                    <TableCell className="text-xs text-muted">Order Frequency</TableCell>
+                    <TableCell className="text-xs text-body-c">Order Frequency</TableCell>
                     <TableCell className="text-right font-mono font-medium">{formatNum(currentOrderFreq, 1)} orders/yr</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="text-xs text-muted">Days Between Orders</TableCell>
+                    <TableCell className="text-xs text-body-c">Days Between Orders</TableCell>
                     <TableCell className="text-right font-mono font-medium">~{formatNum(currentOrderIntervalDays, 0)} days</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="text-xs text-muted">Avg Cycle Stock</TableCell>
+                    <TableCell className="text-xs text-body-c">Avg Cycle Stock</TableCell>
                     <TableCell className="text-right font-mono font-medium">{formatNum(currentCycleStockQty, 0)} {uom} ({formatCurrency(currentCycleStockValue)})</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="text-xs text-muted">Annual Ordering Cost</TableCell>
+                    <TableCell className="text-xs text-body-c">Annual Ordering Cost</TableCell>
                     <TableCell className="text-right font-mono">{formatCurrency(currentOrderCost)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="text-xs text-muted">Annual Holding Cost</TableCell>
+                    <TableCell className="text-xs text-body-c">Annual Holding Cost</TableCell>
                     <TableCell className="text-right font-mono">{formatCurrency(currentHoldCost)}</TableCell>
                   </TableRow>
                   <TableRow className="bg-bg font-bold">
@@ -229,39 +230,39 @@ export default function EoqCalibration() {
               </Table>
             </div>
           </div>
-          <p className="text-[11px] text-muted-2 m-0">
+          <p className="text-xs text-subtle m-0">
             Current lot sizing fixed at {formatNum(currentBatchQty, 0)} {uom} results in holding cost asymmetry.
           </p>
         </div>
 
         {/* Recommended EOQ Policy Card */}
-        <div className="lg:col-span-4 bg-surface border-2 border-accent/40 rounded-md p-5 shadow-subtle flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-surface border-2 border-primary/40 rounded-md p-5 shadow-subtle flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-line">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
               <h3 className="text-sm font-bold text-ink m-0">Recommended EOQ Policy</h3>
               <Badge tone="accent">Q*: {formatNum(qStar, 0)} {uom}</Badge>
             </div>
-            <div className="rounded-sm border border-line overflow-hidden mb-3">
+            <div className="rounded-sm border border-border overflow-hidden mb-3">
               <Table>
                 <TableBody>
                   <TableRow>
-                    <TableCell className="text-xs text-muted">Order Frequency</TableCell>
+                    <TableCell className="text-xs text-body-c">Order Frequency</TableCell>
                     <TableCell className="text-right font-mono font-medium">{formatNum(recOrderFreq, 1)} orders/yr</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="text-xs text-muted">Days Between Orders</TableCell>
+                    <TableCell className="text-xs text-body-c">Days Between Orders</TableCell>
                     <TableCell className="text-right font-mono font-medium">~{formatNum(recOrderIntervalDays, 0)} days</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="text-xs text-muted">Avg Cycle Stock</TableCell>
+                    <TableCell className="text-xs text-body-c">Avg Cycle Stock</TableCell>
                     <TableCell className="text-right font-mono font-medium">{formatNum(recCycleStockQty, 0)} {uom} ({formatCurrency(recCycleStockValue)})</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="text-xs text-muted">Annual Ordering Cost</TableCell>
+                    <TableCell className="text-xs text-body-c">Annual Ordering Cost</TableCell>
                     <TableCell className="text-right font-mono">{formatCurrency(recOrderCost)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="text-xs text-muted">Annual Holding Cost</TableCell>
+                    <TableCell className="text-xs text-body-c">Annual Holding Cost</TableCell>
                     <TableCell className="text-right font-mono text-success">{formatCurrency(recHoldCost)}</TableCell>
                   </TableRow>
                   <TableRow className="bg-success-bg/30 font-bold">
@@ -272,50 +273,50 @@ export default function EoqCalibration() {
               </Table>
             </div>
           </div>
-          <p className="text-[11px] text-muted-2 m-0">
+          <p className="text-xs text-subtle m-0">
             Exact equilibrium where ordering cost ({formatCurrency(recOrderCost)}) equals holding cost ({formatCurrency(recHoldCost)}).
           </p>
         </div>
 
         {/* Working Capital Delta & Sensitivity Slider */}
-        <div className="lg:col-span-4 bg-gradient-to-b from-surface to-bg/50 border border-line rounded-md p-5 shadow-subtle flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-gradient-to-b from-surface to-bg/50 border border-border rounded-md p-5 shadow-subtle flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-line">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
               <h3 className="text-sm font-bold text-ink m-0">Policy Variance &amp; Release</h3>
               <Badge tone="success">Optimal</Badge>
             </div>
 
             <div className="space-y-3 mb-4">
-              <div className="p-3 rounded bg-success-bg border border-[#C6EFDE]">
-                <div className="text-[11px] font-bold text-success uppercase tracking-wider mb-0.5">
+              <div className="p-3 rounded bg-success-bg border border-success">
+                <div className="text-xs font-bold text-success uppercase tracking-wider mb-0.5">
                   Working Capital Released
                 </div>
                 <div className="text-2xl font-bold font-mono text-ink">
                   {formatCurrency(workingCapitalReleased)}
                 </div>
-                <div className="text-xs text-muted mt-0.5">
+                <div className="text-xs text-body-c mt-0.5">
                   Freed from cycle inventory buffer
                 </div>
               </div>
 
-              <div className="p-3 rounded bg-surface border border-line">
-                <div className="text-[11px] font-bold text-muted uppercase tracking-wider mb-0.5">
+              <div className="p-3 rounded bg-surface border border-border">
+                <div className="text-xs font-bold text-body-c uppercase tracking-wider mb-0.5">
                   Net Annual Policy Savings
                 </div>
                 <div className="text-xl font-bold font-mono text-success">
                   {formatCurrency(netAnnualSavings)}/yr
                 </div>
-                <div className="text-xs text-muted mt-0.5">
+                <div className="text-xs text-body-c mt-0.5">
                   {formatNum(netSavingsPercent, 1)}% reduction in relevant cost
                 </div>
               </div>
             </div>
 
             {/* Interactive Holding Rate Slider */}
-            <div className="pt-3 border-t border-line">
+            <div className="pt-3 border-t border-border">
               <div className="flex justify-between items-center text-xs font-semibold mb-2">
-                <span className="text-muted">Holding Cost Rate Sensitivity:</span>
-                <span className="font-mono text-accent font-bold">{formatNum(holdingRatePct, 1)}%/yr</span>
+                <span className="text-body-c">Holding Cost Rate Sensitivity:</span>
+                <span className="font-mono text-primary font-bold">{formatNum(holdingRatePct, 1)}%/yr</span>
               </div>
               <Slider
                 value={[holdingRatePct]}
@@ -325,7 +326,7 @@ export default function EoqCalibration() {
                 onValueChange={(val) => setHoldingRatePct(val[0])}
                 className="my-2"
               />
-              <div className="flex justify-between text-[10px] text-muted-2 font-mono">
+              <div className="flex justify-between text-xs text-subtle font-mono">
                 <span>3.0%</span>
                 <span>Baseline (6.0%)</span>
                 <span>18.0%</span>
@@ -335,12 +336,21 @@ export default function EoqCalibration() {
         </div>
       </div>
 
+      {/* EOQ over time: what changed, and why */}
+      <EoqTimeSeries
+        demand={demand}
+        orderingCost={ORDERING_COST}
+        holdingCostPerUnit={unitCost * HOLDING_RATE}
+        uom={uom}
+        material={`${selectedMaterial.id} · ${selectedMaterial.name}`}
+      />
+
       {/* EOQ Parabola Chart */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <div className="card__head flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
           <div>
             <h2 className="card__title text-sm font-bold text-ink">EOQ Total Cost Parabola &amp; Cost Equilibrium Curve</h2>
-            <p className="card__sub text-xs text-muted">
+            <p className="card__sub text-xs text-body-c">
               Fixed ordering cost decays hyperbolically (S·D/Q), holding cost rises linearly (H·Q/2) — EOQ (Q*) sits at the exact convex minimum.
             </p>
           </div>
@@ -358,36 +368,36 @@ export default function EoqCalibration() {
           />
         </div>
 
-        <p className="text-[11px] text-muted-2 m-0 font-mono">
+        <p className="text-xs text-subtle m-0 font-mono">
           Canonical Formula: Q* = √(2·D·S / H) = √((2 × {formatNum(demand)} × ${ORDERING_COST.toFixed(2)}) / ${formatNum(holdingCostPerUnit, 4)}) = {formatNum(qStar, 0)} {uom}.
         </p>
       </div>
 
       {/* Operational Constraints */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <h2 className="card__title text-sm font-bold text-ink mb-1">Operational Constraints &amp; Procurement Execution Context</h2>
-        <p className="card__sub text-xs text-muted mb-4">
+        <p className="card__sub text-xs text-body-c mb-4">
           The modeled EOQ economics should be evaluated alongside service-level, safety-stock, lead-time, supplier, MOQ, and packaging constraints before implementation.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="p-3.5 bg-bg rounded-sm border border-line">
+          <div className="p-3.5 bg-bg rounded-sm border border-border">
             <h3 className="text-xs font-bold text-ink mb-1">1. Minimum Order Quantity &amp; Pack Sizes</h3>
-            <p className="text-xs text-muted m-0 leading-relaxed">
+            <p className="text-xs text-body-c m-0 leading-relaxed">
               EOQ ({formatNum(qStar, 0)} {uom}) establishes the unconstrained economic lot size. In procurement execution, Q* may be rounded to master carton increments without significantly degrading cost efficiency.
             </p>
           </div>
 
-          <div className="p-3.5 bg-bg rounded-sm border border-line">
+          <div className="p-3.5 bg-bg rounded-sm border border-border">
             <h3 className="text-xs font-bold text-ink mb-1">2. Supplier Lead Time &amp; EDI Throughput</h3>
-            <p className="text-xs text-muted m-0 leading-relaxed">
+            <p className="text-xs text-body-c m-0 leading-relaxed">
               Ordering frequency increases from {formatNum(currentOrderFreq, 1)} to {formatNum(recOrderFreq, 1)} orders/yr (every ~{formatNum(recOrderIntervalDays, 0)} days). EDI automation supports higher replenishment cadence with low administrative overhead.
             </p>
           </div>
 
-          <div className="p-3.5 bg-bg rounded-sm border border-line">
+          <div className="p-3.5 bg-bg rounded-sm border border-border">
             <h3 className="text-xs font-bold text-ink mb-1">3. Planning Buffer Assumption (1.5 × Q*)</h3>
-            <p className="text-xs text-muted m-0 leading-relaxed">
+            <p className="text-xs text-body-c m-0 leading-relaxed">
               Desired Stock Level of <strong>{formatNum(desiredStockQty, 0)} {uom}</strong> ({formatCurrency(desiredStockValue)}) represents a planning buffer assumption (1.5 × Q*), distinct from statistically derived safety stock.
             </p>
           </div>
@@ -420,7 +430,7 @@ export default function EoqCalibration() {
       </motion.div>
 
       {/* Driver Breakdown Accordion */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <h2 className="card__title text-sm font-bold text-ink mb-1">
           Why EOQ Shifted from {formatNum(currentBatchQty, 0)} to {formatNum(qStar, 0)} {uom} for {selectedMaterial.id}
         </h2>

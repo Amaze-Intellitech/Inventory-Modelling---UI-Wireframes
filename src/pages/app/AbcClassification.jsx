@@ -285,9 +285,9 @@ export default function AbcClassification() {
   return (
     <section className="view max-w-7xl mx-auto">
       <ViewHead
-        title="ABC Classification"
+        title="ABC Analysis"
         subtitle={
-          <p className="text-muted leading-relaxed">
+          <p className="text-body-c leading-relaxed">
             Raw materials segmented by <strong>Annual Consumption Value</strong> (Annual Demand × Unit Cost) across the $43.86M enterprise raw-material portfolio, augmented with downstream product dependency and operational risk context.
           </p>
         }
@@ -304,42 +304,48 @@ export default function AbcClassification() {
         }
       />
 
+      <Insight label="Where to focus">
+        Just <span className="metric">10% of your materials</span> hold <span className="metric">78% of the value</span>. These Class A
+        materials get full modelling and tight control; Class C runs on simple, automated rules. This ranking decides which
+        materials you can choose on the Material Selection step.
+      </Insight>
+
       {/* 1. Portfolio Segmentation Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="card bg-surface border-2 border-accent/40 rounded-md p-5 shadow-subtle relative overflow-hidden">
+        <div className="card bg-surface border-2 border-primary/40 rounded-md p-5 shadow-subtle relative overflow-hidden">
           <Badge tone="accent">Class A · High Governance</Badge>
           <div className="kpi__value text-2xl font-bold font-mono text-ink mt-2.5 mb-1">$34.28M</div>
-          <p className="card__sub text-xs text-muted">78.30% of annual consumption value · 142 SKUs (10.00% of catalog)</p>
-          <p className="text-xs text-text mt-3 pt-3 border-t border-line leading-relaxed">
+          <p className="card__sub text-xs text-body-c">78.30% of annual consumption value · 142 SKUs (10.00% of catalog)</p>
+          <p className="text-xs text-ink mt-3 pt-3 border-t border-border leading-relaxed">
             Weekly review cadence · Cycle-counting accuracy target 99.00% · Target service level 98.00–99.00% · High-governance replenishment control.
           </p>
         </div>
 
-        <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle">
+        <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle">
           <Badge tone="neutral">Class B · Periodic Control</Badge>
           <div className="kpi__value text-2xl font-bold font-mono text-ink mt-2.5 mb-1">$6.71M</div>
-          <p className="card__sub text-xs text-muted">15.30% of annual consumption value · 298 SKUs (21.00% of catalog)</p>
-          <p className="text-xs text-text mt-3 pt-3 border-t border-line leading-relaxed">
+          <p className="card__sub text-xs text-body-c">15.30% of annual consumption value · 298 SKUs (21.00% of catalog)</p>
+          <p className="text-xs text-ink mt-3 pt-3 border-t border-border leading-relaxed">
             Monthly review cadence · Cycle-counting accuracy target 95.00% · Target service level 95.00% · Standard batch replenishment policy.
           </p>
         </div>
 
-        <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle">
+        <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle">
           <Badge tone="neutral">Class C · Automated / Two-Bin</Badge>
           <div className="kpi__value text-2xl font-bold font-mono text-ink mt-2.5 mb-1">$2.87M</div>
-          <p className="card__sub text-xs text-muted">6.40% of annual consumption value · 980 SKUs (69.00% of catalog)</p>
-          <p className="text-xs text-text mt-3 pt-3 border-t border-line leading-relaxed">
+          <p className="card__sub text-xs text-body-c">6.40% of annual consumption value · 980 SKUs (69.00% of catalog)</p>
+          <p className="text-xs text-ink mt-3 pt-3 border-t border-border leading-relaxed">
             Quarterly or visual two-bin review · Minimal administrative oversight · Target service level 90.00–95.00% · Bulk order processing.
           </p>
         </div>
       </div>
 
       {/* 2. Cumulative Value Pareto Chart */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <div className="card__head flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
           <div>
             <h2 className="card__title text-sm font-bold text-ink">Cumulative Annual Consumption Value Contribution (Pareto)</h2>
-            <p className="card__sub text-xs text-muted">
+            <p className="card__sub text-xs text-body-c">
               Empirical distribution: Class A boundary at 78.30% ($34.28M), Class B at 93.60% ($40.99M), and Class C tail at 100.00% ($43.86M).
             </p>
           </div>
@@ -384,8 +390,8 @@ export default function AbcClassification() {
       </div>
 
       {/* 3. Selected Material Contextual Intelligence Layer */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-line">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-border">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-base font-bold text-ink m-0">
@@ -395,7 +401,7 @@ export default function AbcClassification() {
                 {mat.contextTag}
               </Badge>
             </div>
-            <p className="text-xs text-muted m-0">
+            <p className="text-xs text-body-c m-0">
               {mat.plant} · Category: <strong>{mat.category}</strong> · Single Raw Material Inventory Object supporting <strong>{mat.downstreamProductsCount} Downstream Products</strong> ({mat.downstreamSummary})
             </p>
           </div>
@@ -430,12 +436,12 @@ export default function AbcClassification() {
             <h3 className="text-xs font-bold text-ink uppercase tracking-wider">
               Downstream Product Demand Drivers ({mat.downstreamSummary} Consuming {mat.id})
             </h3>
-            <span className="text-[11px] text-muted font-mono">
+            <span className="text-xs text-body-c font-mono">
               Product Demand × BOM Usage Rate = Derived Raw-Material Demand
             </span>
           </div>
 
-          <div className="rounded-sm border border-line overflow-hidden">
+          <div className="rounded-sm border border-border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -468,7 +474,7 @@ export default function AbcClassification() {
                   <TableCell colSpan={4} className="font-bold text-ink">
                     Aggregate Reconciled Demand Across All {mat.downstreamProductsCount} Products
                   </TableCell>
-                  <TableCell className="text-right font-mono font-bold text-accent">
+                  <TableCell className="text-right font-mono font-bold text-primary">
                     {formatNum(totalDerivedDemand, 0)} {mat.uom}/yr
                   </TableCell>
                   <TableCell className="text-right font-mono font-bold text-ink">
@@ -483,13 +489,13 @@ export default function AbcClassification() {
           </div>
         </div>
 
-        <div className="p-3 bg-bg rounded-sm border border-line text-xs text-muted leading-relaxed">
-          <strong className="text-text">Architectural Boundary & Downstream Driver Model:</strong> Downstream finished goods are <em>demand drivers</em> whose production schedules generate aggregate raw-material demand ({formatNum(mat.annualDemand, 0)} {mat.uom}/yr). {mat.id} is the <em>inventory and procurement object</em> classified into ABC Class {mat.abcClass}. This page determines <strong>Control Priority and Governance Cadence</strong>; optimal batch lot sizes are calculated on the <strong>EOQ Calibration</strong> page.
+        <div className="p-3 bg-bg rounded-sm border border-border text-xs text-body-c leading-relaxed">
+          <strong className="text-ink">Architectural Boundary & Downstream Driver Model:</strong> Downstream finished goods are <em>demand drivers</em> whose production schedules generate aggregate raw-material demand ({formatNum(mat.annualDemand, 0)} {mat.uom}/yr). {mat.id} is the <em>inventory and procurement object</em> classified into ABC Class {mat.abcClass}. This page determines <strong>Control Priority and Governance Cadence</strong>; optimal batch lot sizes are calculated on the <strong>EOQ Analysis</strong> page.
         </div>
       </div>
 
       {/* 4. Driver Breakdown (WhyDisclosure) */}
-      <div className="card bg-surface border border-line rounded-md p-5 shadow-subtle mb-6">
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <h2 className="card__title text-sm font-bold text-ink mb-1">
           Why {mat.id} ({mat.name}) Anchors ABC Class {mat.abcClass} Governance
         </h2>
@@ -511,7 +517,7 @@ export default function AbcClassification() {
             'Downstream product demand streams act as derived demand drivers—they explain aggregate consumption volume while the raw material remains the single inventory/procurement object.',
           ]}
           action={[
-            `Queue ${mat.id} into EOQ Calibration to determine total-cost minimizing batch quantities and order frequencies.`,
+            `Queue ${mat.id} into EOQ Analysis to determine total-cost minimizing batch quantities and order frequencies.`,
             mat.abcClass === 'A'
               ? 'Enforce weekly replenishment reviews, 99.00% cycle-count verification, and maintain a 98.00–99.00% target service-level buffer.'
               : 'Maintain standard periodic review policy with automated two-bin replenishment triggers.',

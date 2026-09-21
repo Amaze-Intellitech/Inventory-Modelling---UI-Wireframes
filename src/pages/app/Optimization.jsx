@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import OptimizationSetup from '../../components/OptimizationSetup';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ViewHead, KpiTile, WhyDisclosure, Badge } from '../../components/CommonUI';
@@ -417,7 +418,7 @@ export default function Optimization() {
       ],
       action: [
         hasOrder
-          ? `Authorize replenishment purchase order of ${formatNum(currentOrderQty)} ${uom} (${formatCurrency(currentOrderValue)}) in Decision Intelligence.`
+          ? `Authorize replenishment purchase order of ${formatNum(currentOrderQty)} ${uom} (${formatCurrency(currentOrderValue)}) in Inventory Agent.`
           : `Maintain standing inventory monitoring; defer replenishment purchase order until inventory approaches reorder threshold (${formatNum(reorderPoint)} ${uom}).`,
         `Review lead-time variations and demand volatility in Multivariate Forecasting and What-If Simulation according to Class ${abcClass} ${abcReviewCadence.toLowerCase()} cadence.`,
       ],
@@ -455,14 +456,14 @@ export default function Optimization() {
         <ViewHead
           title="Inventory Optimization Intelligence"
           subtitle={<p>No raw material selected. Please select a raw material from the catalog to generate time-phased predictive optimization intelligence.</p>}
-          actions={<button type="button" className="btn btn-primary" onClick={() => navigate('/app/materials')}>Select Raw Material</button>}
+          actions={<button type="button" className="btn btn-primary" onClick={() => navigate('/material-selection')}>Select Raw Material</button>}
         />
-        <div className="card text-center p-12 bg-slate-50 dark:bg-navy-900/40 border-2 border-dashed border-slate-200 dark:border-navy-700">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">No Active Raw Material Selected</h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto mb-5">
+        <div className="card text-center p-12 bg-bg border-2 border-dashed border-border ">
+          <h2 className="text-lg font-bold text-ink mb-2">No Active Raw Material Selected</h2>
+          <p className="text-sm text-subtle max-w-md mx-auto mb-5">
             To view predictive time-phased inventory trajectories, calibrated EOQ lot sizes, coverage runways, and executive opportunity analysis, please select a raw material in Material Master.
           </p>
-          <button type="button" className="btn btn-primary" onClick={() => navigate('/app/materials')}>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/material-selection')}>
             Open Material Selection Catalog
           </button>
         </div>
@@ -515,24 +516,24 @@ export default function Optimization() {
     >
       {/* 1. VIEW HEADER & HORIZON SELECTOR */}
       <ViewHead
-        title="Inventory Optimization Intelligence"
+        title="Optimization Plan"
         subtitle={
           <p>
             Time-phased predictive inventory optimization, lot-sizing economics, lead-time runway, and working-capital intelligence for <strong>{activeId} ({name})</strong>.
-            <span className="block mt-1 font-semibold text-slate-800 dark:text-slate-200">
-              Active SKU Context: <span className="text-cyan-600 dark:text-cyan-400">{activeId} · {name}</span> — {plant} ({category} · Class {abcClass})
+            <span className="block mt-1 font-semibold text-ink ">
+              Active SKU Context: <span className="text-primary ">{activeId} · {name}</span> — {plant} ({category} · Class {abcClass})
             </span>
           </p>
         }
         actions={
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-navy-700/60 rounded-lg p-1">
+            <div className="inline-flex bg-muted-fill border border-border rounded-lg p-1">
               <button
                 type="button"
                 className={`text-xs px-3 py-1.5 rounded-md font-medium transition-all ${
                   selectedHorizon === '12w' 
-                    ? 'bg-cyan-600 text-white shadow-sm' 
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-primary-solid text-white shadow-sm' 
+                    : 'text-body-c hover:text-ink '
                 }`}
                 onClick={() => setSelectedHorizon('12w')}
               >
@@ -542,8 +543,8 @@ export default function Optimization() {
                 type="button"
                 className={`text-xs px-3 py-1.5 rounded-md font-medium transition-all ${
                   selectedHorizon === '26w' 
-                    ? 'bg-cyan-600 text-white shadow-sm' 
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-primary-solid text-white shadow-sm' 
+                    : 'text-body-c hover:text-ink '
                 }`}
                 onClick={() => setSelectedHorizon('26w')}
               >
@@ -555,10 +556,17 @@ export default function Optimization() {
               className="btn btn-primary"
               onClick={() => navigate('/app/decisions')}
             >
-              Send to Decision Intelligence
+              Send to Inventory Agent
             </button>
           </div>
         }
+      />
+
+      <OptimizationSetup
+        expected={optimizationTimeline[0]?.projectedOnHand}
+        optimal={optimizationTimeline[0]?.targetPosition}
+        uom={uom}
+        material={`${activeId} · ${name}`}
       />
 
       {/* 2. CURRENT INVENTORY POSITION — AS OF TODAY */}
@@ -566,7 +574,7 @@ export default function Optimization() {
         <div className="card__head flex-wrap gap-2 mb-3.5">
           <div>
             <div className="flex flex-wrap items-center gap-2.5 mb-1">
-              <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">
+              <h2 className="card__title text-base font-bold text-ink m-0">
                 Current Inventory Position — As of Today
               </h2>
               <Badge tone="success">[Actual] Enterprise State</Badge>
@@ -574,12 +582,12 @@ export default function Optimization() {
                 {activeMeta.contextTag}
               </Badge>
             </div>
-            <p className="card__sub text-xs text-slate-500 dark:text-slate-400 m-0">
+            <p className="card__sub text-xs text-subtle m-0">
               Physical on-hand inventory position, coverage runway, and optimization baseline for <strong>{activeId}</strong> at <strong>{plant}</strong> (Supplier: <strong>{activeMeta.supplier}</strong> · Lead Time: <strong>{leadTimeDays} days</strong>)
             </p>
           </div>
-          <div className="text-xs text-slate-400 font-mono">
-            As-Of Date: <strong className="text-slate-700 dark:text-slate-200">{optimizationTimeline[0]?.fullDate}</strong>
+          <div className="text-xs text-subtle font-mono">
+            As-Of Date: <strong className="text-body-c ">{optimizationTimeline[0]?.fullDate}</strong>
           </div>
         </div>
 
@@ -592,13 +600,13 @@ export default function Optimization() {
           <KpiTile
             label="Modeled Target Buffer (SS + Q*)"
             value={`${formatNum(targetPositionQty, 0)} ${uom}`}
-            valueStyle={{ color: 'var(--accent)' }}
+            valueStyle={{ color: 'var(--primary)' }}
             sub={`${formatCurrency(targetPositionValue)} target buffer (SS + EOQ Lot)`}
           />
           <KpiTile
             label="Current Inventory Coverage"
             value={`${formatNum(currentCoverageDays, 1)} Days`}
-            valueStyle={{ color: currentCoverageDays < leadTimeDays ? 'var(--risk)' : 'var(--success)' }}
+            valueStyle={{ color: currentCoverageDays < leadTimeDays ? 'var(--error)' : 'var(--success)' }}
             delta={
               currentCoverageDays < leadTimeDays
                 ? `LEAN: -${formatNum(leadTimeDays - currentCoverageDays, 1)}d vs ${leadTimeDays}d lead time`
@@ -610,7 +618,7 @@ export default function Optimization() {
           <KpiTile
             label="Current Optimization Gap"
             value={`${currentOptimizationGap >= 0 ? '+' : ''}${formatNum(currentOptimizationGap, 0)} ${uom}`}
-            valueStyle={{ color: currentOptimizationGap > 0 ? 'var(--accent)' : currentOptimizationGap < 0 ? 'var(--risk)' : 'var(--ink)' }}
+            valueStyle={{ color: currentOptimizationGap > 0 ? 'var(--primary)' : currentOptimizationGap < 0 ? 'var(--error)' : 'var(--ink)' }}
             delta={
               currentOptimizationGap > 0
                 ? `${formatCurrency(currentExcessValue)} Capital Release Opportunity`
@@ -667,17 +675,17 @@ export default function Optimization() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="card mb-4 border-l-4 border-cyan-500"
+            className="card mb-4 border-l-4 border-primary"
           >
             <div className="card__head mb-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">
+                  <h2 className="card__title text-base font-bold text-ink m-0">
                     Optimization Model Intelligence (Data Scientist Lens)
                   </h2>
                   <Badge tone="accent">Statistical Model & Parameter Derivations</Badge>
                 </div>
-                <p className="card__sub text-xs text-slate-500 dark:text-slate-400 m-0">
+                <p className="card__sub text-xs text-subtle m-0">
                   Rigorous mathematical breakdown of demand variability, lead-time convolution, safety stock sizing, and EOQ cost equilibrium
                 </p>
               </div>
@@ -687,31 +695,31 @@ export default function Optimization() {
             </div>
 
             <div className="grid-4 mb-3.5">
-              <div className="bg-slate-50 dark:bg-navy-900/60 p-2.5 rounded-md border border-slate-200 dark:border-navy-700">
-                <span className="text-[10px] text-slate-400 uppercase block font-semibold">1. Baseline Daily Demand</span>
-                <strong className="num text-sm text-slate-900 dark:text-slate-100 block">{formatNum(baseDailyDemand, 2)} {uom}/d</strong>
-                <span className="text-[11px] text-slate-500 font-mono">{formatNum(annualDemand, 0)} {uom}/yr · Slope: {(trendPerWeek * 100).toFixed(2)}%/wk</span>
+              <div className="bg-bg p-2.5 rounded-md border border-border ">
+                <span className="text-xs text-subtle uppercase block font-semibold">1. Baseline Daily Demand</span>
+                <strong className="num text-sm text-ink block">{formatNum(baseDailyDemand, 2)} {uom}/d</strong>
+                <span className="text-xs text-subtle font-mono">{formatNum(annualDemand, 0)} {uom}/yr · Slope: {(trendPerWeek * 100).toFixed(2)}%/wk</span>
               </div>
-              <div className="bg-slate-50 dark:bg-navy-900/60 p-2.5 rounded-md border border-slate-200 dark:border-navy-700">
-                <span className="text-[10px] text-slate-400 uppercase block font-semibold">2. Demand Volatility (CV)</span>
-                <strong className="num text-sm text-slate-900 dark:text-slate-100 block">CV = {(demandCV * 100).toFixed(1)}%</strong>
-                <span className="text-[11px] text-slate-500 font-mono">σ_D = {formatNum(sigmaD, 2)} {uom}/d · RMSE: {rmseRatio.toFixed(2)}</span>
+              <div className="bg-bg p-2.5 rounded-md border border-border ">
+                <span className="text-xs text-subtle uppercase block font-semibold">2. Demand Volatility (CV)</span>
+                <strong className="num text-sm text-ink block">CV = {(demandCV * 100).toFixed(1)}%</strong>
+                <span className="text-xs text-subtle font-mono">σ_D = {formatNum(sigmaD, 2)} {uom}/d · RMSE: {rmseRatio.toFixed(2)}</span>
               </div>
-              <div className="bg-slate-50 dark:bg-navy-900/60 p-2.5 rounded-md border border-slate-200 dark:border-navy-700">
-                <span className="text-[10px] text-slate-400 uppercase block font-semibold">3. Holding Cost Rate (H)</span>
-                <strong className="num text-sm text-slate-900 dark:text-slate-100 block">{formatCurrency(holdingCostPerUnit)}/{uom}/yr</strong>
-                <span className="text-[11px] text-slate-500 font-mono">i = {(HOLDING_RATE * 100).toFixed(2)}%/yr · S = ${ORDERING_COST}/order</span>
+              <div className="bg-bg p-2.5 rounded-md border border-border ">
+                <span className="text-xs text-subtle uppercase block font-semibold">3. Holding Cost Rate (H)</span>
+                <strong className="num text-sm text-ink block">{formatCurrency(holdingCostPerUnit)}/{uom}/yr</strong>
+                <span className="text-xs text-subtle font-mono">i = {(HOLDING_RATE * 100).toFixed(2)}%/yr · S = ${ORDERING_COST}/order</span>
               </div>
-              <div className="bg-slate-50 dark:bg-navy-900/60 p-2.5 rounded-md border border-slate-200 dark:border-navy-700">
-                <span className="text-[10px] text-slate-400 uppercase block font-semibold">4. EOQ Variance vs ERP</span>
-                <strong className="num text-sm text-cyan-600 dark:text-cyan-400 block">
+              <div className="bg-bg p-2.5 rounded-md border border-border ">
+                <span className="text-xs text-subtle uppercase block font-semibold">4. EOQ Variance vs ERP</span>
+                <strong className="num text-sm text-primary block">
                   {formatNum(((qStar - currentBatchQty) / currentBatchQty) * 100, 1)}%
                 </strong>
-                <span className="text-[11px] text-slate-500 font-mono">Q* = {formatNum(qStar, 0)} vs Q_curr = {formatNum(currentBatchQty, 0)} {uom}</span>
+                <span className="text-xs text-subtle font-mono">Q* = {formatNum(qStar, 0)} vs Q_curr = {formatNum(currentBatchQty, 0)} {uom}</span>
               </div>
             </div>
 
-            <div className="p-3 bg-slate-50/80 dark:bg-navy-900/80 border border-slate-200 dark:border-navy-700 rounded-md mb-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+            <div className="p-3 bg-[color-mix(in_srgb,var(--bg)_80%,transparent)] border border-border rounded-md mb-3 text-xs leading-relaxed text-body-c ">
               <strong>Horizon Boundary & Model Assumptions:</strong> Days 1–84 represent the authoritative Multivariate autoregressive forecast (R² = {modelR2.toFixed(2)}); Days 85–182 represent a modeled optimization extension continuing the linear trend without in-sample validation. Parameter elasticity demonstrates ∂ ln Q* / ∂ ln D = 0.50, indicating square-root dampening of demand shocks.
             </div>
           </motion.div>
@@ -723,17 +731,17 @@ export default function Optimization() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="card mb-4 border-l-4 border-emerald-500"
+            className="card mb-4 border-l-4 border-success"
           >
             <div className="card__head mb-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">
+                  <h2 className="card__title text-base font-bold text-ink m-0">
                     Operational Optimization Control (Inventory Analyst Lens)
                   </h2>
                   <Badge tone="success">Tactical Runway, Replenishment & Action Matrix</Badge>
                 </div>
-                <p className="card__sub text-xs text-slate-500 dark:text-slate-400 m-0">
+                <p className="card__sub text-xs text-subtle m-0">
                   Operational lead-time exposure, baseline breach timeline, lot-size recalibration triggers, and prioritized task matrix
                 </p>
               </div>
@@ -743,12 +751,12 @@ export default function Optimization() {
             </div>
 
             <div className="grid-3 mb-3">
-              <div className="bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-md p-3">
+              <div className="bg-[color-mix(in_srgb,var(--error-bg)_70%,transparent)] border border-error rounded-md p-3">
                 <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-bold text-rose-600">1. ACT NOW</span>
+                  <span className="text-xs font-bold text-error-tx">1. ACT NOW</span>
                   <Badge tone="risk">Urgent</Badge>
                 </div>
-                <div className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
+                <div className="text-xs text-ink leading-relaxed">
                   {currentCoverageDays < leadTimeDays ? (
                     <>Class {abcClass} Priority: On-hand coverage (<strong>{formatNum(currentCoverageDays, 1)}d</strong>) is below supplier lead time (<strong>{leadTimeDays}d</strong>). Authorize replenishment order for <strong>{formatNum(currentOrderQty, 0)} {uom}</strong> immediately.</>
                   ) : firstCoverageBreach ? (
@@ -759,12 +767,12 @@ export default function Optimization() {
                 </div>
               </div>
 
-              <div className="bg-sky-50/70 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/50 rounded-md p-3">
+              <div className="bg-[color-mix(in_srgb,var(--info-bg)_70%,transparent)] border border-border rounded-md p-3">
                 <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-bold text-sky-600">2. OPTIMIZE</span>
+                  <span className="text-xs font-bold text-primary">2. OPTIMIZE</span>
                   <Badge tone="accent">Lot Sizing</Badge>
                 </div>
-                <div className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
+                <div className="text-xs text-ink leading-relaxed">
                   {currentOptimizationGap > 0 ? (
                     <>Surplus inventory of <strong>+{formatNum(currentExcessQty, 0)} {uom}</strong> ({formatCurrency(currentExcessValue)}) above target buffer. Defer PO releases until stock reaches ROP ({formatNum(reorderPoint, 0)} {uom}).</>
                   ) : (
@@ -773,12 +781,12 @@ export default function Optimization() {
                 </div>
               </div>
 
-              <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-md p-3">
+              <div className="bg-[color-mix(in_srgb,var(--warning-bg)_70%,transparent)] border border-warning rounded-md p-3">
                 <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-bold text-amber-600">3. MONITOR</span>
+                  <span className="text-xs font-bold text-warning-tx">3. MONITOR</span>
                   <Badge tone="watch">Tracking</Badge>
                 </div>
-                <div className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
+                <div className="text-xs text-ink leading-relaxed">
                   Class {abcClass} Governance: Review cadence ({abcReviewCadence}) with {activeMeta.supplier}. Demand CV of <strong>{(demandCV * 100).toFixed(1)}%</strong> indicates moderate volatility against the {leadTimeDays}-day lead-time SLA.
                 </div>
               </div>
@@ -792,17 +800,17 @@ export default function Optimization() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="card mb-4 border-l-4 border-slate-800 dark:border-slate-300"
+            className="card mb-4 border-l-4 border-ink "
           >
             <div className="card__head mb-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">
+                  <h2 className="card__title text-base font-bold text-ink m-0">
                     Optimization Executive Summary & 6-Month Opportunity
                   </h2>
                   <Badge tone="accent">EBITDA & Working Capital Governance</Badge>
                 </div>
-                <p className="card__sub text-xs text-slate-500 dark:text-slate-400 m-0">
+                <p className="card__sub text-xs text-subtle m-0">
                   High-level enterprise working capital release, annual carrying cost savings, and service level assurance
                 </p>
               </div>
@@ -812,25 +820,25 @@ export default function Optimization() {
             </div>
 
             <div className="grid-4 mb-3">
-              <div className="bg-slate-50 dark:bg-navy-900/60 p-3 rounded-md border border-slate-200 dark:border-navy-700">
-                <span className="text-[10px] text-slate-400 uppercase block font-semibold">1. Current Capital Position</span>
-                <strong className="num text-base text-slate-900 dark:text-slate-100 block">{formatCurrency(currentOnHandValue)}</strong>
-                <span className="text-xs text-slate-500 font-mono">{formatNum(currentOnHand, 0)} {uom} on-hand ({formatNum(currentCoverageDays, 1)}d)</span>
+              <div className="bg-bg p-3 rounded-md border border-border ">
+                <span className="text-xs text-subtle uppercase block font-semibold">1. Current Capital Position</span>
+                <strong className="num text-base text-ink block">{formatCurrency(currentOnHandValue)}</strong>
+                <span className="text-xs text-subtle font-mono">{formatNum(currentOnHand, 0)} {uom} on-hand ({formatNum(currentCoverageDays, 1)}d)</span>
               </div>
-              <div className="bg-slate-50 dark:bg-navy-900/60 p-3 rounded-md border border-slate-200 dark:border-navy-700">
-                <span className="text-[10px] text-slate-400 uppercase block font-semibold">2. Target Buffer Capital (SS + Q*)</span>
-                <strong className="num text-base text-cyan-600 dark:text-cyan-400 block">{formatCurrency(targetPositionValue)}</strong>
-                <span className="text-xs text-slate-500 font-mono">Modeled target maintains 95% service level</span>
+              <div className="bg-bg p-3 rounded-md border border-border ">
+                <span className="text-xs text-subtle uppercase block font-semibold">2. Target Buffer Capital (SS + Q*)</span>
+                <strong className="num text-base text-primary block">{formatCurrency(targetPositionValue)}</strong>
+                <span className="text-xs text-subtle font-mono">Modeled target maintains 95% service level</span>
               </div>
-              <div className="bg-slate-50 dark:bg-navy-900/60 p-3 rounded-md border border-slate-200 dark:border-navy-700">
-                <span className="text-[10px] text-slate-400 uppercase block font-semibold">3. Capital Release Opportunity</span>
-                <strong className="num text-base text-emerald-600 dark:text-emerald-400 block">{formatCurrency(modeledCapitalReleaseOpportunity)}</strong>
-                <span className="text-xs text-slate-500 font-mono">{currentOnHandValue > 0 ? ((modeledCapitalReleaseOpportunity / currentOnHandValue) * 100).toFixed(1) : 0}% unlocked</span>
+              <div className="bg-bg p-3 rounded-md border border-border ">
+                <span className="text-xs text-subtle uppercase block font-semibold">3. Capital Release Opportunity</span>
+                <strong className="num text-base text-success-tx block">{formatCurrency(modeledCapitalReleaseOpportunity)}</strong>
+                <span className="text-xs text-subtle font-mono">{currentOnHandValue > 0 ? ((modeledCapitalReleaseOpportunity / currentOnHandValue) * 100).toFixed(1) : 0}% unlocked</span>
               </div>
-              <div className="bg-slate-50 dark:bg-navy-900/60 p-3 rounded-md border border-slate-200 dark:border-navy-700">
-                <span className="text-[10px] text-slate-400 uppercase block font-semibold">4. Annual Carrying Cost Savings</span>
-                <strong className="num text-base text-emerald-600 dark:text-emerald-400 block">{formatCurrency(annualCarryingCostSavings)}/yr</strong>
-                <span className="text-xs text-slate-500 font-mono">Direct P&L carrying expense reduction</span>
+              <div className="bg-bg p-3 rounded-md border border-border ">
+                <span className="text-xs text-subtle uppercase block font-semibold">4. Annual Carrying Cost Savings</span>
+                <strong className="num text-base text-success-tx block">{formatCurrency(annualCarryingCostSavings)}/yr</strong>
+                <span className="text-xs text-subtle font-mono">Direct P&L carrying expense reduction</span>
               </div>
             </div>
           </motion.div>
@@ -842,55 +850,55 @@ export default function Optimization() {
         <div className="card__head flex-wrap gap-2.5 mb-3.5">
           <div>
             <div className="flex flex-wrap items-center gap-2.5">
-              <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">
+              <h2 className="card__title text-base font-bold text-ink m-0">
                 Projected Inventory Position — {selectedHorizon === '12w' ? '12-Week (84-Day)' : '26-Week (182-Day)'} Outlook
               </h2>
               <Badge tone="accent">
                 {selectedHorizon === '12w' ? 'Authoritative Forecast Window' : 'Extended Modeled Outlook'}
               </Badge>
             </div>
-            <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="card__sub text-xs text-subtle mt-0.5">
               Daily trajectory comparing Baseline Depletion Projection against Modeled Target Buffer (SS + Q*), Safety Stock, and Reorder Point
             </p>
           </div>
           <div className="chart-legend gap-3.5 flex-wrap text-xs">
-            <span><span className="legend-dot" style={{ background: '#0284C7', height: 4, width: 14, borderRadius: 2 }} />Baseline Depletion</span>
-            <span><span className="legend-dot" style={{ background: '#0F9D6C', height: 4, width: 14, borderRadius: 2, borderTop: '2px dashed #0F9D6C' }} />Target Buffer (SS + Q*)</span>
-            <span><span className="legend-dot" style={{ background: '#B7791F', height: 3, width: 12, borderRadius: 2 }} />Reorder Point (ROP)</span>
-            <span><span className="legend-dot" style={{ background: '#C0362C', height: 3, width: 12, borderRadius: 2, borderTop: '2px dotted #C0362C' }} />Safety Stock (95% SL)</span>
+            <span><span className="legend-dot" style={{ background: 'var(--primary)', height: 4, width: 14, borderRadius: 2 }} />Baseline Depletion</span>
+            <span><span className="legend-dot" style={{ background: 'var(--success)', height: 4, width: 14, borderRadius: 2, borderTop: '2px dashed var(--success)' }} />Target Buffer (SS + Q*)</span>
+            <span><span className="legend-dot" style={{ background: 'var(--warning)', height: 3, width: 12, borderRadius: 2 }} />Reorder Point (ROP)</span>
+            <span><span className="legend-dot" style={{ background: 'var(--error)', height: 3, width: 12, borderRadius: 2, borderTop: '2px dotted var(--error)' }} />Safety Stock (95% SL)</span>
           </div>
         </div>
 
         {/* Real-time Interactive Day Inspector */}
         {activeTimelineItem && (
-          <div className="flex flex-wrap items-center justify-between gap-2.5 bg-slate-50 dark:bg-navy-900/60 border border-slate-200 dark:border-navy-700 rounded-md px-3.5 py-2 mb-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 bg-bg border border-border rounded-md px-3.5 py-2 mb-3 text-xs">
             <div className="flex items-center gap-2">
-              <span className={`badge badge-${activeTimelineItem.statusTone} font-bold text-[10px]`}>
+              <span className={`badge badge-${activeTimelineItem.statusTone} font-bold text-xs`}>
                 {activeTimelineItem.dataStatus} {activeTimelineItem.isToday ? 'Today' : `Day ${activeTimelineItem.dayIndex}`}
               </span>
-              <strong className="text-slate-900 dark:text-slate-100 font-mono">{activeTimelineItem.fullDate}</strong>
+              <strong className="text-ink font-mono">{activeTimelineItem.fullDate}</strong>
               <Badge tone={activeTimelineItem.abcClass === 'A' ? 'accent' : 'neutral'}>
                 Class {activeTimelineItem.abcClass}
               </Badge>
             </div>
             <div className="flex flex-wrap items-center gap-3.5 font-mono">
               <div>
-                <span className="text-slate-400 mr-1 font-sans">Stock:</span>
-                <strong className="text-cyan-600 dark:text-cyan-400">{formatNum(activeTimelineItem.projectedOnHand, 0)} {uom}</strong>
+                <span className="text-subtle mr-1 font-sans">Stock:</span>
+                <strong className="text-primary ">{formatNum(activeTimelineItem.projectedOnHand, 0)} {uom}</strong>
               </div>
               <div>
-                <span className="text-slate-400 mr-1 font-sans">Target Buffer:</span>
-                <strong className="text-emerald-600 dark:text-emerald-400">{formatNum(activeTimelineItem.targetPosition, 0)} {uom}</strong>
+                <span className="text-subtle mr-1 font-sans">Target Buffer:</span>
+                <strong className="text-success-tx ">{formatNum(activeTimelineItem.targetPosition, 0)} {uom}</strong>
               </div>
               <div>
-                <span className="text-slate-400 mr-1 font-sans">Gap:</span>
-                <strong className={activeTimelineItem.optimizationGap > 0 ? 'text-cyan-600' : activeTimelineItem.optimizationGap < 0 ? 'text-rose-600' : 'text-slate-500'}>
+                <span className="text-subtle mr-1 font-sans">Gap:</span>
+                <strong className={activeTimelineItem.optimizationGap > 0 ? 'text-primary' : activeTimelineItem.optimizationGap < 0 ? 'text-error-tx' : 'text-subtle'}>
                   {activeTimelineItem.optimizationGap >= 0 ? '+' : ''}{formatNum(activeTimelineItem.optimizationGap, 0)} {uom}
                 </strong>
               </div>
               <div>
-                <span className="text-slate-400 mr-1 font-sans">Coverage:</span>
-                <strong className={activeTimelineItem.isCoverageBreached ? 'text-rose-600' : 'text-emerald-600'}>
+                <span className="text-subtle mr-1 font-sans">Coverage:</span>
+                <strong className={activeTimelineItem.isCoverageBreached ? 'text-error-tx' : 'text-success-tx'}>
                   {formatNum(activeTimelineItem.coverageDays, 1)}d
                 </strong>
               </div>
@@ -903,7 +911,7 @@ export default function Optimization() {
           <svg
             viewBox={`0 0 ${W1} ${H1}`}
             preserveAspectRatio="none"
-            className="w-full block cursor-crosshair rounded-lg overflow-hidden border border-slate-200/80 dark:border-navy-700/60 shadow-inner"
+            className="w-full block cursor-crosshair rounded-lg overflow-hidden border border-[color-mix(in_srgb,var(--border)_80%,transparent)] shadow-inner"
             style={{ height: 260 }}
             onMouseMove={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -918,13 +926,13 @@ export default function Optimization() {
           >
             {selectedHorizon === '26w' && (
               <g>
-                <rect x={ML1} y={MT1} width={x1(AUTHORITATIVE_HORIZON_DAYS) - ML1} height={H1 - MT1 - MB1} fill="#F0F9FF" opacity={0.35} />
-                <rect x={x1(AUTHORITATIVE_HORIZON_DAYS)} y={MT1} width={W1 - MR1 - x1(AUTHORITATIVE_HORIZON_DAYS)} height={H1 - MT1 - MB1} fill="#F8FAFC" opacity={0.6} />
-                <line x1={x1(AUTHORITATIVE_HORIZON_DAYS)} x2={x1(AUTHORITATIVE_HORIZON_DAYS)} y1={MT1} y2={H1 - MB1} stroke="#94A3B8" strokeWidth={1} strokeDasharray="4 3" />
-                <text x={x1(AUTHORITATIVE_HORIZON_DAYS) - 8} y={MT1 + 14} fontSize={9} fill="#0369A1" fontWeight={700} fontFamily="IBM Plex Mono" textAnchor="end">
+                <rect x={ML1} y={MT1} width={x1(AUTHORITATIVE_HORIZON_DAYS) - ML1} height={H1 - MT1 - MB1} fill="var(--info-bg)" opacity={0.35} />
+                <rect x={x1(AUTHORITATIVE_HORIZON_DAYS)} y={MT1} width={W1 - MR1 - x1(AUTHORITATIVE_HORIZON_DAYS)} height={H1 - MT1 - MB1} fill="var(--bg)" opacity={0.6} />
+                <line x1={x1(AUTHORITATIVE_HORIZON_DAYS)} x2={x1(AUTHORITATIVE_HORIZON_DAYS)} y1={MT1} y2={H1 - MB1} stroke="var(--subtle)" strokeWidth={1} strokeDasharray="4 3" />
+                <text x={x1(AUTHORITATIVE_HORIZON_DAYS) - 8} y={MT1 + 14} fontSize={12} fill="var(--info-tx)" fontWeight={700} textAnchor="end">
                   ◀ 84d Authoritative Forecast Window
                 </text>
-                <text x={x1(AUTHORITATIVE_HORIZON_DAYS) + 8} y={MT1 + 14} fontSize={9} fill="#64748B" fontWeight={700} fontFamily="IBM Plex Mono" textAnchor="start">
+                <text x={x1(AUTHORITATIVE_HORIZON_DAYS) + 8} y={MT1 + 14} fontSize={12} fill="var(--subtle)" fontWeight={700} textAnchor="start">
                   Modeled Optimization Extension ▶
                 </text>
               </g>
@@ -932,8 +940,8 @@ export default function Optimization() {
 
             {[0, yMax1 * 0.25, yMax1 * 0.5, yMax1 * 0.75, yMax1].map((v) => (
               <g key={v}>
-                <line x1={ML1} x2={W1 - MR1} y1={y1(v)} y2={y1(v)} stroke="#EEF2F7" strokeWidth={1} />
-                <text x={8} y={y1(v) + 4} fontSize={9.5} fill="#8896A8" fontFamily="IBM Plex Mono">
+                <line x1={ML1} x2={W1 - MR1} y1={y1(v)} y2={y1(v)} stroke="var(--muted-fill)" strokeWidth={1} />
+                <text x={8} y={y1(v) + 4} fontSize={12} fill="var(--subtle)">
                   {formatNum(v, 0)} {uom}
                 </text>
               </g>
@@ -941,40 +949,40 @@ export default function Optimization() {
 
             {[0, 14, 28, 42, 56, 70, 84, 112, 140, 182].filter((d) => d <= activeHorizonDays).map((d) => (
               <g key={d}>
-                <line x1={x1(d)} x2={x1(d)} y1={H1 - MB1} y2={H1 - MB1 + 4} stroke="#CBD5E1" />
+                <line x1={x1(d)} x2={x1(d)} y1={H1 - MB1} y2={H1 - MB1 + 4} stroke="var(--border-strong)" />
                 <text
                   x={x1(d)}
                   y={H1 - MB1 + 15}
-                  fontSize={9}
-                  fill={d === 0 ? 'var(--accent)' : '#5B6B82'}
+                  fontSize={12}
+                  fill={d === 0 ? 'var(--primary)' : 'var(--subtle)'}
                   fontWeight={d === 0 || d === 84 || d === activeHorizonDays ? 700 : 500}
                   textAnchor="middle"
-                  fontFamily="IBM Plex Mono"
+                 
                 >
                   {d === 0 ? 'Today' : `D+${d}`}
                 </text>
-                <text x={x1(d)} y={H1 - MB1 + 26} fontSize={8} fill="#94A3B8" textAnchor="middle">
+                <text x={x1(d)} y={H1 - MB1 + 26} fontSize={12} fill="var(--subtle)" textAnchor="middle">
                   {optimizationTimeline[d]?.date}
                 </text>
               </g>
             ))}
 
-            <path d={ssPath1} fill="none" stroke="#C0362C" strokeWidth={1.5} strokeDasharray="3 3" />
-            <path d={ropPath1} fill="none" stroke="#B7791F" strokeWidth={1.5} strokeDasharray="4 3" />
-            <path d={targetPath1} fill="none" stroke="#0F9D6C" strokeWidth={2.5} strokeDasharray="5 4" />
-            <path d={baselinePath1} fill="none" stroke="#0284C7" strokeWidth={3} />
-            <circle cx={x1(0)} cy={y1(currentOnHand)} r={5} fill="#0284C7" stroke="#fff" strokeWidth={2} />
+            <path d={ssPath1} fill="none" stroke="var(--error)" strokeWidth={1.5} strokeDasharray="3 3" />
+            <path d={ropPath1} fill="none" stroke="var(--warning)" strokeWidth={1.5} strokeDasharray="4 3" />
+            <path d={targetPath1} fill="none" stroke="var(--success)" strokeWidth={2.5} strokeDasharray="5 4" />
+            <path d={baselinePath1} fill="none" stroke="var(--primary)" strokeWidth={3} />
+            <circle cx={x1(0)} cy={y1(currentOnHand)} r={5} fill="var(--primary)" stroke="#fff" strokeWidth={2} />
 
             {hoveredTimelineIdx !== null && activeTimelineItem && (
               <g>
-                <line x1={x1(hoveredTimelineIdx)} x2={x1(hoveredTimelineIdx)} y1={MT1} y2={H1 - MB1} stroke="#0284C7" strokeWidth={1.5} strokeDasharray="2 2" />
-                <circle cx={x1(hoveredTimelineIdx)} cy={y1(activeTimelineItem.projectedOnHand)} r={5} fill="#0284C7" stroke="#fff" strokeWidth={2} />
-                <circle cx={x1(hoveredTimelineIdx)} cy={y1(activeTimelineItem.targetPosition)} r={4.5} fill="#0F9D6C" stroke="#fff" strokeWidth={1.5} />
+                <line x1={x1(hoveredTimelineIdx)} x2={x1(hoveredTimelineIdx)} y1={MT1} y2={H1 - MB1} stroke="var(--primary)" strokeWidth={1.5} strokeDasharray="2 2" />
+                <circle cx={x1(hoveredTimelineIdx)} cy={y1(activeTimelineItem.projectedOnHand)} r={5} fill="var(--primary)" stroke="#fff" strokeWidth={2} />
+                <circle cx={x1(hoveredTimelineIdx)} cy={y1(activeTimelineItem.targetPosition)} r={4.5} fill="var(--success)" stroke="#fff" strokeWidth={1.5} />
               </g>
             )}
 
-            <line x1={ML1} x2={W1 - MR1} y1={H1 - MB1} y2={H1 - MB1} stroke="#CBD5E1" strokeWidth={1} />
-            <line x1={ML1} x2={ML1} y1={MT1} y2={H1 - MB1} stroke="#CBD5E1" strokeWidth={1} />
+            <line x1={ML1} x2={W1 - MR1} y1={H1 - MB1} y2={H1 - MB1} stroke="var(--border-strong)" strokeWidth={1} />
+            <line x1={ML1} x2={ML1} y1={MT1} y2={H1 - MB1} stroke="var(--border-strong)" strokeWidth={1} />
           </svg>
         </div>
       </div>
@@ -986,10 +994,10 @@ export default function Optimization() {
           <div>
             <div className="flex justify-between items-start gap-2 mb-2.5">
               <div>
-                <h3 className="card__title text-sm font-bold text-slate-900 dark:text-slate-100 m-0">
+                <h3 className="card__title text-sm font-bold text-ink m-0">
                   Inventory Coverage & Runway Outlook
                 </h3>
-                <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="card__sub text-xs text-subtle mt-0.5">
                   Days of supply vs {leadTimeDays}-day supplier replenishment lead time threshold
                 </p>
               </div>
@@ -999,14 +1007,14 @@ export default function Optimization() {
             </div>
 
             {activeCoverageItem && (
-              <div className="flex justify-between items-center bg-slate-50 dark:bg-navy-900/60 border border-slate-200 dark:border-navy-700 rounded px-2.5 py-1.5 text-xs mb-2">
+              <div className="flex justify-between items-center bg-bg border border-border rounded px-2.5 py-1.5 text-xs mb-2">
                 <div>
-                  <span className="text-slate-400 mr-1">Date:</span>
-                  <strong className="font-mono text-slate-900 dark:text-slate-100">{activeCoverageItem.date}</strong> (Day {activeCoverageItem.dayIndex})
+                  <span className="text-subtle mr-1">Date:</span>
+                  <strong className="font-mono text-ink ">{activeCoverageItem.date}</strong> (Day {activeCoverageItem.dayIndex})
                 </div>
                 <div>
-                  <span className="text-slate-400 mr-1">Coverage:</span>
-                  <strong className={`font-mono ${activeCoverageItem.isCoverageBreached ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  <span className="text-subtle mr-1">Coverage:</span>
+                  <strong className={`font-mono ${activeCoverageItem.isCoverageBreached ? 'text-error-tx' : 'text-success-tx'}`}>
                     {formatNum(activeCoverageItem.coverageDays, 1)} Days
                   </strong>
                 </div>
@@ -1017,7 +1025,7 @@ export default function Optimization() {
               <svg
                 viewBox={`0 0 ${W2} ${H2}`}
                 preserveAspectRatio="none"
-                className="w-full block cursor-crosshair rounded border border-slate-200/80 dark:border-navy-700/60"
+                className="w-full block cursor-crosshair rounded border border-[color-mix(in_srgb,var(--border)_80%,transparent)] "
                 style={{ height: 180 }}
                 onMouseMove={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -1032,17 +1040,17 @@ export default function Optimization() {
               >
                 {[0, yMax2 * 0.25, yMax2 * 0.5, yMax2 * 0.75, yMax2].map((v) => (
                   <g key={v}>
-                    <line x1={ML2} x2={W2 - MR2} y1={y2(v)} y2={y2(v)} stroke="#EEF2F7" strokeWidth={1} />
-                    <text x={6} y={y2(v) + 3.5} fontSize={8.5} fill="#8896A8" fontFamily="IBM Plex Mono">{formatNum(v, 0)}d</text>
+                    <line x1={ML2} x2={W2 - MR2} y1={y2(v)} y2={y2(v)} stroke="var(--muted-fill)" strokeWidth={1} />
+                    <text x={6} y={y2(v) + 3.5} fontSize={12} fill="var(--subtle)">{formatNum(v, 0)}d</text>
                   </g>
                 ))}
-                <line x1={ML2} x2={W2 - MR2} y1={y2(leadTimeDays)} y2={y2(leadTimeDays)} stroke="#B7791F" strokeWidth={1.5} strokeDasharray="4 3" />
-                <path d={coveragePath2} fill="none" stroke="#0EA5E9" strokeWidth={2.5} />
+                <line x1={ML2} x2={W2 - MR2} y1={y2(leadTimeDays)} y2={y2(leadTimeDays)} stroke="var(--warning)" strokeWidth={1.5} strokeDasharray="4 3" />
+                <path d={coveragePath2} fill="none" stroke="var(--primary)" strokeWidth={2.5} />
                 {hoveredCoverageIdx !== null && activeCoverageItem && (
-                  <circle cx={x2(hoveredCoverageIdx)} cy={y2(activeCoverageItem.coverageDays)} r={5} fill="#0EA5E9" stroke="#fff" strokeWidth={2} />
+                  <circle cx={x2(hoveredCoverageIdx)} cy={y2(activeCoverageItem.coverageDays)} r={5} fill="var(--primary)" stroke="#fff" strokeWidth={2} />
                 )}
-                <line x1={ML2} x2={W2 - MR2} y1={H2 - MB2} y2={H2 - MB2} stroke="#CBD5E1" strokeWidth={1} />
-                <line x1={ML2} x2={ML2} y1={MT2} y2={H2 - MB2} stroke="#CBD5E1" strokeWidth={1} />
+                <line x1={ML2} x2={W2 - MR2} y1={H2 - MB2} y2={H2 - MB2} stroke="var(--border-strong)" strokeWidth={1} />
+                <line x1={ML2} x2={ML2} y1={MT2} y2={H2 - MB2} stroke="var(--border-strong)" strokeWidth={1} />
               </svg>
             </div>
           </div>
@@ -1053,10 +1061,10 @@ export default function Optimization() {
           <div>
             <div className="flex justify-between items-start gap-2 mb-2.5">
               <div>
-                <h3 className="card__title text-sm font-bold text-slate-900 dark:text-slate-100 m-0">
+                <h3 className="card__title text-sm font-bold text-ink m-0">
                   30-Day Rolling Projected ITR Outlook
                 </h3>
-                <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="card__sub text-xs text-subtle mt-0.5">
                   Rolling ITR (COGS / 30-Day Avg Inventory Value) vs target
                 </p>
               </div>
@@ -1066,14 +1074,14 @@ export default function Optimization() {
             </div>
 
             {activeItrItem && (
-              <div className="flex justify-between items-center bg-slate-50 dark:bg-navy-900/60 border border-slate-200 dark:border-navy-700 rounded px-2.5 py-1.5 text-xs mb-2">
+              <div className="flex justify-between items-center bg-bg border border-border rounded px-2.5 py-1.5 text-xs mb-2">
                 <div>
-                  <span className="text-slate-400 mr-1">Date:</span>
-                  <strong className="font-mono text-slate-900 dark:text-slate-100">{activeItrItem.date}</strong> (Day {activeItrItem.dayIndex})
+                  <span className="text-subtle mr-1">Date:</span>
+                  <strong className="font-mono text-ink ">{activeItrItem.date}</strong> (Day {activeItrItem.dayIndex})
                 </div>
                 <div>
-                  <span className="text-slate-400 mr-1">30d Rolling ITR:</span>
-                  <strong className="num text-emerald-600 dark:text-emerald-400">{formatNum(activeItrItem.rollingITR, 2)}×</strong>
+                  <span className="text-subtle mr-1">30d Rolling ITR:</span>
+                  <strong className="num text-success-tx ">{formatNum(activeItrItem.rollingITR, 2)}×</strong>
                 </div>
               </div>
             )}
@@ -1082,7 +1090,7 @@ export default function Optimization() {
               <svg
                 viewBox={`0 0 ${W3} ${H3}`}
                 preserveAspectRatio="none"
-                className="w-full block cursor-crosshair rounded border border-slate-200/80 dark:border-navy-700/60"
+                className="w-full block cursor-crosshair rounded border border-[color-mix(in_srgb,var(--border)_80%,transparent)] "
                 style={{ height: 180 }}
                 onMouseMove={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -1097,17 +1105,17 @@ export default function Optimization() {
               >
                 {[0, yMax3 * 0.25, yMax3 * 0.5, yMax3 * 0.75, yMax3].map((v) => (
                   <g key={v}>
-                    <line x1={ML3} x2={W3 - MR3} y1={y3(v)} y2={y3(v)} stroke="#EEF2F7" strokeWidth={1} />
-                    <text x={6} y={y3(v) + 3.5} fontSize={8.5} fill="#8896A8" fontFamily="IBM Plex Mono">{formatNum(v, 1)}×</text>
+                    <line x1={ML3} x2={W3 - MR3} y1={y3(v)} y2={y3(v)} stroke="var(--muted-fill)" strokeWidth={1} />
+                    <text x={6} y={y3(v) + 3.5} fontSize={12} fill="var(--subtle)">{formatNum(v, 1)}×</text>
                   </g>
                 ))}
-                <line x1={ML3} x2={W3 - MR3} y1={y3(targetITR)} y2={y3(targetITR)} stroke="#0F9D6C" strokeWidth={1.5} strokeDasharray="4 3" />
-                <path d={itrPath3} fill="none" stroke="#0F9D6C" strokeWidth={2.5} />
+                <line x1={ML3} x2={W3 - MR3} y1={y3(targetITR)} y2={y3(targetITR)} stroke="var(--success)" strokeWidth={1.5} strokeDasharray="4 3" />
+                <path d={itrPath3} fill="none" stroke="var(--success)" strokeWidth={2.5} />
                 {hoveredItrIdx !== null && activeItrItem && (
-                  <circle cx={x3(hoveredItrIdx)} cy={y3(activeItrItem.rollingITR)} r={5} fill="#0F9D6C" stroke="#fff" strokeWidth={2} />
+                  <circle cx={x3(hoveredItrIdx)} cy={y3(activeItrItem.rollingITR)} r={5} fill="var(--success)" stroke="#fff" strokeWidth={2} />
                 )}
-                <line x1={ML3} x2={W3 - MR3} y1={H3 - MB3} y2={H3 - MB3} stroke="#CBD5E1" strokeWidth={1} />
-                <line x1={ML3} x2={ML3} y1={MT3} y2={H3 - MB3} stroke="#CBD5E1" strokeWidth={1} />
+                <line x1={ML3} x2={W3 - MR3} y1={H3 - MB3} y2={H3 - MB3} stroke="var(--border-strong)" strokeWidth={1} />
+                <line x1={ML3} x2={ML3} y1={MT3} y2={H3 - MB3} stroke="var(--border-strong)" strokeWidth={1} />
               </svg>
             </div>
           </div>
@@ -1119,39 +1127,39 @@ export default function Optimization() {
         <div className="card__head flex-wrap gap-2.5 mb-3">
           <div>
             <div className="flex items-center gap-2.5">
-              <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">
+              <h2 className="card__title text-base font-bold text-ink m-0">
                 Inventory Capital & Carrying Cost Outlook
               </h2>
               <Badge tone="accent">Financial Valuation Proxy</Badge>
             </div>
-            <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="card__sub text-xs text-subtle mt-0.5">
               Physical inventory capital valuation ($) over the planning horizon vs modeled target buffer ($)
             </p>
           </div>
           <div className="chart-legend gap-3.5 text-xs">
-            <span><span className="legend-dot" style={{ background: '#0284C7', height: 4, width: 14, borderRadius: 2 }} />Baseline Capital ($)</span>
-            <span><span className="legend-dot" style={{ background: '#0F9D6C', height: 4, width: 14, borderRadius: 2, borderTop: '2px dashed #0F9D6C' }} />Target Capital ($)</span>
+            <span><span className="legend-dot" style={{ background: 'var(--primary)', height: 4, width: 14, borderRadius: 2 }} />Baseline Capital ($)</span>
+            <span><span className="legend-dot" style={{ background: 'var(--success)', height: 4, width: 14, borderRadius: 2, borderTop: '2px dashed var(--success)' }} />Target Capital ($)</span>
           </div>
         </div>
 
         {activeCapitalItem && (
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-navy-900/60 border border-slate-200 dark:border-navy-700 rounded-md px-3 py-1.5 text-xs mb-2.5 font-mono">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-bg border border-border rounded-md px-3 py-1.5 text-xs mb-2.5 font-mono">
             <div>
-              <span className="text-slate-400 mr-1 font-sans">Day:</span>
-              <strong className="text-slate-900 dark:text-slate-100">{activeCapitalItem.date}</strong> (Day {activeCapitalItem.dayIndex})
+              <span className="text-subtle mr-1 font-sans">Day:</span>
+              <strong className="text-ink ">{activeCapitalItem.date}</strong> (Day {activeCapitalItem.dayIndex})
             </div>
             <div className="flex flex-wrap items-center gap-3.5">
               <div>
-                <span className="text-slate-400 mr-1 font-sans">Physical Capital:</span>
-                <strong className="text-cyan-600 dark:text-cyan-400">{formatCurrency(activeCapitalItem.inventoryValue)}</strong>
+                <span className="text-subtle mr-1 font-sans">Physical Capital:</span>
+                <strong className="text-primary ">{formatCurrency(activeCapitalItem.inventoryValue)}</strong>
               </div>
               <div>
-                <span className="text-slate-400 mr-1 font-sans">Target Capital:</span>
-                <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(activeCapitalItem.targetValue)}</strong>
+                <span className="text-subtle mr-1 font-sans">Target Capital:</span>
+                <strong className="text-success-tx ">{formatCurrency(activeCapitalItem.targetValue)}</strong>
               </div>
               <div>
-                <span className="text-slate-400 mr-1 font-sans">Carrying Savings:</span>
-                <strong className="text-emerald-600 dark:text-emerald-400">+{formatCurrency(activeCapitalItem.cumulativeHoldingSavings)}</strong>
+                <span className="text-subtle mr-1 font-sans">Carrying Savings:</span>
+                <strong className="text-success-tx ">+{formatCurrency(activeCapitalItem.cumulativeHoldingSavings)}</strong>
               </div>
             </div>
           </div>
@@ -1161,7 +1169,7 @@ export default function Optimization() {
           <svg
             viewBox={`0 0 ${W4} ${H4}`}
             preserveAspectRatio="none"
-            className="w-full block cursor-crosshair rounded-lg overflow-hidden border border-slate-200/80 dark:border-navy-700/60 shadow-inner"
+            className="w-full block cursor-crosshair rounded-lg overflow-hidden border border-[color-mix(in_srgb,var(--border)_80%,transparent)] shadow-inner"
             style={{ height: 200 }}
             onMouseMove={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -1176,20 +1184,20 @@ export default function Optimization() {
           >
             {[0, yMax4 * 0.25, yMax4 * 0.5, yMax4 * 0.75, yMax4].map((v) => (
               <g key={v}>
-                <line x1={ML4} x2={W4 - MR4} y1={y4(v)} y2={y4(v)} stroke="#EEF2F7" strokeWidth={1} />
-                <text x={8} y={y4(v) + 4} fontSize={9} fill="#8896A8" fontFamily="IBM Plex Mono">{formatCurrency(v, 0)}</text>
+                <line x1={ML4} x2={W4 - MR4} y1={y4(v)} y2={y4(v)} stroke="var(--muted-fill)" strokeWidth={1} />
+                <text x={8} y={y4(v) + 4} fontSize={12} fill="var(--subtle)">{formatCurrency(v, 0)}</text>
               </g>
             ))}
-            <path d={capTargetPath4} fill="none" stroke="#0F9D6C" strokeWidth={2} strokeDasharray="5 4" />
-            <path d={capBaselinePath4} fill="none" stroke="#0284C7" strokeWidth={2.5} />
+            <path d={capTargetPath4} fill="none" stroke="var(--success)" strokeWidth={2} strokeDasharray="5 4" />
+            <path d={capBaselinePath4} fill="none" stroke="var(--primary)" strokeWidth={2.5} />
             {hoveredCapitalIdx !== null && activeCapitalItem && (
               <g>
-                <circle cx={x4(hoveredCapitalIdx)} cy={y4(activeCapitalItem.inventoryValue)} r={5} fill="#0284C7" stroke="#fff" strokeWidth={2} />
-                <circle cx={x4(hoveredCapitalIdx)} cy={y4(activeCapitalItem.targetValue)} r={4.5} fill="#0F9D6C" stroke="#fff" strokeWidth={1.5} />
+                <circle cx={x4(hoveredCapitalIdx)} cy={y4(activeCapitalItem.inventoryValue)} r={5} fill="var(--primary)" stroke="#fff" strokeWidth={2} />
+                <circle cx={x4(hoveredCapitalIdx)} cy={y4(activeCapitalItem.targetValue)} r={4.5} fill="var(--success)" stroke="#fff" strokeWidth={1.5} />
               </g>
             )}
-            <line x1={ML4} x2={W4 - MR4} y1={H4 - MB4} y2={H4 - MB4} stroke="#CBD5E1" strokeWidth={1} />
-            <line x1={ML4} x2={ML4} y1={MT4} y2={H4 - MB4} stroke="#CBD5E1" strokeWidth={1} />
+            <line x1={ML4} x2={W4 - MR4} y1={H4 - MB4} y2={H4 - MB4} stroke="var(--border-strong)" strokeWidth={1} />
+            <line x1={ML4} x2={ML4} y1={MT4} y2={H4 - MB4} stroke="var(--border-strong)" strokeWidth={1} />
           </svg>
         </div>
       </div>
@@ -1198,13 +1206,13 @@ export default function Optimization() {
       <div className="card mb-4">
         <div className="card__head mb-3">
           <div>
-            <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Per-Material Catalog Order Plan</h2>
-            <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Canonical multi-material optimization parameters, target buffers, and replenishment recommendations</p>
+            <h2 className="card__title text-base font-bold text-ink m-0">Per-Material Catalog Order Plan</h2>
+            <p className="card__sub text-xs text-subtle mt-0.5">Canonical multi-material optimization parameters, target buffers, and replenishment recommendations</p>
           </div>
           <Badge tone="neutral">Catalog Baseline</Badge>
         </div>
 
-        <div className="border border-slate-200 dark:border-navy-700 rounded-lg overflow-hidden mb-3.5">
+        <div className="border border-border rounded-lg overflow-hidden mb-3.5">
           <Table>
             <TableHeader>
               <TableRow>
@@ -1223,12 +1231,12 @@ export default function Optimization() {
               {catalogOptimizationData.map((m) => (
                 <TableRow
                   key={m.id}
-                  className={m.isSelected ? 'bg-cyan-50/60 dark:bg-cyan-950/30 font-medium' : undefined}
+                  className={m.isSelected ? 'bg-[color-mix(in_srgb,var(--info-bg)_60%,transparent)] font-medium' : undefined}
                 >
-                  <TableCell className="font-semibold text-slate-900 dark:text-slate-100 font-mono text-xs">
+                  <TableCell className="font-semibold text-ink font-mono text-xs">
                     {m.name}
                     {m.isSelected && (
-                      <span className="badge badge-accent ml-2 text-[10px] py-0.5 px-1.5 font-sans">
+                      <span className="badge badge-accent ml-2 text-xs py-0.5 px-1.5 font-sans">
                         Active SKU
                       </span>
                     )}
@@ -1238,26 +1246,26 @@ export default function Optimization() {
                       Class {m.abcClass}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-slate-800 dark:text-slate-200">
+                  <TableCell className="text-right font-mono text-xs text-ink ">
                     {formatNum(m.currentStock, 0)} {m.uom} ({formatCurrency(m.currentValue)})
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-slate-800 dark:text-slate-200">
+                  <TableCell className="text-right font-mono text-xs text-ink ">
                     {formatNum(m.desiredStock, 0)} {m.uom} ({formatCurrency(m.desiredValue)})
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs">
                     {formatNum(m.coverageDays, 1)}d
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs">
-                    <strong className={m.orderQty > 0 ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400'}>
+                    <strong className={m.orderQty > 0 ? 'text-ink ' : 'text-subtle'}>
                       {formatNum(m.orderQty, 0)} {m.uom} ({formatCurrency(m.orderValue)})
                     </strong>
                   </TableCell>
                   <TableCell>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <span className="text-xs font-semibold text-body-c ">
                       {m.abcPriority}
                     </span>
                   </TableCell>
-                  <TableCell className="text-xs text-slate-400">{m.supplierAllocationText}</TableCell>
+                  <TableCell className="text-xs text-subtle">{m.supplierAllocationText}</TableCell>
                   <TableCell className="text-right font-mono text-xs">{m.confidence.toFixed(2)}%</TableCell>
                 </TableRow>
               ))}

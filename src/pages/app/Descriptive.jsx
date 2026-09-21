@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ViewHead, KpiTile, WhyDisclosure, Badge, Insight } from '../../components/CommonUI';
+import DriverHeatmap from '../../components/DriverHeatmap';
 import { UnivariateTrendChart, BivariateScatterChart } from '../../components/Charts';
 import { usePlatform } from '../../context/PlatformContext';
 
@@ -81,17 +82,17 @@ function UnitCostTrendChart() {
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
       {[60, 70, 80, 90, 100].map((v) => (
         <g key={v}>
-          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="#EEF2F7" />
-          <text x={8} y={y(v) + 4} fontSize={10} fill="#8896A8" fontFamily="IBM Plex Mono">
+          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--muted-fill)" />
+          <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">
             ${v.toFixed(2)}
           </text>
         </g>
       ))}
-      <line x1={ML} x2={W - MR} y1={y(baseline)} y2={y(baseline)} stroke="#0C7EBE" strokeDasharray="4 4" strokeWidth={1.5} />
-      <text x={ML + 8} y={y(baseline) - 6} fontSize={10} fill="#0C7EBE" textAnchor="start" fontFamily="IBM Plex Mono" fontWeight={600}>
+      <line x1={ML} x2={W - MR} y1={y(baseline)} y2={y(baseline)} stroke="var(--info-tx)" strokeDasharray="4 4" strokeWidth={1.5} />
+      <text x={ML + 8} y={y(baseline) - 6} fontSize={12} fill="var(--info-tx)" textAnchor="start" fontWeight={600}>
         ■ Master Service Agreement Baseline: $78.65 / EA
       </text>
-      <path d={linePath} fill="none" stroke="#0EA5E9" strokeWidth={2} />
+      <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth={2} />
       {data.map((v, i) => {
         const isSpike = v > 85;
         const cx = x(i);
@@ -101,16 +102,16 @@ function UnitCostTrendChart() {
           const points = `${cx},${cy - dSize} ${cx + dSize},${cy} ${cx},${cy + dSize} ${cx - dSize},${cy}`;
           return (
             <g key={i}>
-              <polygon points={points} fill="#C0362C" stroke="#fff" strokeWidth={1.5} />
-              <text x={cx} y={cy - 12} fontSize={10} fill="#C0362C" textAnchor="middle" fontFamily="IBM Plex Mono" fontWeight={600}>
+              <polygon points={points} fill="var(--error)" stroke="#fff" strokeWidth={1.5} />
+              <text x={cx} y={cy - 12} fontSize={12} fill="var(--error)" textAnchor="middle" fontWeight={600}>
                 ◆ Wk {i + 1} · Spot PO Expedited Surcharge ($92.00)
               </text>
             </g>
           );
         }
-        return <circle key={i} cx={cx} cy={cy} r={2.5} fill="#0EA5E9" />;
+        return <circle key={i} cx={cx} cy={cy} r={2.5} fill="var(--primary)" />;
       })}
-      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="#CBD5E1" />
+      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
     </svg>
   );
 }
@@ -127,17 +128,17 @@ function LeadTimeTrendChart() {
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
       {[40, 60, 80, 100].map((v) => (
         <g key={v}>
-          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="#EEF2F7" />
-          <text x={8} y={y(v) + 4} fontSize={10} fill="#8896A8" fontFamily="IBM Plex Mono">
+          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--muted-fill)" />
+          <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">
             {v}d
           </text>
         </g>
       ))}
-      <line x1={ML} x2={W - MR} y1={y(cap)} y2={y(cap)} stroke="#C0362C" strokeDasharray="4 4" strokeWidth={1.5} />
-      <text x={ML + 8} y={y(cap) - 6} fontSize={10} fill="#C0362C" textAnchor="start" fontFamily="IBM Plex Mono" fontWeight={600}>
+      <line x1={ML} x2={W - MR} y1={y(cap)} y2={y(cap)} stroke="var(--error)" strokeDasharray="4 4" strokeWidth={1.5} />
+      <text x={ML + 8} y={y(cap) - 6} fontSize={12} fill="var(--error)" textAnchor="start" fontWeight={600}>
         ■ High Risk Latency Threshold: 70 Days
       </text>
-      <path d={linePath} fill="none" stroke="#0EA5E9" strokeWidth={2} />
+      <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth={2} />
       {data.map((v, i) => {
         const isAnomaly = v > 80;
         const isBreach = !isAnomaly && v >= cap;
@@ -148,8 +149,8 @@ function LeadTimeTrendChart() {
           const points = `${cx},${cy - dSize} ${cx + dSize},${cy} ${cx},${cy + dSize} ${cx - dSize},${cy}`;
           return (
             <g key={i}>
-              <polygon points={points} fill="#C0362C" stroke="#fff" strokeWidth={1.5} />
-              <text x={cx} y={cy - 12} fontSize={10} fill="#C0362C" textAnchor="middle" fontFamily="IBM Plex Mono" fontWeight={600}>
+              <polygon points={points} fill="var(--error)" stroke="#fff" strokeWidth={1.5} />
+              <text x={cx} y={cy - 12} fontSize={12} fill="var(--error)" textAnchor="middle" fontWeight={600}>
                 ◆ Wk {i + 1} · Port Congestion Delay (88d)
               </text>
             </g>
@@ -159,16 +160,16 @@ function LeadTimeTrendChart() {
           const sSize = 9;
           return (
             <g key={i}>
-              <rect x={cx - sSize / 2} y={cy - sSize / 2} width={sSize} height={sSize} rx={1.5} fill="#B7791F" stroke="#fff" strokeWidth={1.5} />
-              <text x={cx} y={cy - 12} fontSize={10} fill="#B7791F" textAnchor="middle" fontFamily="IBM Plex Mono" fontWeight={600}>
+              <rect x={cx - sSize / 2} y={cy - sSize / 2} width={sSize} height={sSize} rx={1.5} fill="var(--warning)" stroke="#fff" strokeWidth={1.5} />
+              <text x={cx} y={cy - 12} fontSize={12} fill="var(--warning)" textAnchor="middle" fontWeight={600}>
                 ■ Wk {i + 1} · Customs Latency (75d)
               </text>
             </g>
           );
         }
-        return <circle key={i} cx={cx} cy={cy} r={2.5} fill="#0EA5E9" />;
+        return <circle key={i} cx={cx} cy={cy} r={2.5} fill="var(--primary)" />;
       })}
-      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="#CBD5E1" />
+      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
     </svg>
   );
 }
@@ -185,17 +186,17 @@ function OnHandStockTrendChart() {
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
       {[5000, 10000, 15000].map((v) => (
         <g key={v}>
-          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="#EEF2F7" />
-          <text x={8} y={y(v) + 4} fontSize={10} fill="#8896A8" fontFamily="IBM Plex Mono">
+          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--muted-fill)" />
+          <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">
             {v.toLocaleString()} EA
           </text>
         </g>
       ))}
-      <line x1={ML} x2={W - MR} y1={y(rop)} y2={y(rop)} stroke="#B7791F" strokeDasharray="4 4" strokeWidth={1.5} />
-      <text x={ML + 8} y={y(rop) - 6} fontSize={10} fill="#B7791F" textAnchor="start" fontFamily="IBM Plex Mono" fontWeight={600}>
+      <line x1={ML} x2={W - MR} y1={y(rop)} y2={y(rop)} stroke="var(--warning)" strokeDasharray="4 4" strokeWidth={1.5} />
+      <text x={ML + 8} y={y(rop) - 6} fontSize={12} fill="var(--warning)" textAnchor="start" fontWeight={600}>
         ■ Reorder Point (ROP): 11,500.00 EA (62.7 Days Buffer)
       </text>
-      <path d={linePath} fill="none" stroke="#0EA5E9" strokeWidth={2} />
+      <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth={2} />
       {data.map((v, i) => {
         const isDepletion = v < rop;
         const cx = x(i);
@@ -205,16 +206,16 @@ function OnHandStockTrendChart() {
           const points = `${cx},${cy - dSize} ${cx + dSize},${cy} ${cx},${cy + dSize} ${cx - dSize},${cy}`;
           return (
             <g key={i}>
-              <polygon points={points} fill="#C0362C" stroke="#fff" strokeWidth={1.5} />
-              <text x={cx} y={cy + 16} fontSize={10} fill="#C0362C" textAnchor="middle" fontFamily="IBM Plex Mono" fontWeight={600}>
+              <polygon points={points} fill="var(--error)" stroke="#fff" strokeWidth={1.5} />
+              <text x={cx} y={cy + 16} fontSize={12} fill="var(--error)" textAnchor="middle" fontWeight={600}>
                 ◆ Wk {i + 1} · Buffer Dip ({v.toLocaleString()} EA)
               </text>
             </g>
           );
         }
-        return <circle key={i} cx={cx} cy={cy} r={2.5} fill="#0EA5E9" />;
+        return <circle key={i} cx={cx} cy={cy} r={2.5} fill="var(--primary)" />;
       })}
-      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="#CBD5E1" />
+      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
     </svg>
   );
 }
@@ -234,30 +235,30 @@ function OrderQtyVsCostScatterChart() {
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
       {[500, 1000, 2000, 3000].map((v) => (
         <g key={v}>
-          <line x1={x(v)} x2={x(v)} y1={MT} y2={H - MB} stroke="#EEF2F7" />
-          <text x={x(v)} y={H - MB + 16} fontSize={10} fill="#8896A8" textAnchor="middle" fontFamily="IBM Plex Mono">{v}</text>
+          <line x1={x(v)} x2={x(v)} y1={MT} y2={H - MB} stroke="var(--muted-fill)" />
+          <text x={x(v)} y={H - MB + 16} fontSize={12} fill="var(--subtle)" textAnchor="middle">{v}</text>
         </g>
       ))}
       {[70, 80, 90, 100].map((v) => (
         <g key={v}>
-          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="#EEF2F7" />
-          <text x={8} y={y(v) + 4} fontSize={10} fill="#8896A8" fontFamily="IBM Plex Mono">${v}</text>
+          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--muted-fill)" />
+          <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">${v}</text>
         </g>
       ))}
-      <line x1={x(300)} y1={y(95)} x2={x(2900)} y2={y(70)} stroke="#0EA5E9" strokeWidth={2} strokeDasharray="5 4" />
+      <line x1={x(300)} y1={y(95)} x2={x(2900)} y2={y(70)} stroke="var(--primary)" strokeWidth={2} strokeDasharray="5 4" />
       {points.map((p, i) => (
-        <circle key={i} cx={x(p[0])} cy={y(p[1])} r={3.5} fill="#132038" fillOpacity={0.65} />
+        <circle key={i} cx={x(p[0])} cy={y(p[1])} r={3.5} fill="var(--ink)" fillOpacity={0.65} />
       ))}
-      <text x={x(1300)} y={y(83)} fontSize={10} fill="#0C7EBE" fontWeight={600} fontFamily="IBM Plex Mono" textAnchor="start">
+      <text x={x(1300)} y={y(83)} fontSize={12} fill="var(--info-tx)" fontWeight={600} textAnchor="start">
         Power-law empirical fit: r = -0.68
       </text>
-      <line x1={x(1200)} x2={x(1200)} y1={MT} y2={H - MB} stroke="#0F9D6C" strokeWidth={1} strokeDasharray="3 3" />
-      <text x={x(1220)} y={MT + 14} fontSize={9.5} fill="#0F9D6C" fontWeight={600} fontFamily="IBM Plex Mono">
+      <line x1={x(1200)} x2={x(1200)} y1={MT} y2={H - MB} stroke="var(--success)" strokeWidth={1} strokeDasharray="3 3" />
+      <text x={x(1220)} y={MT + 14} fontSize={12} fill="var(--success)" fontWeight={600}>
         Observed discount threshold (≥1,200 EA)
       </text>
-      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="#CBD5E1" />
-      <line x1={ML} x2={ML} y1={MT} y2={H - MB} stroke="#CBD5E1" />
-      <text x={(ML + W - MR) / 2} y={H - 4} fontSize={10.5} fill="#5B6B82" textAnchor="middle">Order Batch Quantity (EA)</text>
+      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
+      <line x1={ML} x2={ML} y1={MT} y2={H - MB} stroke="var(--border-strong)" />
+      <text x={(ML + W - MR) / 2} y={H - 4} fontSize={12} fill="var(--subtle)" textAnchor="middle">Order Batch Quantity (EA)</text>
     </svg>
   );
 }
@@ -277,37 +278,38 @@ function DemandVsOnTimeScatterChart() {
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
       {[10, 20, 30, 40, 50].map((v) => (
         <g key={v}>
-          <line x1={x(v)} x2={x(v)} y1={MT} y2={H - MB} stroke="#EEF2F7" />
-          <text x={x(v)} y={H - MB + 16} fontSize={10} fill="#8896A8" textAnchor="middle" fontFamily="IBM Plex Mono">{v}%</text>
+          <line x1={x(v)} x2={x(v)} y1={MT} y2={H - MB} stroke="var(--muted-fill)" />
+          <text x={x(v)} y={H - MB + 16} fontSize={12} fill="var(--subtle)" textAnchor="middle">{v}%</text>
         </g>
       ))}
       {[80, 85, 90, 95, 100].map((v) => (
         <g key={v}>
-          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="#EEF2F7" />
-          <text x={8} y={y(v) + 4} fontSize={10} fill="#8896A8" fontFamily="IBM Plex Mono">{v}%</text>
+          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--muted-fill)" />
+          <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">{v}%</text>
         </g>
       ))}
-      <line x1={x(8)} y1={y(98)} x2={x(48)} y2={y(77)} stroke="#0EA5E9" strokeWidth={2} strokeDasharray="5 4" />
+      <line x1={x(8)} y1={y(98)} x2={x(48)} y2={y(77)} stroke="var(--primary)" strokeWidth={2} strokeDasharray="5 4" />
       {points.map((p, i) => (
-        <circle key={i} cx={x(p[0])} cy={y(p[1])} r={3.5} fill="#132038" fillOpacity={0.65} />
+        <circle key={i} cx={x(p[0])} cy={y(p[1])} r={3.5} fill="var(--ink)" fillOpacity={0.65} />
       ))}
-      <text x={x(22)} y={y(95)} fontSize={10} fill="#0C7EBE" fontWeight={600} fontFamily="IBM Plex Mono" textAnchor="start">
+      <text x={x(22)} y={y(95)} fontSize={12} fill="var(--info-tx)" fontWeight={600} textAnchor="start">
         Empirical relationship: r = -0.61
       </text>
-      <line x1={x(25)} x2={x(25)} y1={MT} y2={H - MB} stroke="#C0362C" strokeWidth={1} strokeDasharray="3 3" />
-      <text x={x(26)} y={MT + 14} fontSize={9.5} fill="#C0362C" fontWeight={600} fontFamily="IBM Plex Mono">
+      <line x1={x(25)} x2={x(25)} y1={MT} y2={H - MB} stroke="var(--error)" strokeWidth={1} strokeDasharray="3 3" />
+      <text x={x(26)} y={MT + 14} fontSize={12} fill="var(--error)" fontWeight={600}>
         Volatility risk threshold (CV &gt; 25%)
       </text>
-      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="#CBD5E1" />
-      <line x1={ML} x2={ML} y1={MT} y2={H - MB} stroke="#CBD5E1" />
-      <text x={(ML + W - MR) / 2} y={H - 4} fontSize={10.5} fill="#5B6B82" textAnchor="middle">Demand Coefficient of Variation (CV %)</text>
+      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
+      <line x1={ML} x2={ML} y1={MT} y2={H - MB} stroke="var(--border-strong)" />
+      <text x={(ML + W - MR) / 2} y={H - 4} fontSize={12} fill="var(--subtle)" textAnchor="middle">Demand Coefficient of Variation (CV %)</text>
     </svg>
   );
 }
 
-export default function Descriptive() {
+// `mode` fixes the view to one pipeline stage: 'uni' (Stage 1) or 'bi' (Stage 2). Without it both tabs show.
+export default function Descriptive({ mode }) {
   const { persona, selectedMaterial } = usePlatform();
-  const [tab, setTab] = useState('uni');
+  const [tab, setTab] = useState(mode || 'uni');
   const [selectedVarId, setSelectedVarId] = useState('weekly_consumption');
   const [selectedRelId, setSelectedRelId] = useState('lt_vs_stockout');
 
@@ -325,12 +327,16 @@ export default function Descriptive() {
       transition={{ duration: 0.3 }}
     >
       <ViewHead
-        title="Descriptive Intelligence"
-        subtitle={<p>{subtitleText}</p>}
+        title={mode === 'bi' ? 'Bivariate Analysis' : mode === 'uni' ? 'Univariate Analysis' : 'Descriptive Intelligence'}
+        subtitle={<p>{mode === 'bi'
+          ? 'How stock relates to one driver at a time — the result is a ranked shortlist of drivers for the Multivariate model.'
+          : mode === 'uni'
+          ? 'What has happened to stock on its own, before any driver is considered. Causes are explained in the later stages.'
+          : subtitleText}</p>}
       />
 
-      {/* Main Tab Bar */}
-      <div className="tabbar">
+      {/* Main Tab Bar (hidden when the page is fixed to a single stage) */}
+      {!mode && <div className="tabbar">
         <button
           type="button"
           className={tab === 'uni' ? 'active' : ''}
@@ -345,14 +351,19 @@ export default function Descriptive() {
         >
           Relationship Explorer
         </button>
-      </div>
+      </div>}
 
       {/* TAB 1: UNIVARIATE ANALYSIS */}
       {tab === 'uni' && (
         <div>
+          <Insight label="Stock history">
+            Average weekly consumption is up <span className="metric">26%</span> on the 104-week baseline, and stock has
+            drifted upward at about <span className="metric">2.4% a week</span>. Two weeks stand out: a demand spike in
+            week 21 and a plant-capacity breach in week 27. Why this happened is answered in the later stages.
+          </Insight>
           {/* Material Context Bar */}
           <div className="card__head mb-3">
-            <span className="font-semibold text-slate-900 dark:text-slate-100">
+            <span className="font-semibold text-ink ">
               {selectedMaterial.id} · {selectedMaterial.name} — {selectedMaterial.plant}
             </span>
             <div className="flex items-center gap-2">
@@ -366,10 +377,10 @@ export default function Descriptive() {
           {/* PRE-SELECTED VARIABLES SECTION */}
           <div className="mb-4">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-subtle">
                 Pre-Selected Variables
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-subtle">
                 Click a variable card to inspect its analytical profile
               </span>
             </div>
@@ -390,20 +401,20 @@ export default function Descriptive() {
                     }}
                     className={`card p-3.5 mb-0 cursor-pointer transition-all ${
                       isSelected 
-                        ? 'border-cyan-500 bg-cyan-50/20 dark:bg-cyan-950/20 shadow-sm ring-1 ring-cyan-500' 
-                        : 'border-slate-200 dark:border-navy-700/80 hover:border-slate-300'
+                        ? 'border-primary bg-[color-mix(in_srgb,var(--info-bg)_20%,transparent)] shadow-sm ring-1 ring-primary' 
+                        : 'border-border hover:border-border-strong'
                     }`}
                   >
                     <div className="flex justify-between items-start mb-1.5">
-                      <span className={`text-xs font-bold ${isSelected ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                      <span className={`text-xs font-bold ${isSelected ? 'text-primary ' : 'text-ink '}`}>
                         {v.name}
                       </span>
                       <Badge tone={isSelected ? 'accent' : 'neutral'}>{v.tag}</Badge>
                     </div>
-                    <div className="text-[10px] font-mono text-slate-400 mb-1.5">
+                    <div className="text-xs font-mono text-subtle mb-1.5">
                       {v.type}
                     </div>
-                    <p className="text-xs text-slate-500 leading-snug m-0">
+                    <p className="text-xs text-subtle leading-snug m-0">
                       {v.desc}
                     </p>
                   </div>
@@ -527,25 +538,20 @@ export default function Descriptive() {
               <div className="card mb-4">
                 <div className="card__head mb-3">
                   <div>
-                    <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">
+                    <h2 className="card__title text-base font-bold text-ink m-0">
                       {persona === 'ds'
                         ? '104-Week Demand Series Decomposition & Anomaly Identification'
                         : persona === 'analyst'
                         ? 'Weekly Consumption Velocity with Flagged Operational Breaches'
                         : 'Consumption Demand Trajectory & Plant Operating Envelope'}
                     </h2>
-                    <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <p className="card__sub text-xs text-subtle mt-0.5">
                       {persona === 'ds'
                         ? 'Raw time-series exhibiting OLS linear drift (+30.82 EA/wk, +2.40%/wk of baseline) with distinct statistical anomaly (>3σ)'
                         : persona === 'analyst'
                         ? 'Two distinct operational outliers surfaced: statistical demand shock vs plant policy capacity breach'
                         : 'Strong expansion trajectory with capacity ceiling alert at Plant 1 assembly line ($157.30K/wk threshold)'}
                     </p>
-                  </div>
-                  <div className="chart-legend mt-0 text-xs">
-                    <span><span className="legend-dot" style={{ background: 'var(--accent)' }} />● Actual Weekly Consumption</span>
-                    <span><span className="legend-dot" style={{ background: 'var(--risk)', transform: 'rotate(45deg)' }} />◆ Statistical outlier (&gt;3σ)</span>
-                    <span><span className="legend-dot" style={{ background: 'var(--watch)' }} />■ Policy cap breach (&gt;2,000 EA)</span>
                   </div>
                 </div>
 
@@ -554,29 +560,29 @@ export default function Descriptive() {
                 </div>
 
                 {/* Structured Annotation Card */}
-                <div className="mt-3.5 p-3 bg-slate-50 dark:bg-navy-900/60 rounded-md border border-slate-200 dark:border-navy-700 text-xs">
+                <div className="mt-3.5 p-3 bg-bg rounded-md border border-border text-xs">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">1. What Happened</span>
-                      <p className="text-slate-700 dark:text-slate-300 font-medium m-0">
+                      <span className="text-xs font-bold uppercase text-subtle block mb-0.5">1. What Happened</span>
+                      <p className="text-body-c font-medium m-0">
                         Week 41 demand spiked to 2,410.00 EA (z=3.61); Week 67 hit 2,050.00 EA, breaching the 2,000.00 EA cap.
                       </p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">2. How Significant</span>
-                      <p className="text-slate-700 dark:text-slate-300 font-medium m-0">
+                      <span className="text-xs font-bold uppercase text-subtle block mb-0.5">2. How Significant</span>
+                      <p className="text-body-c font-medium m-0">
                         Week 41 is 87.70% above baseline ($189.55K value); overall trend slope is +30.82 EA/wk (R²=0.84).
                       </p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">3. Why It Matters</span>
-                      <p className="text-slate-700 dark:text-slate-300 font-medium m-0">
+                      <span className="text-xs font-bold uppercase text-subtle block mb-0.5">3. Why It Matters</span>
+                      <p className="text-body-c font-medium m-0">
                         Static lot sizes and fixed 2,000 EA caps create replenishment deficits during surge periods.
                       </p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">4. What Next</span>
-                      <p className="text-slate-700 dark:text-slate-300 font-medium m-0">
+                      <span className="text-xs font-bold uppercase text-subtle block mb-0.5">4. What Next</span>
+                      <p className="text-body-c font-medium m-0">
                         Recalibrate lot sizing parameters and incorporate linear trend slope in Multivariate Forecast.
                       </p>
                     </div>
@@ -616,8 +622,8 @@ export default function Descriptive() {
             <div className="card">
               <div className="card__head mb-3">
                 <div>
-                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Unit Purchase Price Trajectory ($78.65/EA baseline)</h2>
-                  <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Contract master baseline with spot surcharge anomalies across purchase tranches</p>
+                  <h2 className="card__title text-base font-bold text-ink m-0">Unit Purchase Price Trajectory ($78.65/EA baseline)</h2>
+                  <p className="card__sub text-xs text-subtle mt-0.5">Contract master baseline with spot surcharge anomalies across purchase tranches</p>
                 </div>
               </div>
               <div className="chart-shell"><UnitCostTrendChart /></div>
@@ -633,8 +639,8 @@ export default function Descriptive() {
             <div className="card">
               <div className="card__head mb-3">
                 <div>
-                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Supplier Replenishment Lead Time (60 Days Baseline)</h2>
-                  <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Transit duration history with port congestion outliers exceeding high-risk threshold (70d)</p>
+                  <h2 className="card__title text-base font-bold text-ink m-0">Supplier Replenishment Lead Time (60 Days Baseline)</h2>
+                  <p className="card__sub text-xs text-subtle mt-0.5">Transit duration history with port congestion outliers exceeding high-risk threshold (70d)</p>
                 </div>
               </div>
               <div className="chart-shell"><LeadTimeTrendChart /></div>
@@ -650,8 +656,8 @@ export default function Descriptive() {
             <div className="card">
               <div className="card__head mb-3">
                 <div>
-                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">On-Hand Stock Level vs Reorder Point (11,500.00 EA)</h2>
-                  <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Physical warehouse position tracking with safety buffer depletion events</p>
+                  <h2 className="card__title text-base font-bold text-ink m-0">On-Hand Stock Level vs Reorder Point (11,500.00 EA)</h2>
+                  <p className="card__sub text-xs text-subtle mt-0.5">Physical warehouse position tracking with safety buffer depletion events</p>
                 </div>
               </div>
               <div className="chart-shell"><OnHandStockTrendChart /></div>
@@ -668,13 +674,20 @@ export default function Descriptive() {
       {/* TAB 2: BIVARIATE RELATIONSHIP EXPLORER */}
       {tab === 'bi' && (
         <div>
+          <Insight label="Driver relationships">
+            Longer supplier lead times go with more stock-outs (<span className="metric">r = 0.74</span>), and finished-goods
+            demand is the strongest single link to stock. Three drivers clear the bar for the Multivariate model; price
+            barely matters for this must-buy material.
+          </Insight>
+          <DriverHeatmap />
+          <div className="mb-4" />
           {/* PRE-SELECTED RELATIONSHIPS SECTION */}
           <div className="mb-4">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-subtle">
                 Pre-Selected Relationships
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-subtle">
                 Click a relationship card to inspect cross-variable correlation
               </span>
             </div>
@@ -695,20 +708,20 @@ export default function Descriptive() {
                     }}
                     className={`card p-3.5 mb-0 cursor-pointer transition-all ${
                       isSelected 
-                        ? 'border-cyan-500 bg-cyan-50/20 dark:bg-cyan-950/20 shadow-sm ring-1 ring-cyan-500' 
-                        : 'border-slate-200 dark:border-navy-700/80 hover:border-slate-300'
+                        ? 'border-primary bg-[color-mix(in_srgb,var(--info-bg)_20%,transparent)] shadow-sm ring-1 ring-primary' 
+                        : 'border-border hover:border-border-strong'
                     }`}
                   >
                     <div className="flex justify-between items-start mb-1.5">
-                      <span className={`text-xs font-bold ${isSelected ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                      <span className={`text-xs font-bold ${isSelected ? 'text-primary ' : 'text-ink '}`}>
                         {r.varA} vs {r.varB}
                       </span>
                       <Badge tone={isSelected ? 'accent' : 'neutral'}>{r.tag}</Badge>
                     </div>
-                    <div className="text-[10px] font-mono text-slate-400 mb-1.5">
+                    <div className="text-xs font-mono text-subtle mb-1.5">
                       {r.type}
                     </div>
-                    <p className="text-xs text-slate-500 leading-snug m-0">
+                    <p className="text-xs text-subtle leading-snug m-0">
                       {r.meaning}
                     </p>
                   </div>
@@ -749,8 +762,8 @@ export default function Descriptive() {
                 <div className="card">
                   <div className="card__head mb-3">
                     <div>
-                      <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Supplier Lead Time vs Stockout Frequency</h2>
-                      <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">142 Class A materials ($34.28M value), trailing 12 months</p>
+                      <h2 className="card__title text-base font-bold text-ink m-0">Supplier Lead Time vs Stockout Frequency</h2>
+                      <p className="card__sub text-xs text-subtle mt-0.5">142 Class A materials ($34.28M value), trailing 12 months</p>
                     </div>
                     <Badge tone="risk">Critical Risk Zone: &gt;45 Days</Badge>
                   </div>
@@ -760,7 +773,7 @@ export default function Descriptive() {
                 </div>
 
                 <div className="card">
-                  <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 mb-3">Relationship Intelligence</h2>
+                  <h2 className="card__title text-base font-bold text-ink mb-3">Relationship Intelligence</h2>
                   <Insight label="Correlation vs Causation Standard">
                     Statistical analysis establishes a <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> between supplier lead time and stockout frequency across 142 Class A materials. While this empirical relationship is highly significant, correlation does not prove direct isolated causality — delivery transit variance (σ_LT), right-skewed shipping tails, and single-sourcing are key contributing operational drivers.
                   </Insight>
@@ -793,8 +806,8 @@ export default function Descriptive() {
               <div className="card">
                 <div className="card__head mb-3">
                   <div>
-                    <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Order Quantity vs Unit Purchase Cost</h2>
-                    <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Scale discounts vs holding cost trade-off across catalog order batches</p>
+                    <h2 className="card__title text-base font-bold text-ink m-0">Order Quantity vs Unit Purchase Cost</h2>
+                    <p className="card__sub text-xs text-subtle mt-0.5">Scale discounts vs holding cost trade-off across catalog order batches</p>
                   </div>
                   <Badge tone="accent">r = -0.68 · Scale Economics</Badge>
                 </div>
@@ -802,7 +815,7 @@ export default function Descriptive() {
               </div>
 
               <div className="card">
-                <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 mb-3">Batch Sizing Summary</h2>
+                <h2 className="card__title text-base font-bold text-ink mb-3">Batch Sizing Summary</h2>
                 <Insight label="Scale Elasticity">
                   Unit purchase cost exhibits an inverse relationship with batch size (r = <span className="metric">-0.68</span>). Beyond 1,200 EA, marginal unit price savings plateau while inventory carrying costs scale linearly.
                 </Insight>
@@ -831,8 +844,8 @@ export default function Descriptive() {
               <div className="card">
                 <div className="card__head mb-3">
                   <div>
-                    <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 m-0">Demand Volatility (CV) vs Supplier On-Time Rate</h2>
-                    <p className="card__sub text-xs text-slate-500 dark:text-slate-400 mt-0.5">Fulfillment strain: High-volatility SKUs exhibit lower supplier on-time delivery</p>
+                    <h2 className="card__title text-base font-bold text-ink m-0">Demand Volatility (CV) vs Supplier On-Time Rate</h2>
+                    <p className="card__sub text-xs text-subtle mt-0.5">Fulfillment strain: High-volatility SKUs exhibit lower supplier on-time delivery</p>
                   </div>
                   <Badge tone="watch">r = -0.61 · Fulfillment Stress</Badge>
                 </div>
@@ -840,7 +853,7 @@ export default function Descriptive() {
               </div>
 
               <div className="card">
-                <h2 className="card__title text-base font-bold text-slate-900 dark:text-slate-100 mb-3">Volatility Impact Summary</h2>
+                <h2 className="card__title text-base font-bold text-ink mb-3">Volatility Impact Summary</h2>
                 <Insight label="Bullwhip Stress">
                   Demand volatility is negatively associated with supplier delivery punctuality (r = <span className="metric">-0.61</span>). Erratic order patterns amplify supplier schedule disruption.
                 </Insight>

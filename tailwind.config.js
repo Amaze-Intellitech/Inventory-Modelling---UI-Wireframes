@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: ['class'],
+  // Theme is switched by <html data-theme="dark"> (see src/lib/theme.js); colours are CSS variables.
+  darkMode: ['selector', '[data-theme="dark"]'],
   content: [
     './index.html',
     './src/**/*.{js,ts,jsx,tsx}',
@@ -8,71 +9,85 @@ export default {
   theme: {
     extend: {
       colors: {
+        // ---- AITEK Style Guide v1.2 ----
         ink: 'var(--ink)',
-        'navy-800': 'var(--navy-800)',
-        'navy-700': 'var(--navy-700)',
-        accent: {
-          DEFAULT: 'var(--accent)',
-          dim: 'var(--accent-dim)',
-          foreground: '#FFFFFF',
+        deep: 'var(--deep-fill)',
+        'body-c': 'var(--body-c)',
+        subtle: 'var(--subtle)',
+        faint: 'var(--faint)',
+        'border-strong': 'var(--border-strong)',
+        'muted-fill': 'var(--muted-fill)',
+        info: {
+          DEFAULT: 'var(--info)',
+          bg: 'var(--info-bg)',
+          tx: 'var(--info-tx)',
         },
+        warning: {
+          DEFAULT: 'var(--warning)',
+          bg: 'var(--warning-bg)',
+          tx: 'var(--warning-tx)',
+        },
+        error: {
+          DEFAULT: 'var(--error)',
+          bg: 'var(--error-bg)',
+          tx: 'var(--error-tx)',
+        },
+        ai: {
+          DEFAULT: 'var(--ai)',
+          bg: 'var(--ai-bg)',
+          tx: 'var(--ai-tx)',
+        },
+        // data-visualisation series (fixed order, five maximum)
+        s1: 'var(--s1)',
+        s2: 'var(--s2)',
+        s3: 'var(--s3)',
+        s4: 'var(--s4)',
+        s5: 'var(--s5)',
         bg: 'var(--bg)',
         surface: 'var(--surface)',
-        line: {
-          DEFAULT: 'var(--line)',
-          strong: 'var(--line-strong)',
-        },
-        text: 'var(--text)',
-        muted: {
-          DEFAULT: 'var(--muted)',
-          2: 'var(--muted-2)',
-        },
         success: {
           DEFAULT: 'var(--success)',
           bg: 'var(--success-bg)',
+          tx: 'var(--success-tx)',
         },
-        watch: {
-          DEFAULT: 'var(--watch)',
-          bg: 'var(--watch-bg)',
-        },
-        risk: {
-          DEFAULT: 'var(--risk)',
-          bg: 'var(--risk-bg)',
-        },
-        border: 'var(--line)',
-        input: 'var(--line-strong)',
-        ring: 'var(--accent)',
+        border: 'var(--border)',
+        input: 'var(--border-strong)',
+        ring: 'var(--primary)',
         background: 'var(--bg)',
-        foreground: 'var(--text)',
+        foreground: 'var(--ink)',
+        // `primary` = brand blue for text, borders and rings (lighter in dark theme);
+        // `primary-solid` = fill that carries white text (same blue in both themes).
         primary: {
-          DEFAULT: 'var(--ink)',
+          DEFAULT: 'var(--primary)',
+          solid: 'var(--primary-solid)',
           foreground: '#FFFFFF',
         },
         secondary: {
           DEFAULT: 'var(--bg)',
-          foreground: 'var(--text)',
+          foreground: 'var(--ink)',
         },
         destructive: {
-          DEFAULT: 'var(--risk)',
+          DEFAULT: 'var(--error)',
           foreground: '#FFFFFF',
         },
       },
       borderRadius: {
-        sm: 'var(--radius-sm)',
-        md: 'var(--radius-md)',
-        lg: '12px',
-        xl: '16px',
+        sm: 'var(--r-sm)',
+        md: 'var(--r-md)',
+        lg: 'var(--r-lg)',
+        xl: 'var(--r-lg)',
         full: '9999px',
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
-        mono: ['IBM Plex Mono', 'ui-monospace', 'SF Mono', 'Menlo', 'monospace'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Noto Sans', 'sans-serif'],
+        display: ['Urbanist', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       boxShadow: {
-        card: 'var(--shadow-card)',
-        subtle: '0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04)',
-        hover: '0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.04)',
-        elevated: '0 10px 24px rgba(16, 24, 40, 0.1), 0 4px 8px rgba(16, 24, 40, 0.06)',
+        card: 'var(--shadow-sm)',
+        subtle: 'var(--shadow-sm)',
+        hover: 'var(--shadow-md)',
+        elevated: 'var(--shadow-lg)',
       },
       keyframes: {
         'accordion-down': {

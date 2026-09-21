@@ -10,7 +10,8 @@ import {
   ChevronDown,
   X,
 } from 'lucide-react';
-import { ViewHead, Badge } from '../../components/CommonUI';
+import { ViewHead, Badge, Insight, KpiTile } from '../../components/CommonUI';
+import { LifecycleStrip } from '../../components/Lifecycle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -328,19 +329,62 @@ export default function Overview() {
     <section className="view max-w-7xl mx-auto space-y-6">
       <ViewHead
         title="Enterprise Inventory Modelling"
-        subtitle={<p className="text-muted leading-relaxed">{subtitle}</p>}
+        subtitle={<p className="text-body-c leading-relaxed">{subtitle}</p>}
         actions={
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate('/app/descriptive')}
+            onClick={() => navigate('/app/univariate')}
             className="gap-1.5"
           >
             <LineChart size={14} />
-            <span>Descriptive Intelligence</span>
+            <span>Start with Univariate Analysis</span>
           </Button>
         }
       />
+
+      {/* ===================================================================== */}
+      {/* BUSINESS-FIRST SUMMARY: insight → KPIs → lifecycle                    */}
+      {/* ===================================================================== */}
+      <Insight label="Portfolio position">
+        You are holding <span className="metric">$43.86M</span> of raw material against an optimal position of about{' '}
+        <span className="metric">$39.7M</span>. The extra <span className="metric">$4.2M</span> comes mostly from longer,
+        less predictable supplier lead times on Class A materials, while consumption has been flat. Clearing it would
+        lift turnover from 4.1× to about 4.6×.
+      </Insight>
+
+      <div className="grid-4 mb-0">
+        <KpiTile
+          label="Inventory position"
+          value="$43.86M"
+          delta="▲ $4.2M above optimal"
+          deltaTone="down"
+          sub="AI: stock is running about 10% above the level your constraints support."
+        />
+        <KpiTile
+          label="Inventory coverage ratio (ICR)"
+          value="22 days"
+          delta="▼ 3 days vs target"
+          deltaTone="down"
+          sub="AI: cover is thinner on Class A even though total stock is high."
+        />
+        <KpiTile
+          label="Inventory turnover"
+          value="4.1×"
+          delta="▲ 0.2× vs last quarter"
+          deltaTone="up"
+          sub="AI: improving, but still below the 5.0× working-capital goal."
+        />
+        <KpiTile
+          label="Excess & ageing exposure"
+          value="$4.2M"
+          delta="3 transfer options"
+          sub="AI: most of it can move between plants instead of being written down."
+          onClick={() => navigate('/app/liquidation')}
+        />
+      </div>
+
+      <LifecycleStrip />
 
       {/* ===================================================================== */}
       {/* COMPLETE INVENTORY DATA TABLE                                         */}
@@ -349,7 +393,7 @@ export default function Overview() {
         initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="bg-surface border border-line rounded-xl p-5 shadow-subtle"
+        className="bg-surface border border-border rounded-xl p-5 shadow-subtle"
       >
         {/* Section Header & Supporting Text */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
@@ -361,19 +405,19 @@ export default function Overview() {
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Search Input */}
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-2 h-3.5 w-3.5 pointer-events-none" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-subtle h-3.5 w-3.5 pointer-events-none" />
               <Input
                 type="text"
                 placeholder="Search across all fields..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-7 h-8 text-xs bg-bg border-line"
+                className="pl-8 pr-7 h-8 text-xs bg-bg border-border"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-2 hover:text-ink cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-subtle hover:text-ink cursor-pointer"
                 >
                   <X size={12} />
                 </button>
@@ -385,7 +429,7 @@ export default function Overview() {
               variant="outline"
               size="sm"
               onClick={exportToCSV}
-              className="h-8 gap-1.5 text-xs text-ink hover:text-[#0284C7] cursor-pointer"
+              className="h-8 gap-1.5 text-xs text-ink hover:text-primary cursor-pointer"
             >
               <Download size={13} />
               <span>Export CSV</span>
@@ -394,10 +438,10 @@ export default function Overview() {
         </div>
 
         {/* Scrollable Enterprise Data Table Container */}
-        <div className="rounded-lg border border-line overflow-hidden max-h-[540px] flex flex-col">
+        <div className="rounded-lg border border-border overflow-hidden max-h-[540px] flex flex-col">
           <div className="overflow-x-auto overflow-y-auto w-full relative">
             <Table>
-              <TableHeader className="bg-[#F8FAFC] sticky top-0 z-20 border-b border-line shadow-2xs">
+              <TableHeader className="bg-bg sticky top-0 z-20 border-b border-border shadow-2xs">
                 <TableRow className="hover:bg-transparent">
                   {COLUMNS_CONFIG.map((col) => {
                     const isSorted = sortField === col.key;
@@ -405,26 +449,26 @@ export default function Overview() {
                       <TableHead
                         key={col.key}
                         style={{ minWidth: col.minWidth }}
-                        className={`text-[11px] font-bold uppercase tracking-wider text-[#0B1727] py-2.5 px-3 select-none ${
+                        className={`text-xs font-bold uppercase tracking-wider text-ink py-2.5 px-3 select-none ${
                           col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                         }`}
                       >
                         <button
                           type="button"
                           onClick={() => handleSort(col.key)}
-                          className={`inline-flex items-center gap-1 hover:text-[#0284C7] transition-colors cursor-pointer group ${
+                          className={`inline-flex items-center gap-1 hover:text-primary transition-colors cursor-pointer group ${
                             col.align === 'right' ? 'justify-end w-full' : col.align === 'center' ? 'justify-center w-full' : 'justify-start'
                           }`}
                         >
                           <span>{col.label}</span>
                           {isSorted ? (
                             sortDirection === 'asc' ? (
-                              <ChevronUp size={12} className="text-[#0284C7]" />
+                              <ChevronUp size={12} className="text-primary" />
                             ) : (
-                              <ChevronDown size={12} className="text-[#0284C7]" />
+                              <ChevronDown size={12} className="text-primary" />
                             )
                           ) : (
-                            <ArrowUpDown size={10} className="text-muted-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <ArrowUpDown size={10} className="text-subtle opacity-0 group-hover:opacity-100 transition-opacity" />
                           )}
                         </button>
                       </TableHead>
@@ -436,9 +480,9 @@ export default function Overview() {
               <TableBody>
                 {processedDataset.length > 0 ? (
                   processedDataset.map((row) => (
-                    <TableRow key={row.id} className="hover:bg-[#F0F9FF]/60 transition-colors">
+                    <TableRow key={row.id} className="hover:bg-[color-mix(in_srgb,var(--info-bg)_60%,transparent)] transition-colors">
                       {/* Material ID */}
-                      <TableCell className="font-mono font-bold text-[#0284C7] py-2.5 px-3 text-xs">
+                      <TableCell className="font-mono font-bold text-primary py-2.5 px-3 text-xs">
                         {row.id}
                       </TableCell>
 
@@ -448,7 +492,7 @@ export default function Overview() {
                       </TableCell>
 
                       {/* Plant */}
-                      <TableCell className="text-muted text-xs py-2.5 px-3">
+                      <TableCell className="text-body-c text-xs py-2.5 px-3">
                         {row.plant}
                       </TableCell>
 
@@ -458,7 +502,7 @@ export default function Overview() {
                       </TableCell>
 
                       {/* Material Type */}
-                      <TableCell className="text-muted text-xs py-2.5 px-3">
+                      <TableCell className="text-body-c text-xs py-2.5 px-3">
                         {row.materialType}
                       </TableCell>
 
@@ -468,12 +512,12 @@ export default function Overview() {
                       </TableCell>
 
                       {/* UoM */}
-                      <TableCell className="text-center font-mono text-muted text-[11px] py-2.5 px-3">
+                      <TableCell className="text-center font-mono text-body-c text-xs py-2.5 px-3">
                         {row.uom}
                       </TableCell>
 
                       {/* Unit Cost */}
-                      <TableCell className="text-right font-mono text-muted py-2.5 px-3 text-xs">
+                      <TableCell className="text-right font-mono text-body-c py-2.5 px-3 text-xs">
                         ${row.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
 
@@ -488,7 +532,7 @@ export default function Overview() {
                       </TableCell>
 
                       {/* Daily Consumption */}
-                      <TableCell className="text-right font-mono text-muted py-2.5 px-3 text-xs">
+                      <TableCell className="text-right font-mono text-body-c py-2.5 px-3 text-xs">
                         {row.dailyConsumption.toFixed(2)}
                       </TableCell>
 
@@ -498,12 +542,12 @@ export default function Overview() {
                       </TableCell>
 
                       {/* Lead Time Days */}
-                      <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-muted">
+                      <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-body-c">
                         {row.leadTimeDays}d
                       </TableCell>
 
                       {/* Demand CV */}
-                      <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-muted">
+                      <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-body-c">
                         {row.demandCV.toFixed(2)}
                       </TableCell>
 
@@ -518,12 +562,12 @@ export default function Overview() {
                       </TableCell>
 
                       {/* Current Batch Qty */}
-                      <TableCell className="text-right font-mono text-muted py-2.5 px-3 text-xs">
+                      <TableCell className="text-right font-mono text-body-c py-2.5 px-3 text-xs">
                         {row.currentBatchQty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
 
                       {/* Calibrated EOQ */}
-                      <TableCell className="text-right font-mono font-bold text-[#0284C7] py-2.5 px-3 text-xs">
+                      <TableCell className="text-right font-mono font-bold text-primary py-2.5 px-3 text-xs">
                         {row.calibratedEOQ.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
 
@@ -547,7 +591,7 @@ export default function Overview() {
                               ? 'watch'
                               : 'success'
                           }
-                          className="text-[10px]"
+                          className="text-xs"
                         >
                           {row.stockoutRisk}
                         </Badge>
@@ -561,7 +605,7 @@ export default function Overview() {
                               ? 'risk'
                               : 'success'
                           }
-                          className="text-[10px]"
+                          className="text-xs"
                         >
                           {row.rmlcStatus}
                         </Badge>
@@ -577,19 +621,19 @@ export default function Overview() {
                               ? 'watch'
                               : 'success'
                           }
-                          className="text-[10px]"
+                          className="text-xs"
                         >
                           {row.bomCoverage}
                         </Badge>
                       </TableCell>
 
                       {/* Supplier */}
-                      <TableCell className="text-xs text-muted truncate max-w-[220px] py-2.5 px-3" title={row.supplier}>
+                      <TableCell className="text-xs text-body-c truncate max-w-[220px] py-2.5 px-3" title={row.supplier}>
                         {row.supplier}
                       </TableCell>
 
                       {/* Sourcing Model */}
-                      <TableCell className="text-xs text-muted py-2.5 px-3">
+                      <TableCell className="text-xs text-body-c py-2.5 px-3">
                         {row.sourcingType}
                       </TableCell>
 
@@ -603,21 +647,21 @@ export default function Overview() {
                               ? 'watch'
                               : 'neutral'
                           }
-                          className="text-[10px]"
+                          className="text-xs"
                         >
                           {row.criticality}
                         </Badge>
                       </TableCell>
 
                       {/* Downstream Scope */}
-                      <TableCell className="text-xs text-muted truncate max-w-[200px] py-2.5 px-3" title={row.downstreamLines}>
+                      <TableCell className="text-xs text-body-c truncate max-w-[200px] py-2.5 px-3" title={row.downstreamLines}>
                         {row.downstreamLines}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={COLUMNS_CONFIG.length} className="text-center py-10 text-muted">
+                    <TableCell colSpan={COLUMNS_CONFIG.length} className="text-center py-10 text-body-c">
                       No materials matching criteria &quot;{searchQuery}&quot;
                     </TableCell>
                   </TableRow>
