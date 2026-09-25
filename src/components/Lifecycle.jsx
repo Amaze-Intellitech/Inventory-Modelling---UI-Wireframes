@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown } from 'lucide-react';
 import { Badge, Card, CardHead } from './CommonUI';
 import { cn } from '@/lib/utils';
 
@@ -65,15 +65,51 @@ const STATUS = {
   watch: { tone: 'accent', label: 'Monitoring' },
 };
 
-export function LifecycleStrip({ className }) {
+// Collapsed by default to a single row of phase chips; "Show details" opens the full phase cards.
+export function LifecycleStrip({ className, defaultOpen = false }) {
   const navigate = useNavigate();
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <Card className={cn('mb-0', className)}>
       <CardHead
+        className={open ? undefined : 'mb-2.5'}
         title="Get to Green → Stay Green"
         sub="Where each raw material portfolio stands across the five lifecycle phases."
-        right={<Badge tone="neutral" shape={false}>Example data</Badge>}
+        right={
+          <div className="flex items-center gap-2">
+            <Badge tone="neutral" shape={false}>Example data</Badge>
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-semibold text-primary hover:bg-muted-fill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {open ? 'Hide details' : 'Show details'}
+              <ChevronDown size={13} aria-hidden="true" className={cn('transition-transform', open && 'rotate-180')} />
+            </button>
+          </div>
+        }
       />
+      {!open && (
+        <ol className="lifecycle-compact" aria-label="Inventory lifecycle phases">
+          {LIFECYCLE_PHASES.map((p) => {
+            const s = STATUS[p.status];
+            return (
+              <li key={p.id}>
+                <button type="button" className="lifecycle-compact__chip" onClick={() => navigate(p.to)} title={`${p.question} ${p.detail}`}>
+                  <span className={cn('lifecycle__num', p.status === 'done' && 'lifecycle__num--done')}>
+                    {p.status === 'done' ? <Check size={12} aria-hidden="true" /> : p.n}
+                  </span>
+                  <span className="lifecycle-compact__title">{p.title}</span>
+                  <Badge tone={s.tone}>{s.label}</Badge>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      {open && (
+      <>
       <ol className="lifecycle" aria-label="Inventory lifecycle phases">
         {LIFECYCLE_PHASES.map((p, i) => {
           const s = STATUS[p.status];
@@ -102,6 +138,8 @@ export function LifecycleStrip({ className }) {
         <span><span className="lifecycle__bar lifecycle__bar--green" /> Get to Green — phases 1–4</span>
         <span><span className="lifecycle__bar lifecycle__bar--stay" /> Stay Green — phase 5</span>
       </div>
+      </>
+      )}
     </Card>
   );
 }

@@ -1,8 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Moon, Sun } from 'lucide-react';
 import { Stepper } from '../CommonUI';
-import { useTheme } from '@/lib/theme';
+import ThemeToggle from '../ThemeToggle';
 import aitekLogo from '../aitek_logo_bg_removed-removebg-preview.png';
 
 export const ONBOARDING_STEPS = ['Material', 'Parameters', 'Data sources', 'Ingestion'];
@@ -11,7 +10,6 @@ export const ONBOARDING_ROUTES = ['/material-selection', '/parameter-mapping', '
 
 // Shared frame for the steps that come after sign-in: brand header, four-step progress (when `current` is set), content.
 export default function OnboardingShell({ current, children }) {
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-bg flex flex-col">
@@ -24,14 +22,7 @@ export default function OnboardingShell({ current, children }) {
             <span className="text-xs font-medium text-primary">Inventory Modelling</span>
           </div>
         </div>
-        <button
-          type="button"
-          className="theme-toggle"
-          onClick={toggleTheme}
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-        >
-          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-        </button>
+        <ThemeToggle />
         </div>
       </header>
       <main className="page-wrap py-8">

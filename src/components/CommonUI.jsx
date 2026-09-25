@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
   Accordion,
@@ -7,7 +7,8 @@ import {
   AccordionContent,
 } from '@/components/ui/accordion';
 import { Badge as UiBadge, StatusShape } from '@/components/ui/badge';
-import { Sparkles } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ChevronDown, Info, Sparkles } from 'lucide-react';
 import { usePlatform } from '../context/PlatformContext';
 import { cn } from '@/lib/utils';
 
@@ -49,12 +50,33 @@ export function Card({ children, style, className }) {
   );
 }
 
+// Description behind an ⓘ button, so headings stay on one line and the content below starts higher.
+export function InfoTip({ label = 'More information', children, className }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          className={cn(
+            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-subtle transition-colors hover:bg-muted-fill hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:text-primary',
+            className
+          )}
+        >
+          <Info size={15} aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent>{children}</PopoverContent>
+    </Popover>
+  );
+}
+
 export function CardHead({ title, sub, right, className }) {
   return (
     <div className={cn('card__head flex items-start justify-between gap-4 mb-3.5', className)}>
-      <div>
-        <h2 className="card__title text-base font-semibold text-ink m-0 mb-1 font-sans">{title}</h2>
-        {sub && <p className="card__sub text-[13px] text-body-c m-0">{sub}</p>}
+      <div className="flex items-center gap-1.5 min-w-0">
+        <h2 className="card__title text-base font-semibold text-ink m-0 font-sans">{title}</h2>
+        {sub && <InfoTip label={`About ${typeof title === 'string' ? title : 'this section'}`}>{sub}</InfoTip>}
       </div>
       {right && <div className="shrink-0">{right}</div>}
     </div>
@@ -113,15 +135,60 @@ export function KpiTile({ label, value, sub, delta, deltaTone, onClick, valueSty
 }
 
 // AI insight — the one treatment reserved for AI-generated commentary. Violet always pairs with the word "AI".
-export function Insight({ label, children, className }) {
+// Collapsed by default: the body is clamped to two lines and a "Show more" toggle appears only when the text
+// actually overflows, so short insights display in full. Pass `defaultOpen` for a result the page is built around.
+export function Insight({ label, children, className, defaultOpen = false }) {
   const mentionsAi = typeof label === 'string' && /(AI|Agent)/.test(label);
+  const [open, setOpen] = useState(defaultOpen);
+  const [overflows, setOverflows] = useState(false);
+  const bodyRef = useRef(null);
+
+  // Does the text need more than two lines? Compare its natural height with two line-heights.
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return undefined;
+    let live = true;
+    const measure = () => {
+      if (!live) return;
+      const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
+      setOverflows(el.scrollHeight > lineHeight * 2 + 1);
+    };
+    measure();
+    // web fonts load lazily and can change how the text wraps without changing the element's size
+    const fonts = document.fonts;
+    fonts?.addEventListener?.('loadingdone', measure);
+    fonts?.ready?.then(measure);
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    ro?.observe(el);
+    return () => {
+      live = false;
+      fonts?.removeEventListener?.('loadingdone', measure);
+      ro?.disconnect();
+    };
+  }, [children]);
+
+  const canToggle = overflows;
+
   return (
-    <div className={cn('insight rounded-md p-3.5 mb-3 border border-border border-l-[3px] border-l-ai bg-ai-bg', className)}>
-      <div className="insight__label text-xs font-semibold text-ai-tx uppercase tracking-[0.08em] mb-1.5 flex items-center gap-1.5">
+    <div className={cn('insight rounded-md px-3.5 py-2.5 mb-3 border border-border border-l-[3px] border-l-ai bg-ai-bg', className)}>
+      <div className="insight__label text-xs font-semibold text-ai-tx uppercase tracking-[0.08em] mb-1 flex items-center gap-1.5">
         <Sparkles size={12} aria-hidden="true" />
-        <span>{mentionsAi ? label : label ? `AI insight · ${label}` : 'AI insight'}</span>
+        <span className="min-w-0 truncate">{mentionsAi ? label : label ? `AI insight · ${label}` : 'AI insight'}</span>
+        {canToggle && (
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-semibold normal-case tracking-normal text-ai-tx hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {open ? 'Show less' : 'Show more'}
+            <ChevronDown size={13} aria-hidden="true" className={cn('transition-transform', open && 'rotate-180')} />
+          </button>
+        )}
       </div>
-      <div className="text-[13px] text-ink leading-relaxed">{children}</div>
+      <div ref={bodyRef} className={cn('text-[13px] text-ink leading-relaxed', !open && 'line-clamp-2')}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -283,15 +350,16 @@ export function Chip({ active, onClick, children, className }) {
   );
 }
 
+// Title + actions on one row. The description sits behind an ⓘ next to the title (a string or any JSX).
 export function ViewHead({ title, subtitle, actions, className }) {
   return (
-    <div className={cn('view-head flex items-start justify-between gap-6 mb-5', className)}>
-      <div className="max-w-3xl">
-        <h1 className="font-display text-2xl font-bold text-ink m-0 mb-1.5 tracking-[-0.025em] leading-[1.15]">{title}</h1>
-        {typeof subtitle === 'string' ? (
-          <p className="text-sm text-body-c m-0 leading-normal">{subtitle}</p>
-        ) : (
-          subtitle
+    <div className={cn('view-head flex items-center justify-between gap-6 mb-3', className)}>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <h1 className="font-display text-2xl font-bold text-ink m-0 tracking-[-0.025em] leading-[1.15]">{title}</h1>
+        {subtitle && (
+          <InfoTip label={`About ${typeof title === 'string' ? title : 'this page'}`} className="mt-0.5">
+            {subtitle}
+          </InfoTip>
         )}
       </div>
       {actions && <div className="view-actions flex gap-2 shrink-0">{actions}</div>}

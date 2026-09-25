@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Sparkles, ArrowRight, PackageCheck, Box } from 'lucide-react';
 import { Badge, Stepper } from '../../components/CommonUI';
+import ThemeToggle from '../../components/ThemeToggle';
 import {
   Select,
   SelectContent,
@@ -49,20 +50,23 @@ export default function MaterialSelection() {
 
       {/* 1. Top Bar */}
       <header className="h-14 sm:h-16 bg-surface border-b border-border z-20 relative shrink-0">
-        <div className="page-wrap h-full flex items-center gap-3">
-          <img
-            src={aitekLogo}
-            alt="AITEK Logo"
-            className="h-[42px] sm:h-[46px] w-auto object-contain"
-          />
-          <div className="flex flex-col justify-center">
-            <span className="text-[20px] sm:text-[22px] font-extrabold text-ink tracking-tight leading-none">
-              AITEK
-            </span>
-            <span className="text-xs sm:text-xs font-medium text-primary leading-tight mt-0.5">
-              Inventory Modelling
-            </span>
+        <div className="page-wrap h-full flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <img
+              src={aitekLogo}
+              alt="AITEK Logo"
+              className="h-[42px] sm:h-[46px] w-auto object-contain"
+            />
+            <div className="flex flex-col justify-center">
+              <span className="text-[20px] sm:text-[22px] font-extrabold text-ink tracking-tight leading-none">
+                AITEK
+              </span>
+              <span className="text-xs sm:text-xs font-medium text-primary leading-tight mt-0.5">
+                Inventory Modelling
+              </span>
+            </div>
           </div>
+          <ThemeToggle />
         </div>
       </header>
 

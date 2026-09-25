@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/select';
 import { SQL_TABLE_OPTIONS } from '../../data/mockData';
 import { Stepper, AlertBar } from '../../components/CommonUI';
+import ThemeToggle from '../../components/ThemeToggle';
 import { ONBOARDING_ROUTES } from '../../components/layout/OnboardingShell';
 import { usePlatform } from '../../context/PlatformContext';
 import { requiredConnectors } from '../../data/parameterCatalog';
@@ -554,6 +555,7 @@ export default function DataSourceConnections() {
 
         {/* Right: User Profile & Help */}
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <div className="flex items-center gap-2.5 cursor-pointer group">
             <div className="w-8 h-8 rounded-full bg-info-bg border border-border text-primary font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
               AV

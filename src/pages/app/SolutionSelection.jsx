@@ -15,6 +15,7 @@ import {
   HelpCircle,
   ArrowUpRight,
 } from 'lucide-react';
+import ThemeToggle from '../../components/ThemeToggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -207,6 +208,7 @@ export default function SolutionSelection() {
 
           {/* User Profile & Sign Out Right */}
           <div className="flex items-center gap-5 sm:gap-6">
+            <ThemeToggle />
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-deep text-white flex items-center justify-center font-bold text-xs shadow-sm ring-2 ring-border">
                 AV

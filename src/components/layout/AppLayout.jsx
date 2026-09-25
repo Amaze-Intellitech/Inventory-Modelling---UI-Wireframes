@@ -6,12 +6,11 @@ import TopBar from './TopBar';
 import PipelineStrip from './PipelineStrip';
 
 // Shell for every screen inside the platform (post-onboarding).
-// Rail + TopBar are persistent; <Outlet/> swaps the active page.
+// The TopBar carries the primary navigation; the Rail is only the small-screen drawer. <Outlet/> swaps the active page.
 export default function AppLayout() {
   const location = useLocation();
   const shouldReduceMotion = useReducedMotion();
   const [railOpen, setRailOpen] = useState(false);
-
   // Close the mobile navigation after every route change.
   useEffect(() => { setRailOpen(false); }, [location.pathname]);
 

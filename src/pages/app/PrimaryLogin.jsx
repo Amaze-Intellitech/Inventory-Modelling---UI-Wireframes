@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ShieldCheck, Globe, ChevronDown, HelpCircle } from 'lucide-react';
 import SsoSignIn from '../../components/SsoSignIn';
+import ThemeToggle from '../../components/ThemeToggle';
 import aitekLogo from '../../components/aitek_logo_bg_removed-removebg-preview.png';
 
 export default function PrimaryLogin() {
@@ -256,6 +257,8 @@ export default function PrimaryLogin() {
             <HelpCircle style={{ width: '13.5px', height: '13.5px', color: 'var(--subtle)' }} />
             <span>Need help?</span>
           </a>
+
+          <ThemeToggle />
         </div>
 
         {/* Center: single sign-on card (no password field; identity comes from the organisation's provider) */}

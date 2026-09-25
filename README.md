@@ -64,7 +64,9 @@ The platform models raw-material inventory dynamics, downstream multi-product de
 - **Icons**: Lucide React
 - **Typography**: Urbanist (display headings only), Inter (UI, labels, tables and numerals, with tabular figures) and JetBrains Mono (IDs and code)
 - **Charts**: Responsive SVG built directly in JSX (`src/components/Charts.jsx`), each with a legend and a "View as table" view
-- **Theme**: Light and dark, toggled from the top bar and stored in `localStorage` (`src/lib/theme.js`)
+- **Theme**: Light and dark, toggled from the header of every screen (`src/components/ThemeToggle.jsx`) and stored in `localStorage` (`src/lib/theme.js`)
+- **Persona lens**: the top-bar switch (Data Scientist / Analyst / C-Suite) changes the Overview insight, KPIs, table columns and sort, and the insight and detail sections on Data Foundation, Liquidation, Prevention and What-if, as well as the stage pages that already had lens content
+- **Screen density**: Page and card descriptions sit behind an ⓘ popover (`InfoTip`), and AI insights clamp to two lines with a "Show more" toggle
 
 ---
 
@@ -97,14 +99,16 @@ The platform models raw-material inventory dynamics, downstream multi-product de
 │   │   ├── ModelValidation.jsx  # Multivariate headline + collapsed validation panel
 │   │   ├── OptimizationSetup.jsx  # Objective, constraints and mode
 │   │   ├── IngestionStatus.jsx  # Ingestion and data-quality status
+│   │   ├── ThemeToggle.jsx      # Light / dark switch used in every header
 │   │   ├── SsoSignIn.jsx        # Single sign-on card (no password field)
 │   │   ├── AccessCheckDialog.jsx  # Access-check modal shown when a solution is picked
 │   │   ├── ui/              # Radix-based primitives (button, badge, select, table, …)
 │   │   └── layout/
-│   │       ├── AppLayout.jsx      # Application shell (rail, top bar, stage tabs)
-│   │       ├── Rail.jsx           # Left navigation, in pipeline order with stage numbers
-│   │       ├── TopBar.jsx         # Persona switch, theme toggle, sign out
-│   │       ├── PipelineStrip.jsx  # Nine-stage tab bar shown on the stage pages
+│   │       ├── AppLayout.jsx      # Application shell (top bar, stage tabs, small-screen drawer)
+│   │       ├── PrimaryNav.jsx     # Header navigation: Overview, Data Foundation, Analysis, Liquidation, Prevention
+│   │       ├── Rail.jsx           # Small-screen navigation drawer, in pipeline order with stage numbers
+│   │       ├── TopBar.jsx         # Brand, primary navigation, persona switch, theme toggle, sign out
+│   │       ├── PipelineStrip.jsx  # Nine-stage tab bar (grouped by lifecycle step) shown on the stage pages
 │   │       └── OnboardingShell.jsx  # Frame for the parameter and ingestion steps
 │   └── pages/
 │       └── app/

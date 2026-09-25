@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Database, RefreshCw, CheckCircle2, Clock, Layers, Filter } from 'lucide-react';
-import { ViewHead, KpiTile, Badge, WhyDisclosure, Insight } from '../../components/CommonUI';
+import { ViewHead, KpiTile, Badge, WhyDisclosure, Insight, DrillDown } from '../../components/CommonUI';
+import { usePlatform } from '../../context/PlatformContext';
 import IngestionStatus from '../../components/IngestionStatus';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,32 @@ import {
 import { Input } from '@/components/ui/input';
 import { MATERIALS } from '../../data/mockData';
 
+// The lens changes what the page leads with: trust for decisions, what to fix, or how the data was validated.
+const READINESS_INSIGHT = {
+  exec: (
+    <>
+      Your data is <span className="metric">99.8%</span> complete, so the numbers on every other screen can be relied on for
+      decisions. Two gaps to know about: one material has no unit of measure and the supplier feed is 12% incomplete, which
+      will make Optimization less certain.
+    </>
+  ),
+  analyst: (
+    <>
+      Your data is <span className="metric">99.8%</span> complete and ready for analysis, with two things to look at:
+      one material is missing its unit of measure (this must be fixed), and the supplier feed is 12% incomplete
+      (this can wait, but it will make Optimization less certain).
+    </>
+  ),
+  ds: (
+    <>
+      Snapshot v2.40 passes schema and completeness validation at <span className="metric">99.80%</span>, with every
+      unit-of-measure conversion and unit-cost field checked against the master catalog. Open gaps: one material without a
+      unit of measure, and a 12% incomplete supplier feed that widens the uncertainty on lead-time inputs. Quality inspection
+      records arrive with a <span className="metric">2.00h</span> ingestion latency.
+    </>
+  ),
+};
+
 const SOURCES = [
   { name: 'SAP S/4HANA', domain: 'Inventory ledger, cost', records: '3.80M', cadence: 'Every 4.00h', status: 'ok', lastSync: '12 mins ago' },
   { name: 'Manhattan WMS', domain: 'Warehouse movement', records: '1.60M', cadence: 'Every 1.00h', status: 'ok', lastSync: '8 mins ago' },
@@ -23,6 +50,7 @@ const SOURCES = [
 ];
 
 export default function DataFoundation() {
+  const { persona } = usePlatform();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -59,10 +87,8 @@ export default function DataFoundation() {
         }
       />
 
-      <Insight label="Data readiness">
-        Your data is <span className="metric">99.8%</span> complete and ready for analysis, with two things to look at:
-        one material is missing its unit of measure (this must be fixed), and the supplier feed is 12% incomplete
-        (this can wait, but it will make Optimization less certain).
+      <Insight key={persona} label="Data readiness">
+        {READINESS_INSIGHT[persona] || READINESS_INSIGHT.analyst}
       </Insight>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
@@ -92,7 +118,8 @@ export default function DataFoundation() {
         <IngestionStatus onProceed={() => navigate('/app/univariate')} proceedLabel="Continue to Univariate Analysis" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6">
+      <DrillDown title="Sources and taxonomy" hint="Connected systems and how materials are classified" className="mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Connected Sources */}
         <div className="lg:col-span-7 bg-surface border border-border rounded-md p-5 shadow-subtle flex flex-col justify-between">
           <div>
@@ -201,9 +228,11 @@ export default function DataFoundation() {
           </div>
         </div>
       </div>
+      </DrillDown>
 
       {/* Material Ledger Table with Live Filter */}
-      <div className="bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
+      <DrillDown title="Material ledger" hint="Cost and quantity for every material" defaultOpen={persona !== 'exec'} className="mb-6">
+      <div className="bg-surface border border-border rounded-md p-5 shadow-subtle">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="card__title text-sm font-bold text-ink m-0">Material ledger</h2>
@@ -288,6 +317,7 @@ export default function DataFoundation() {
           ]}
         />
       </div>
+      </DrillDown>
     </section>
   );
 }

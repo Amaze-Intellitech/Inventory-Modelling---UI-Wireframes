@@ -1,8 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
-  LineChart,
   Search,
   ArrowUpDown,
   Download,
@@ -221,6 +220,7 @@ const COLUMNS_CONFIG = [
   { key: 'plant', label: 'Plant', align: 'left', minWidth: '160px' },
   { key: 'category', label: 'Category', align: 'left', minWidth: '130px' },
   { key: 'materialType', label: 'Material Type', align: 'left', minWidth: '160px' },
+  { key: 'abcClass', label: 'ABC Class', align: 'center', minWidth: '90px' },
   { key: 'qty', label: 'On-Hand Qty', align: 'right', minWidth: '130px' },
   { key: 'uom', label: 'UoM', align: 'center', minWidth: '70px' },
   { key: 'unitCost', label: 'Unit Cost', align: 'right', minWidth: '110px' },
@@ -245,15 +245,127 @@ const COLUMNS_CONFIG = [
   { key: 'downstreamLines', label: 'Downstream Scope', align: 'left', minWidth: '200px' },
 ];
 
+// ============================================================================
+// PERSONA LENS
+// The switch in the top bar changes what leads the page: the insight, the four
+// KPIs, which table columns are shown and how the table is sorted. Headline
+// portfolio figures repeat numbers shown on other pages; the rest are derived
+// from the materials listed in the table below and are labelled as such.
+// ============================================================================
+const median = (values) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+const LISTED = (() => {
+  const rows = FULL_INVENTORY_DATASET;
+  const byCover = [...rows].sort((a, b) => a.daysOfSupply - b.daysOfSupply);
+  const byCv = [...rows].sort((a, b) => b.demandCV - a.demandCV);
+  return {
+    count: rows.length,
+    belowReorder: rows.filter((r) => r.qty < r.reorderPoint),
+    highRisk: rows.filter((r) => r.stockoutRisk.startsWith('High')),
+    shortestCover: byCover[0],
+    medianCv: median(rows.map((r) => r.demandCV)),
+    mostVolatile: byCv[0],
+  };
+})();
+
+const joinIds = (rows) => rows.map((r) => r.id).join(' and ');
+
+const PERSONA_COLUMNS = {
+  exec: ['id', 'name', 'plant', 'category', 'qty', 'uom', 'unitCost', 'value', 'annualConsumptionValue', 'daysOfSupply', 'inventoryTurnover', 'stockoutRisk'],
+  analyst: ['id', 'name', 'plant', 'qty', 'uom', 'dailyConsumption', 'leadTimeDays', 'safetyStock', 'reorderPoint', 'daysOfSupply', 'stockoutRisk', 'rmlcStatus', 'supplier', 'sourcingType', 'criticality'],
+  ds: ['id', 'name', 'abcClass', 'annualDemand', 'dailyConsumption', 'demandCV', 'leadTimeDays', 'safetyStock', 'reorderPoint', 'currentBatchQty', 'calibratedEOQ', 'inventoryTurnover', 'bomCoverage'],
+};
+
+const PERSONA_SORT = {
+  exec: { field: 'value', direction: 'desc' },
+  analyst: { field: 'daysOfSupply', direction: 'asc' },
+  ds: { field: 'demandCV', direction: 'desc' },
+};
+
+const PERSONA_LENS = {
+  exec: {
+    label: 'Portfolio position',
+    insight: (
+      <>
+        You are holding <span className="metric">$43.86M</span> of raw material against an optimal position of about{' '}
+        <span className="metric">$39.7M</span>. The extra <span className="metric">$4.2M</span> comes mostly from longer,
+        less predictable supplier lead times on Class A materials, while consumption has been flat. Clearing it would
+        lift turnover from 4.1× to about 4.6×.
+      </>
+    ),
+    kpis: [
+      { label: 'Inventory position', value: '$43.86M', delta: '▲ $4.2M above optimal', deltaTone: 'down', sub: 'AI: stock is running about 10% above the level your constraints support.' },
+      { label: 'Inventory coverage ratio (ICR)', value: '22 days', delta: '▼ 3 days vs target', deltaTone: 'down', sub: 'AI: cover is thinner on Class A even though total stock is high.' },
+      { label: 'Inventory turnover', value: '4.1×', delta: '▲ 0.2× vs last quarter', deltaTone: 'up', sub: 'AI: improving, but still below the 5.0× working-capital goal.' },
+      { label: 'Excess & ageing exposure', value: '$4.2M', delta: '3 transfer options', sub: 'AI: most of it can move between plants instead of being written down.', to: '/app/liquidation' },
+    ],
+  },
+  analyst: {
+    label: 'Where to act',
+    insight: (
+      <>
+        <span className="metric">{LISTED.belowReorder.length} of the {LISTED.count} listed materials</span> are below their reorder
+        point: <span className="metric">{joinIds(LISTED.belowReorder)}</span>. <span className="metric">{LISTED.shortestCover.id}</span> has
+        only <span className="metric">{LISTED.shortestCover.daysOfSupply.toFixed(1)} days</span> of cover against a{' '}
+        {LISTED.shortestCover.leadTimeDays}-day lead time. The table is sorted shortest cover first. Three transfer options can also
+        release stock between plants without new purchases.
+      </>
+    ),
+    kpis: [
+      { label: 'High stockout risk', value: String(LISTED.highRisk.length), delta: `of ${LISTED.count} listed materials`, deltaTone: 'down', sub: `AI: ${joinIds(LISTED.highRisk)} could run out inside 14 days.` },
+      { label: 'Below reorder point', value: String(LISTED.belowReorder.length), delta: `of ${LISTED.count} listed materials`, deltaTone: 'down', sub: `AI: ${joinIds(LISTED.belowReorder)} need a replenishment decision now.` },
+      { label: 'Shortest cover', value: `${LISTED.shortestCover.daysOfSupply.toFixed(1)} days`, delta: LISTED.shortestCover.id, sub: `AI: ${LISTED.shortestCover.name}, ${LISTED.shortestCover.sourcingType.toLowerCase()}.` },
+      { label: 'Transfer options', value: '3', delta: '$4.2M excess to place', sub: 'AI: moving stock between plants avoids new purchases.', to: '/app/liquidation' },
+    ],
+  },
+  ds: {
+    label: 'Data and model reliability',
+    insight: (
+      <>
+        The data is <span className="metric">99.80%</span> complete, so the figures below are model-ready. Concentration is steep:{' '}
+        <span className="metric">10% of materials</span> hold <span className="metric">78.30%</span> of consumption value (Gini 0.81),
+        which is why Class A gets full modelling. Demand is least stable for <span className="metric">{LISTED.mostVolatile.id}</span> (CV{' '}
+        <span className="metric">{LISTED.mostVolatile.demandCV.toFixed(2)}</span>), so the table is sorted by demand variability.
+      </>
+    ),
+    kpis: [
+      { label: 'Data completeness', value: '99.80%', sub: 'AI: schema and completeness checks on the last snapshot.', to: '/app/data-foundation' },
+      { label: 'Class A concentration', value: '10% → 78.30%', sub: 'AI: share of materials against share of consumption value (Gini 0.81).', to: '/app/abc' },
+      { label: 'Median demand CV', value: LISTED.medianCv.toFixed(2), delta: `${LISTED.count} listed materials`, sub: 'AI: coefficient of variation of annual demand; lower is easier to forecast.' },
+      { label: 'Most volatile demand', value: LISTED.mostVolatile.demandCV.toFixed(2), delta: LISTED.mostVolatile.id, deltaTone: 'down', sub: `AI: ${LISTED.mostVolatile.name} has the widest demand swings.` },
+    ],
+  },
+};
+
 export default function Overview() {
   const navigate = useNavigate();
   const { persona } = usePlatform();
   const shouldReduceMotion = useReducedMotion();
 
+  const lens = PERSONA_LENS[persona] || PERSONA_LENS.exec;
+
   // Search & Sorting State for Table
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState('value');
-  const [sortDirection, setSortDirection] = useState('desc');
+  const [sortField, setSortField] = useState(PERSONA_SORT[persona]?.field || 'value');
+  const [sortDirection, setSortDirection] = useState(PERSONA_SORT[persona]?.direction || 'desc');
+  const [showAllColumns, setShowAllColumns] = useState(false);
+
+  // Switching persona re-orders the table for that lens and returns to its column set.
+  useEffect(() => {
+    const sort = PERSONA_SORT[persona] || PERSONA_SORT.exec;
+    setSortField(sort.field);
+    setSortDirection(sort.direction);
+    setShowAllColumns(false);
+  }, [persona]);
+
+  const visibleColumns = showAllColumns
+    ? COLUMNS_CONFIG
+    : COLUMNS_CONFIG.filter((c) => (PERSONA_COLUMNS[persona] || PERSONA_COLUMNS.exec).includes(c.key));
+  const show = (key) => visibleColumns.some((c) => c.key === key);
 
   const subtitle = {
     exec: "What your working capital, service risk and inventory position mean for this quarter's numbers — and the three decisions worth your attention today.",
@@ -330,58 +442,19 @@ export default function Overview() {
       <ViewHead
         title="Enterprise Inventory Modelling"
         subtitle={<p className="text-body-c leading-relaxed">{subtitle}</p>}
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/app/univariate')}
-            className="gap-1.5"
-          >
-            <LineChart size={14} />
-            <span>Start with Univariate Analysis</span>
-          </Button>
-        }
       />
 
       {/* ===================================================================== */}
       {/* BUSINESS-FIRST SUMMARY: insight → KPIs → lifecycle                    */}
       {/* ===================================================================== */}
-      <Insight label="Portfolio position">
-        You are holding <span className="metric">$43.86M</span> of raw material against an optimal position of about{' '}
-        <span className="metric">$39.7M</span>. The extra <span className="metric">$4.2M</span> comes mostly from longer,
-        less predictable supplier lead times on Class A materials, while consumption has been flat. Clearing it would
-        lift turnover from 4.1× to about 4.6×.
+      <Insight key={persona} label={lens.label} defaultOpen>
+        {lens.insight}
       </Insight>
 
       <div className="grid-4 mb-0">
-        <KpiTile
-          label="Inventory position"
-          value="$43.86M"
-          delta="▲ $4.2M above optimal"
-          deltaTone="down"
-          sub="AI: stock is running about 10% above the level your constraints support."
-        />
-        <KpiTile
-          label="Inventory coverage ratio (ICR)"
-          value="22 days"
-          delta="▼ 3 days vs target"
-          deltaTone="down"
-          sub="AI: cover is thinner on Class A even though total stock is high."
-        />
-        <KpiTile
-          label="Inventory turnover"
-          value="4.1×"
-          delta="▲ 0.2× vs last quarter"
-          deltaTone="up"
-          sub="AI: improving, but still below the 5.0× working-capital goal."
-        />
-        <KpiTile
-          label="Excess & ageing exposure"
-          value="$4.2M"
-          delta="3 transfer options"
-          sub="AI: most of it can move between plants instead of being written down."
-          onClick={() => navigate('/app/liquidation')}
-        />
+        {lens.kpis.map(({ to, ...kpi }) => (
+          <KpiTile key={`${persona}-${kpi.label}`} {...kpi} onClick={to ? () => navigate(to) : undefined} />
+        ))}
       </div>
 
       <LifecycleStrip />
@@ -424,6 +497,17 @@ export default function Overview() {
               )}
             </div>
 
+            {/* Persona column set vs every column */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAllColumns((v) => !v)}
+              aria-pressed={showAllColumns}
+              className="h-8 text-xs text-ink hover:text-primary cursor-pointer"
+            >
+              {showAllColumns ? 'Fewer columns' : `All columns (${COLUMNS_CONFIG.length})`}
+            </Button>
+
             {/* Export CSV Button */}
             <Button
               variant="outline"
@@ -443,7 +527,7 @@ export default function Overview() {
             <Table>
               <TableHeader className="bg-bg sticky top-0 z-20 border-b border-border shadow-2xs">
                 <TableRow className="hover:bg-transparent">
-                  {COLUMNS_CONFIG.map((col) => {
+                  {visibleColumns.map((col) => {
                     const isSorted = sortField === col.key;
                     return (
                       <TableHead
@@ -482,186 +566,222 @@ export default function Overview() {
                   processedDataset.map((row) => (
                     <TableRow key={row.id} className="hover:bg-[color-mix(in_srgb,var(--info-bg)_60%,transparent)] transition-colors">
                       {/* Material ID */}
-                      <TableCell className="font-mono font-bold text-primary py-2.5 px-3 text-xs">
-                        {row.id}
-                      </TableCell>
-
+                      {show('id') && (
+                        <TableCell className="font-mono font-bold text-primary py-2.5 px-3 text-xs">
+                          {row.id}
+                        </TableCell>
+                      )}
                       {/* Description */}
-                      <TableCell className="font-semibold text-ink py-2.5 px-3 text-xs">
-                        {row.name}
-                      </TableCell>
-
+                      {show('name') && (
+                        <TableCell className="font-semibold text-ink py-2.5 px-3 text-xs">
+                          {row.name}
+                        </TableCell>
+                      )}
                       {/* Plant */}
-                      <TableCell className="text-body-c text-xs py-2.5 px-3">
-                        {row.plant}
-                      </TableCell>
-
+                      {show('plant') && (
+                        <TableCell className="text-body-c text-xs py-2.5 px-3">
+                          {row.plant}
+                        </TableCell>
+                      )}
                       {/* Category */}
-                      <TableCell className="text-xs py-2.5 px-3 text-ink">
-                        {row.category}
-                      </TableCell>
-
+                      {show('category') && (
+                        <TableCell className="text-xs py-2.5 px-3 text-ink">
+                          {row.category}
+                        </TableCell>
+                      )}
                       {/* Material Type */}
-                      <TableCell className="text-body-c text-xs py-2.5 px-3">
-                        {row.materialType}
-                      </TableCell>
-
+                      {show('materialType') && (
+                        <TableCell className="text-body-c text-xs py-2.5 px-3">
+                          {row.materialType}
+                        </TableCell>
+                      )}
+                      {/* ABC Class */}
+                      {show('abcClass') && (
+                        <TableCell className="text-center py-2.5 px-3">
+                          <Badge tone={row.abcClass === 'A' ? 'accent' : 'neutral'} className="text-xs">
+                            Class {row.abcClass}
+                          </Badge>
+                        </TableCell>
+                      )}
                       {/* On-Hand Qty */}
-                      <TableCell className="text-right font-mono font-semibold text-ink py-2.5 px-3 text-xs">
-                        {row.qty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-
+                      {show('qty') && (
+                        <TableCell className="text-right font-mono font-semibold text-ink py-2.5 px-3 text-xs">
+                          {row.qty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      )}
                       {/* UoM */}
-                      <TableCell className="text-center font-mono text-body-c text-xs py-2.5 px-3">
-                        {row.uom}
-                      </TableCell>
-
+                      {show('uom') && (
+                        <TableCell className="text-center font-mono text-body-c text-xs py-2.5 px-3">
+                          {row.uom}
+                        </TableCell>
+                      )}
                       {/* Unit Cost */}
-                      <TableCell className="text-right font-mono text-body-c py-2.5 px-3 text-xs">
-                        ${row.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-
+                      {show('unitCost') && (
+                        <TableCell className="text-right font-mono text-body-c py-2.5 px-3 text-xs">
+                          ${row.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      )}
                       {/* Inventory Value */}
-                      <TableCell className="text-right font-mono font-bold text-ink py-2.5 px-3 text-xs">
-                        ${row.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-
+                      {show('value') && (
+                        <TableCell className="text-right font-mono font-bold text-ink py-2.5 px-3 text-xs">
+                          ${row.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      )}
                       {/* Annual Demand */}
-                      <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-ink">
-                        {row.annualDemand.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-
+                      {show('annualDemand') && (
+                        <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-ink">
+                          {row.annualDemand.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      )}
                       {/* Daily Consumption */}
-                      <TableCell className="text-right font-mono text-body-c py-2.5 px-3 text-xs">
-                        {row.dailyConsumption.toFixed(2)}
-                      </TableCell>
-
+                      {show('dailyConsumption') && (
+                        <TableCell className="text-right font-mono text-body-c py-2.5 px-3 text-xs">
+                          {row.dailyConsumption.toFixed(2)}
+                        </TableCell>
+                      )}
                       {/* Annual Consumption Value */}
-                      <TableCell className="text-right font-mono font-semibold text-ink py-2.5 px-3 text-xs">
-                        ${row.annualConsumptionValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-
+                      {show('annualConsumptionValue') && (
+                        <TableCell className="text-right font-mono font-semibold text-ink py-2.5 px-3 text-xs">
+                          ${row.annualConsumptionValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      )}
                       {/* Lead Time Days */}
-                      <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-body-c">
-                        {row.leadTimeDays}d
-                      </TableCell>
-
+                      {show('leadTimeDays') && (
+                        <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-body-c">
+                          {row.leadTimeDays}d
+                        </TableCell>
+                      )}
                       {/* Demand CV */}
-                      <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-body-c">
-                        {row.demandCV.toFixed(2)}
-                      </TableCell>
-
+                      {show('demandCV') && (
+                        <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-body-c">
+                          {row.demandCV.toFixed(2)}
+                        </TableCell>
+                      )}
                       {/* Safety Stock */}
-                      <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-ink">
-                        {row.safetyStock.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-
+                      {show('safetyStock') && (
+                        <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-ink">
+                          {row.safetyStock.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      )}
                       {/* Reorder Point */}
-                      <TableCell className="text-right font-mono font-semibold text-ink py-2.5 px-3 text-xs">
-                        {row.reorderPoint.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-
+                      {show('reorderPoint') && (
+                        <TableCell className="text-right font-mono font-semibold text-ink py-2.5 px-3 text-xs">
+                          {row.reorderPoint.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      )}
                       {/* Current Batch Qty */}
-                      <TableCell className="text-right font-mono text-body-c py-2.5 px-3 text-xs">
-                        {row.currentBatchQty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-
+                      {show('currentBatchQty') && (
+                        <TableCell className="text-right font-mono text-body-c py-2.5 px-3 text-xs">
+                          {row.currentBatchQty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      )}
                       {/* Calibrated EOQ */}
-                      <TableCell className="text-right font-mono font-bold text-primary py-2.5 px-3 text-xs">
-                        {row.calibratedEOQ.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-
+                      {show('calibratedEOQ') && (
+                        <TableCell className="text-right font-mono font-bold text-primary py-2.5 px-3 text-xs">
+                          {row.calibratedEOQ.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      )}
                       {/* Days of Supply */}
-                      <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-ink">
-                        {row.daysOfSupply.toFixed(1)}d
-                      </TableCell>
-
+                      {show('daysOfSupply') && (
+                        <TableCell className="text-right font-mono py-2.5 px-3 text-xs text-ink">
+                          {row.daysOfSupply.toFixed(1)}d
+                        </TableCell>
+                      )}
                       {/* Inventory Turnover */}
-                      <TableCell className="text-right font-mono font-medium py-2.5 px-3 text-xs text-ink">
-                        {row.inventoryTurnover.toFixed(2)}x
-                      </TableCell>
-
+                      {show('inventoryTurnover') && (
+                        <TableCell className="text-right font-mono font-medium py-2.5 px-3 text-xs text-ink">
+                          {row.inventoryTurnover.toFixed(2)}x
+                        </TableCell>
+                      )}
                       {/* Stockout Risk */}
-                      <TableCell className="py-2.5 px-3">
-                        <Badge
-                          tone={
-                            row.stockoutRisk.includes('Risk')
-                              ? 'risk'
-                              : row.stockoutRisk.includes('Watch')
-                              ? 'watch'
-                              : 'success'
-                          }
-                          className="text-xs"
-                        >
-                          {row.stockoutRisk}
-                        </Badge>
-                      </TableCell>
-
+                      {show('stockoutRisk') && (
+                        <TableCell className="py-2.5 px-3">
+                          <Badge
+                            tone={
+                              row.stockoutRisk.includes('Risk')
+                                ? 'risk'
+                                : row.stockoutRisk.includes('Watch')
+                                ? 'watch'
+                                : 'success'
+                            }
+                            className="text-xs"
+                          >
+                            {row.stockoutRisk}
+                          </Badge>
+                        </TableCell>
+                      )}
                       {/* RMLC Status */}
-                      <TableCell className="py-2.5 px-3">
-                        <Badge
-                          tone={
-                            row.rmlcStatus.includes('Liquidation') || row.rmlcStatus.includes('Risk')
-                              ? 'risk'
-                              : 'success'
-                          }
-                          className="text-xs"
-                        >
-                          {row.rmlcStatus}
-                        </Badge>
-                      </TableCell>
-
+                      {show('rmlcStatus') && (
+                        <TableCell className="py-2.5 px-3">
+                          <Badge
+                            tone={
+                              row.rmlcStatus.includes('Liquidation') || row.rmlcStatus.includes('Risk')
+                                ? 'risk'
+                                : 'success'
+                            }
+                            className="text-xs"
+                          >
+                            {row.rmlcStatus}
+                          </Badge>
+                        </TableCell>
+                      )}
                       {/* BOM Coverage */}
-                      <TableCell className="text-center py-2.5 px-3">
-                        <Badge
-                          tone={
-                            row.bomCoverage === 'Risk'
-                              ? 'risk'
-                              : row.bomCoverage === 'Watch'
-                              ? 'watch'
-                              : 'success'
-                          }
-                          className="text-xs"
-                        >
-                          {row.bomCoverage}
-                        </Badge>
-                      </TableCell>
-
+                      {show('bomCoverage') && (
+                        <TableCell className="text-center py-2.5 px-3">
+                          <Badge
+                            tone={
+                              row.bomCoverage === 'Risk'
+                                ? 'risk'
+                                : row.bomCoverage === 'Watch'
+                                ? 'watch'
+                                : 'success'
+                            }
+                            className="text-xs"
+                          >
+                            {row.bomCoverage}
+                          </Badge>
+                        </TableCell>
+                      )}
                       {/* Supplier */}
-                      <TableCell className="text-xs text-body-c truncate max-w-[220px] py-2.5 px-3" title={row.supplier}>
-                        {row.supplier}
-                      </TableCell>
-
+                      {show('supplier') && (
+                        <TableCell className="text-xs text-body-c truncate max-w-[220px] py-2.5 px-3" title={row.supplier}>
+                          {row.supplier}
+                        </TableCell>
+                      )}
                       {/* Sourcing Model */}
-                      <TableCell className="text-xs text-body-c py-2.5 px-3">
-                        {row.sourcingType}
-                      </TableCell>
-
+                      {show('sourcingType') && (
+                        <TableCell className="text-xs text-body-c py-2.5 px-3">
+                          {row.sourcingType}
+                        </TableCell>
+                      )}
                       {/* Criticality */}
-                      <TableCell className="py-2.5 px-3">
-                        <Badge
-                          tone={
-                            row.criticality === 'Critical'
-                              ? 'risk'
-                              : row.criticality === 'High'
-                              ? 'watch'
-                              : 'neutral'
-                          }
-                          className="text-xs"
-                        >
-                          {row.criticality}
-                        </Badge>
-                      </TableCell>
-
+                      {show('criticality') && (
+                        <TableCell className="py-2.5 px-3">
+                          <Badge
+                            tone={
+                              row.criticality === 'Critical'
+                                ? 'risk'
+                                : row.criticality === 'High'
+                                ? 'watch'
+                                : 'neutral'
+                            }
+                            className="text-xs"
+                          >
+                            {row.criticality}
+                          </Badge>
+                        </TableCell>
+                      )}
                       {/* Downstream Scope */}
-                      <TableCell className="text-xs text-body-c truncate max-w-[200px] py-2.5 px-3" title={row.downstreamLines}>
-                        {row.downstreamLines}
-                      </TableCell>
+                      {show('downstreamLines') && (
+                        <TableCell className="text-xs text-body-c truncate max-w-[200px] py-2.5 px-3" title={row.downstreamLines}>
+                          {row.downstreamLines}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={COLUMNS_CONFIG.length} className="text-center py-10 text-body-c">
+                    <TableCell colSpan={visibleColumns.length} className="text-center py-10 text-body-c">
                       No materials matching criteria &quot;{searchQuery}&quot;
                     </TableCell>
                   </TableRow>

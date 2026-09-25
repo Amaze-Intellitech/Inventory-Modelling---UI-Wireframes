@@ -4,6 +4,7 @@ import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
 import { SlidersHorizontal, ArrowRight, RotateCcw, TrendingUp, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { ViewHead, KpiTile, Insight, Chip, WhyDisclosure, Badge } from '../../components/CommonUI';
 import { Button } from '@/components/ui/button';
+import { usePlatform } from '../../context/PlatformContext';
 import { Slider } from '@/components/ui/slider';
 
 const LEVERS = [
@@ -23,6 +24,7 @@ const PRESETS = [
 ];
 
 export default function WhatIf() {
+  const { persona } = usePlatform();
   const navigate = useNavigate();
   // Raw lever positions, and which levers are actually moving. Levers that are not active are held at baseline.
   const ZERO = { demand: 0, lead: 0, hold: 0, price: 0, cap: 0 };
@@ -226,7 +228,7 @@ export default function WhatIf() {
       />
 
       {/* KPI impact: projected inventory, coverage ratio, turnover — always paired with an AI interpretation */}
-      <Insight label="Scenario result">
+      <Insight label="Scenario result" defaultOpen>
         {changedLevers.length === 0
           ? 'With every assumption at baseline, projected inventory is $42.85M, covering 22 days of consumption and turning 4.1 times a year. Move a variable to see what changes.'
           : `If ${changedLevers.join(' and ')}, projected inventory moves to $${out.value.toFixed(2)}M (${out.invValuePct >= 0 ? '+' : ''}${out.invValuePct.toFixed(1)}%), coverage ${out.icr >= 22 ? 'rises' : 'falls'} to ${out.icr.toFixed(0)} days and turnover ${out.turnover >= 4.1 ? 'improves' : 'slows'} to ${out.turnover.toFixed(1)}×. ${out.reco}`}
@@ -502,12 +504,19 @@ export default function WhatIf() {
         </p>
       </div>
 
-      <Insight label="Prescribed countermeasure">{out.reco}</Insight>
+      <Insight key={persona} label="Prescribed countermeasure">
+        {persona === 'exec'
+          ? `Bottom line: projected inventory is $${out.value.toFixed(2)}M${changedLevers.length ? ` (${out.invValuePct >= 0 ? '+' : ''}${out.invValuePct.toFixed(1)}%)` : ''} with ${out.icr.toFixed(0)} days of cover. ${out.reco}`
+          : persona === 'ds'
+          ? `Reading: safety stock responds non-linearly to demand variance and the lead-time lever widens the exposure window; the driver breakdown below shows each contribution. ${out.reco}`
+          : `${out.reco}${changedLevers.length ? ' Check supplier capacity against the new order frequency before changing the policy.' : ''}`}
+      </Insight>
 
       <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <h2 className="card__title text-sm font-bold text-ink mb-1">Sensitivity driver breakdown</h2>
         <WhyDisclosure
-          defaultOpen
+          key={persona}
+          defaultOpen={persona === 'ds'}
           summary="Why portfolio working capital and stockout risk respond to these levers"
           drivers={[
             'Demand lever (+20.00%): drives safety stock up non-linearly to absorb higher Poisson arrival variance',

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { ViewHead, KpiTile, Insight, Card, CardHead, Badge, DrillDown } from '../../components/CommonUI';
 import { Button } from '@/components/ui/button';
+import { usePlatform } from '../../context/PlatformContext';
 
 // Phase 5 of the business lifecycle: keep inventory healthy ("Stay Green") by catching re-accumulation early.
 // Screen content is a wireframe proposal derived from design bible §3.4 — pending SME review.
@@ -33,6 +34,7 @@ const INITIAL_ALERTS = [
 ];
 
 export default function Prevention() {
+  const { persona } = usePlatform();
   const [alerts, setAlerts] = useState(INITIAL_ALERTS);
   const [rules, setRules] = useState(RULES);
 
@@ -49,10 +51,26 @@ export default function Prevention() {
         actions={<Badge tone="ai" shape={false}>Proposal · pending SME review</Badge>}
       />
 
-      <Insight label="Stay Green">
-        {alerts.length} early warnings could add about <span className="metric">$1.05M</span> of excess stock within eight
-        weeks if nothing changes. The hydraulic pump is the most urgent: lead times have crept up three weeks in a row
-        while consumption stayed flat.
+      <Insight key={persona} label="Stay Green">
+        {persona === 'analyst' ? (
+          <>
+            Start with <span className="metric">MAT-1082</span>: its lead time has been up 3 days for three weeks in a row, so move the next
+            order out by 9 days and cut its size by 15% to avoid <span className="metric">+$0.62M</span> by week 6. Steel Housing and Seal Kit
+            follow. The &quot;Cover above ceiling&quot; rule is not armed, so a slow build-up on a Class A material will not raise a warning yet.
+          </>
+        ) : persona === 'ds' ? (
+          <>
+            Warnings come from three rules: supplier lead time above plan, consumption below plan, and coverage above a ceiling. Two of the{' '}
+            {alerts.length} open warnings share one root cause, longer lead times. The lead-time and production rules are armed and last fired 2
+            and 9 days ago; the <span className="metric">45-day</span> coverage ceiling for Class A has never fired because it is not armed.
+          </>
+        ) : (
+          <>
+            {alerts.length} early warnings could add about <span className="metric">$1.05M</span> of excess stock within eight
+            weeks if nothing changes. The hydraulic pump is the most urgent: lead times have crept up three weeks in a row
+            while consumption stayed flat.
+          </>
+        )}
       </Insight>
 
       <div className="grid-3">

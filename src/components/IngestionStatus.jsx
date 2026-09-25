@@ -1,11 +1,29 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge, Card, CardHead, AlertBar } from './CommonUI';
+import { StatusShape } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 // Data foundation pipeline (design bible §5.4) and ingestion / data-quality status (Screen D).
-const PIPELINE = ['Sources', 'Source-to-target mapping', 'Canonical dataset', 'Ingestion', 'Data quality', 'Analytical dataset'];
+// Each step explains itself in a popover; steps that are configured elsewhere link to that screen.
+const PIPELINE = [
+  { key: 'sources', label: 'Sources', meaning: 'The systems the platform reads from and how often each one syncs.', to: '/data-sources', linkLabel: 'Open data sources' },
+  { key: 'mapping', label: 'Source-to-target mapping', meaning: "Says which field in each source system feeds which field in the canonical dataset, including unit and currency conversions, so every system's version of a fact lands in one place.", to: '/parameter-mapping', linkLabel: 'Open parameter mapping' },
+  { key: 'canonical', label: 'Canonical dataset', meaning: 'One reconciled table of 3,650 daily rows built from all sources, so every screen reads the same numbers.' },
+  { key: 'ingestion', label: 'Ingestion', meaning: 'Loading each source into the canonical dataset, with row counts and gaps per source.' },
+  { key: 'quality', label: 'Data quality', meaning: 'Validation, outlier and master-data checks before analysis is allowed to run.' },
+  { key: 'analytical', label: 'Analytical dataset', meaning: 'The cleaned, analysis-ready data that every stage from Univariate to Optimization uses.' },
+];
+
+// Status is never colour alone: each state has a shape and a word.
+const STEP_STATE = {
+  done: { shape: 'circle', word: 'Done', color: 'text-success' },
+  attention: { shape: 'triangle', word: 'Needs attention', color: 'text-warning' },
+  blocked: { shape: 'diamond', word: 'Blocked', color: 'text-error' },
+};
 
 const SOURCES = [
   { name: 'SAP S/4HANA', kind: 'Structured', rows: '3,650', missing: 0.0, tone: 'success', label: 'Loaded' },
@@ -22,17 +40,63 @@ const CHECKS = [
 ];
 
 export default function IngestionStatus({ material = 'MAT-1082 · Hydraulic Pump', onProceed, proceedLabel = 'Proceed to analysis' }) {
+  const navigate = useNavigate();
   const [reviewed, setReviewed] = useState(false);
+
+  // Step status comes from the data on this screen: source gaps and the master-data review.
+  const stepStatus = {
+    sources: { state: 'done', note: 'All sources are connected.' },
+    mapping: { state: 'done', note: 'All required parameters are mapped.' },
+    canonical: { state: 'done', note: 'Built from all sources.' },
+    ingestion: SOURCES.some((src) => src.tone === 'watch')
+      ? { state: 'attention', note: 'The supplier feed is 12% incomplete. You can continue.' }
+      : { state: 'done', note: 'Every source loaded.' },
+    quality: reviewed
+      ? { state: 'done', note: 'Master-data gap reviewed.' }
+      : { state: 'blocked', note: 'One material is missing its unit of measure. Review it to continue.' },
+    analytical: reviewed
+      ? { state: 'done', note: 'Ready to analyse.' }
+      : { state: 'blocked', note: 'Not available until the master-data gap is reviewed.' },
+  };
 
   return (
     <div className="space-y-4">
       <ol className="pipeline" aria-label="Data foundation pipeline">
-        {PIPELINE.map((step, i) => (
-          <li key={step} className={i === PIPELINE.length - 1 ? 'pipeline__step pipeline__step--last' : 'pipeline__step'}>
-            <span className="pipeline__num">{i + 1}</span>
-            {step}
-          </li>
-        ))}
+        {PIPELINE.map((step, i) => {
+          const { state, note } = stepStatus[step.key];
+          const { shape, word, color } = STEP_STATE[state];
+          return (
+            <li key={step.key}>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={i === PIPELINE.length - 1 ? 'pipeline__step pipeline__step--last' : 'pipeline__step'}
+                  >
+                    <span className="pipeline__num">{i + 1}</span>
+                    {step.label}
+                    <span className={`inline-flex ${color}`}><StatusShape shape={shape} /></span>
+                    <span className="sr-only">{word}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[min(340px,calc(100vw-32px))]">
+                  <p className="m-0 mb-1 text-[13px] font-semibold text-ink">{step.label}</p>
+                  <p className="m-0 mb-2.5">{step.meaning}</p>
+                  <p className="m-0 flex items-center gap-1.5 text-xs font-semibold text-ink">
+                    <span className={`inline-flex ${color}`}><StatusShape shape={shape} /></span>
+                    {word}
+                    <span className="font-normal text-body-c">· {note}</span>
+                  </p>
+                  {step.to && (
+                    <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={() => navigate(step.to)}>
+                      {step.linkLabel} <ArrowRight size={13} aria-hidden="true" />
+                    </Button>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </li>
+          );
+        })}
       </ol>
 
       <Card className="mb-0">

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { ViewHead, KpiTile, Insight, Card, CardHead, Badge, AlertBar, DrillDown } from '../../components/CommonUI';
 import { Button } from '@/components/ui/button';
+import { usePlatform } from '../../context/PlatformContext';
 
 // Phase 4 of the business lifecycle: clear existing excess, ageing and duplicated stock ("Get to Green").
 // Screen content is a wireframe proposal derived from design bible §3.4 — pending SME review.
@@ -83,6 +84,7 @@ function VsOptimalChart() {
 }
 
 export default function Liquidation() {
+  const { persona } = usePlatform();
   const total = OPPORTUNITIES.reduce((sum, o) => sum + o.value, 0);
 
   return (
@@ -93,10 +95,28 @@ export default function Liquidation() {
         actions={<Badge tone="ai" shape={false}>Proposal · pending SME review</Badge>}
       />
 
-      <Insight label="Get to Green">
-        You can release about <span className="metric">{fmtMoney(total)}</span> without buying or writing off anything new.
-        The biggest single win is moving <span className="metric">$1.12M</span> of steel housings between two Plant 1
-        warehouses that cannot see each other's stock, and cancelling one duplicate purchase order.
+      <Insight key={persona} label="Get to Green">
+        {persona === 'analyst' ? (
+          <>
+            {OPPORTUNITIES.length} actions are ready, worth <span className="metric">{fmtMoney(total)}</span> in total. Two stop new spend straight away:
+            cancel the duplicate PO on MAT-1082 (<span className="metric">$0.94M</span>) and pause Seal Kit reorders on MAT-1177. The largest is
+            moving <span className="metric">$1.12M</span> of MAT-3390 between the two Plant 1 warehouses, and the Sealant Paste lots on MAT-5501
+            expire inside 60 days, so consume those first.
+          </>
+        ) : persona === 'ds' ? (
+          <>
+            Each opportunity comes from a rule on stock against the optimal position: excess above optimal, age over 180 days, expiry inside
+            60 days, duplicate open orders against days of cover, and stock that sites cannot see across warehouses. Steel Housing sits{' '}
+            <span className="metric">34% over</span> its optimal position and Sealant Paste <span className="metric">28% under</span>, so the
+            value is concentrated in a few materials. The thresholds are listed under &quot;Why each opportunity was flagged&quot;.
+          </>
+        ) : (
+          <>
+            You can release about <span className="metric">{fmtMoney(total)}</span> without buying or writing off anything new.
+            The biggest single win is moving <span className="metric">$1.12M</span> of steel housings between two Plant 1
+            warehouses that cannot see each other's stock, and cancelling one duplicate purchase order.
+          </>
+        )}
       </Insight>
 
       <div className="grid-4">

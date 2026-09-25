@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import aitekLogo from '../aitek_logo_bg_removed-removebg-preview.png';
 
-// Nav follows the canonical pipeline (design bible §4): stage numbers 1–9 match the stage tabs.
+// Small-screen navigation drawer (the header carries the navigation on desktop). Follows the canonical pipeline (design bible §4): stage numbers 1–9 match the stage tabs.
 const GROUPS = [
   {
     label: 'Understand',
@@ -74,7 +74,7 @@ export default function Rail({ open = false }) {
                 }
               >
                 <Icon size={16} className="shrink-0" />
-                <span className="truncate">{label}</span>
+                <span className="rail__label truncate">{label}</span>
                 {stage && <span className="rail__stage" aria-label={`Stage ${stage}`}>{stage}</span>}
               </NavLink>
             ))}
