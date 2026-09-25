@@ -34,18 +34,11 @@ const formatNum = (v, decimals = 0) =>
 
 // Persona descriptions for context strip
 const PERSONA_DESCRIPTIONS = {
-  ds: {
-    label: 'Data Scientist Lens',
-    sub: 'Emphasizing statistical drivers, confidence bounds, model R², and mathematical relationships.',
-  },
-  analyst: {
-    label: 'Inventory Analyst Lens',
-    sub: 'Emphasizing operational coverage, lead time gaps, replenishment sizing, and tactical workflow next steps.',
-  },
-  exec: {
-    label: 'Executive / C-Suite Lens',
-    sub: 'Emphasizing bottom-line EBITDA impact, working capital release, service level risk, and decision priority.',
-  },
+  supervisor: { label: 'Plant Supervisor Lens', sub: 'Emphasizing which materials could stop a line, how long cover lasts, and the next step to keep the plant running.' },
+  warehouse: { label: 'Warehouse Manager Lens', sub: 'Emphasizing physical stock, ageing and excess, and what clearing it releases.' },
+  planner: { label: 'Materials Planner Lens', sub: 'Emphasizing cover against the production plan, demand swings and safety stock.' },
+  procurement: { label: 'Procurement Officer Lens', sub: 'Emphasizing reorder points, order sizing, lead times and sourcing risk.' },
+  finance: { label: 'Finance Controller Lens', sub: 'Emphasizing working capital release, cash tied up in inventory and decision priority.' },
 };
 
 // 8 Enterprise Prompt Library definitions
@@ -731,7 +724,7 @@ function AgentTrace({ trace }) {
 
 export default function DecisionIntelligence() {
   const navigate = useNavigate();
-  const { persona, selectedMaterial } = usePlatform();
+  const { persona: activePersona, legacyPersona: persona, selectedMaterial } = usePlatform();
 
   const [tab, setTab] = useState('ws');
   const [authorized, setAuthorized] = useState({});
@@ -860,7 +853,7 @@ export default function DecisionIntelligence() {
     setInputText('');
   };
 
-  const personaMeta = PERSONA_DESCRIPTIONS[persona] || PERSONA_DESCRIPTIONS.analyst;
+  const personaMeta = PERSONA_DESCRIPTIONS[activePersona] || PERSONA_DESCRIPTIONS.supervisor;
 
   return (
     <motion.section 

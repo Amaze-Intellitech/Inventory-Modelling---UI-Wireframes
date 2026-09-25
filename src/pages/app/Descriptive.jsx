@@ -308,7 +308,7 @@ function DemandVsOnTimeScatterChart() {
 
 // `mode` fixes the view to one pipeline stage: 'uni' (Stage 1) or 'bi' (Stage 2). Without it both tabs show.
 export default function Descriptive({ mode }) {
-  const { persona, selectedMaterial } = usePlatform();
+  const { legacyPersona: persona, selectedMaterial } = usePlatform();
   const [tab, setTab] = useState(mode || 'uni');
   const [selectedVarId, setSelectedVarId] = useState('weekly_consumption');
   const [selectedRelId, setSelectedRelId] = useState('lt_vs_stockout');

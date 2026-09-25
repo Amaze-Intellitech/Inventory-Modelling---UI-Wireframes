@@ -295,7 +295,7 @@ const PORTFOLIO_INTERVENTION_QUEUE = [
 
 export default function RmlcLifecycle() {
   const navigate = useNavigate();
-  const { persona, selectedMaterial } = usePlatform();
+  const { legacyPersona: persona, selectedMaterial } = usePlatform();
   const shouldReduceMotion = useReducedMotion();
 
   const materialId = selectedMaterial?.id || 'MAT-1082';
@@ -672,12 +672,12 @@ export default function RmlcLifecycle() {
           </Insight>
         )}
         {persona === 'analyst' && (
-          <Insight label="Supply Chain Analyst Lens · Procurement Interventions & Inventory Governance">
+          <Insight label="Plant Operations Lens · Procurement Interventions & Inventory Governance">
             {profile.analystLens}
           </Insight>
         )}
         {persona === 'exec' && (
-          <Insight label="C-Suite Executive Lens · Working Capital Exposure & Obsolescence Risk Governance">
+          <Insight label="Finance Lens · Working Capital Exposure & Obsolescence Risk Governance">
             {profile.execLens}
           </Insight>
         )}

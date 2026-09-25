@@ -18,26 +18,38 @@ import { MATERIALS } from '../../data/mockData';
 
 // The lens changes what the page leads with: trust for decisions, what to fix, or how the data was validated.
 const READINESS_INSIGHT = {
-  exec: (
+  finance: (
     <>
       Your data is <span className="metric">99.8%</span> complete, so the numbers on every other screen can be relied on for
       decisions. Two gaps to know about: one material has no unit of measure and the supplier feed is 12% incomplete, which
       will make Optimization less certain.
     </>
   ),
-  analyst: (
+  supervisor: (
     <>
-      Your data is <span className="metric">99.8%</span> complete and ready for analysis, with two things to look at:
+      Your data is <span className="metric">99.8%</span> complete and ready to run the plant on, with two things to look at:
       one material is missing its unit of measure (this must be fixed), and the supplier feed is 12% incomplete
       (this can wait, but it will make Optimization less certain).
     </>
   ),
-  ds: (
+  warehouse: (
     <>
-      Snapshot v2.40 passes schema and completeness validation at <span className="metric">99.80%</span>, with every
-      unit-of-measure conversion and unit-cost field checked against the master catalog. Open gaps: one material without a
-      unit of measure, and a 12% incomplete supplier feed that widens the uncertainty on lead-time inputs. Quality inspection
-      records arrive with a <span className="metric">2.00h</span> ingestion latency.
+      Stock records are <span className="metric">99.8%</span> complete. One material has no unit of measure, so its on-hand
+      quantity cannot be compared with the warehouse count until that is fixed. Movements, receipts and consumption from the
+      warehouse system arrive with a <span className="metric">2.00h</span> delay.
+    </>
+  ),
+  planner: (
+    <>
+      Consumption history is <span className="metric">99.8%</span> complete across the last 24 months, enough to plan against. The
+      supplier feed is 12% incomplete, which widens the uncertainty on lead times, and one material has no unit of measure.
+    </>
+  ),
+  procurement: (
+    <>
+      Your data is <span className="metric">99.8%</span> complete. The supplier feed is <span className="metric">12%</span> incomplete,
+      so some lead times and sourcing terms are estimates until it is filled. One material has no unit of measure, which blocks its
+      order quantity.
     </>
   ),
 };
@@ -88,7 +100,7 @@ export default function DataFoundation() {
       />
 
       <Insight key={persona} label="Data readiness">
-        {READINESS_INSIGHT[persona] || READINESS_INSIGHT.analyst}
+        {READINESS_INSIGHT[persona] || READINESS_INSIGHT.supervisor}
       </Insight>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
@@ -231,7 +243,7 @@ export default function DataFoundation() {
       </DrillDown>
 
       {/* Material Ledger Table with Live Filter */}
-      <DrillDown title="Material ledger" hint="Cost and quantity for every material" defaultOpen={persona !== 'exec'} className="mb-6">
+      <DrillDown title="Material ledger" hint="Cost and quantity for every material" defaultOpen={persona !== 'finance'} className="mb-6">
       <div className="bg-surface border border-border rounded-md p-5 shadow-subtle">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>

@@ -505,9 +505,9 @@ export default function WhatIf() {
       </div>
 
       <Insight key={persona} label="Prescribed countermeasure">
-        {persona === 'exec'
+        {persona === 'finance'
           ? `Bottom line: projected inventory is $${out.value.toFixed(2)}M${changedLevers.length ? ` (${out.invValuePct >= 0 ? '+' : ''}${out.invValuePct.toFixed(1)}%)` : ''} with ${out.icr.toFixed(0)} days of cover. ${out.reco}`
-          : persona === 'ds'
+          : persona === 'planner'
           ? `Reading: safety stock responds non-linearly to demand variance and the lead-time lever widens the exposure window; the driver breakdown below shows each contribution. ${out.reco}`
           : `${out.reco}${changedLevers.length ? ' Check supplier capacity against the new order frequency before changing the policy.' : ''}`}
       </Insight>
@@ -516,7 +516,6 @@ export default function WhatIf() {
         <h2 className="card__title text-sm font-bold text-ink mb-1">Sensitivity driver breakdown</h2>
         <WhyDisclosure
           key={persona}
-          defaultOpen={persona === 'ds'}
           summary="Why portfolio working capital and stockout risk respond to these levers"
           drivers={[
             'Demand lever (+20.00%): drives safety stock up non-linearly to absorb higher Poisson arrival variance',

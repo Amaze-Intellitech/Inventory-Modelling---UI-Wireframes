@@ -682,3 +682,44 @@ button.pipeline__step{font-family:inherit;cursor:pointer;transition:border-color
 @media (min-width:640px){.page-wrap{padding-left:32px;padding-right:32px;}}
 @media (min-width:1024px){.page-wrap{padding-left:48px;padding-right:48px;}}
 @media (max-width:600px){.params__head{display:none;}.params__row{grid-template-columns:minmax(0,1fr) 130px;}.params__range{grid-column:1 / -1;padding-left:26px;}}
+
+/* Understand & plan: three steps per persona (what's happening, what could happen, what to do next). */
+.uap{display:flex;flex-direction:column;gap:20px;}
+.uap__step{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:13px;font-weight:600;color:var(--ink);font-family:inherit;}
+.uap__step > span{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:var(--r-full);background:var(--deep-fill);color:#fff;font-size:11px;font-weight:700;}
+.uap__step-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
+.uap__step-row .uap__step{margin:0;}
+.uap__modes{display:flex;gap:6px;flex-wrap:wrap;}
+.uap__result{display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg);font-size:13px;}
+.uap__detail{margin:2px 0 0;color:var(--body-c);line-height:1.5;}
+.uap__actions{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.uap__actions > li{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);}
+.uap__rank{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:var(--r-full);border:1px solid var(--border-strong);font-size:12px;font-weight:600;color:var(--ink);}
+.uap__body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;font-size:13px;}
+.uap__meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--subtle);}
+.uap__effect{color:var(--body-c);font-weight:500;}
+.uap__handoff{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+@media (max-width:700px){
+  .uap__actions > li{flex-wrap:wrap;}
+  .uap__handoff{margin-left:34px;}
+}
+
+/* Focus today: the few decisions waiting for this persona. */
+.focus-strip{border:1px solid var(--border);border-left:3px solid var(--ai);border-radius:var(--r-md);background:var(--surface);padding:10px 14px;margin-bottom:12px;}
+.focus-strip__head{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ai-tx);margin-bottom:6px;}
+.focus-strip ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.focus-strip li{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--border);}
+.focus-strip li:first-child{border-top:none;}
+.focus-strip__body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:13px;}
+.focus-strip__meta{font-size:12px;color:var(--subtle);}
+.focus-strip__actions{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+@media (max-width:700px){
+  .focus-strip li{flex-wrap:wrap;}
+  .focus-strip__actions{width:100%;}
+}
+/* Sourcing comparison table: the persona's first-read columns are tinted. */
+.sourcing table{min-width:760px;}
+.sourcing__sub{display:block;font-size:12px;color:var(--subtle);font-weight:400;margin-top:2px;}
+.sourcing__watch{font-size:12px;color:var(--body-c);max-width:220px;}
+.sourcing .sourcing__emph{background:var(--muted-fill);}
+.sourcing__best td{box-shadow:inset 0 1px 0 var(--success),inset 0 -1px 0 var(--success);}

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
-import { ROLE_CONTEXT, MATERIALS } from '../data/mockData';
+import { ROLE_CONTEXT, DEFAULT_ROLE, MATERIALS } from '../data/mockData';
+import { LEGACY_LENS } from '../data/personas';
 import { defaultParameterSelection, requiredConnectors } from '../data/parameterCatalog';
 
 const PlatformContext = createContext(null);
@@ -47,10 +48,12 @@ function readOnboarded() {
 }
 
 export function PlatformProvider({ children }) {
-  const [role, setRoleState] = useState('VP, Supply Chain Operations');
-  const [scope, setScope] = useState(ROLE_CONTEXT['VP, Supply Chain Operations'].scope);
-  const [persona, setPersona] = useState(ROLE_CONTEXT['VP, Supply Chain Operations'].persona);
+  const [role, setRoleState] = useState(DEFAULT_ROLE);
+  const [scope, setScope] = useState(ROLE_CONTEXT[DEFAULT_ROLE].scope);
+  const [persona, setPersona] = useState(ROLE_CONTEXT[DEFAULT_ROLE].persona);
   const [selectedMaterialId, setSelectedMaterialId] = useState('MAT-1082');
+  // Focus items the user has approved or snoozed this session (in memory only; sign-out clears it).
+  const [resolvedFocus, setResolvedFocus] = useState({});
   const [onboarded, setOnboardedState] = useState(readOnboarded);
   const [parameterSelection, setParameterSelectionState] = useState(readParameterSelection);
   const [connectedSources, setConnectedSourcesState] = useState(() => readJson(CONNECTED_KEY, []));
@@ -101,15 +104,19 @@ export function PlatformProvider({ children }) {
     }
   }
 
+  function resolveFocus(id, status) {
+    setResolvedFocus((prev) => ({ ...prev, [id]: status }));
+  }
+
   function resetSession() {
-    const defaultRole = 'VP, Supply Chain Operations';
-    setRoleState(defaultRole);
-    const ctx = ROLE_CONTEXT[defaultRole];
+    setRoleState(DEFAULT_ROLE);
+    const ctx = ROLE_CONTEXT[DEFAULT_ROLE];
     if (ctx) {
       setScope(ctx.scope);
       setPersona(ctx.persona);
     }
     setSelectedMaterialId('MAT-1082');
+    setResolvedFocus({});
   }
 
   const department = ROLE_CONTEXT[role]?.dept ?? '';
@@ -121,8 +128,12 @@ export function PlatformProvider({ children }) {
     setScope,
     persona,
     setPersona,
+    // for stage pages not yet rewritten for the plant personas (see LEGACY_LENS)
+    legacyPersona: LEGACY_LENS[persona] ?? 'analyst',
     department,
     resetSession,
+    resolvedFocus,
+    resolveFocus,
     selectedMaterialId,
     setSelectedMaterialId,
     selectedMaterial,
@@ -145,7 +156,7 @@ export function usePlatform() {
 }
 
 // Convenience wrapper for persona-gated content, e.g.:
-//   <ForPersona allow={['ds']}><ModelDiagnostics /></ForPersona>
+//   <ForPersona allow={['supervisor', 'planner']}><CoverRunway /></ForPersona>
 export function ForPersona({ allow, children }) {
   const { persona } = usePlatform();
   if (!allow.includes(persona)) return null;

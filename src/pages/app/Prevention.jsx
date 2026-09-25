@@ -52,17 +52,27 @@ export default function Prevention() {
       />
 
       <Insight key={persona} label="Stay Green">
-        {persona === 'analyst' ? (
+        {persona === 'procurement' ? (
           <>
             Start with <span className="metric">MAT-1082</span>: its lead time has been up 3 days for three weeks in a row, so move the next
             order out by 9 days and cut its size by 15% to avoid <span className="metric">+$0.62M</span> by week 6. Steel Housing and Seal Kit
-            follow. The &quot;Cover above ceiling&quot; rule is not armed, so a slow build-up on a Class A material will not raise a warning yet.
+            follow.
           </>
-        ) : persona === 'ds' ? (
+        ) : persona === 'planner' ? (
           <>
             Warnings come from three rules: supplier lead time above plan, consumption below plan, and coverage above a ceiling. Two of the{' '}
-            {alerts.length} open warnings share one root cause, longer lead times. The lead-time and production rules are armed and last fired 2
-            and 9 days ago; the <span className="metric">45-day</span> coverage ceiling for Class A has never fired because it is not armed.
+            {alerts.length} open warnings share one root cause, longer lead times. The <span className="metric">45-day</span> coverage
+            ceiling for Class A has never fired because it is not armed, so a slow build-up will not raise a warning yet.
+          </>
+        ) : persona === 'warehouse' ? (
+          <>
+            {alerts.length} early warnings could add about <span className="metric">$1.05M</span> of excess to your stores within eight
+            weeks if nothing changes. The hydraulic pump comes first, so plan space and cycle counts for it.
+          </>
+        ) : persona === 'supervisor' ? (
+          <>
+            These warnings are about stock building up, not running out. The hydraulic pump is the most urgent: its lead time has crept up
+            three weeks in a row while consumption stayed flat, so check that no line depends on the delayed delivery.
           </>
         ) : (
           <>

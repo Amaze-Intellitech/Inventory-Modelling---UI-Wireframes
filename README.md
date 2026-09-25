@@ -14,7 +14,7 @@ The platform models raw-material inventory as the starting point for downstream 
 - "Get to Green, Stay Green" screens for Liquidation and Prevention (wireframe proposals, pending SME review)
 - A business-first layout on every stage page: an AI insight in plain language first, then the chart, then collapsed technical detail
 
-The interface supports executive, supply-chain analyst, and data-science perspectives through persona-aware views and shared platform context.
+The interface supports the people who run a plant (plant supervisor, warehouse manager, materials planner, procurement officer and finance controller) through persona-aware views. On the Overview, each persona also gets an **Understand & plan** section: what is happening, what could happen if nothing changes versus if they act, and the next steps, which can be handed off to another persona.
 
 ## Prototype Scope
 
@@ -37,10 +37,12 @@ The platform models raw-material inventory dynamics, downstream multi-product de
    - Primary economic segmentation basis is **Annual Consumption Value** ($\text{Annual Demand} \times \text{Unit Purchase Cost}$) across a $43.86M enterprise catalog (1,420 SKUs).
    - Augmented with 5-dimensional contextual intelligence: Demand Volatility ($\text{CV}$), Downstream Product Dependency (fan-out and critical lines), Supply Latency (lead time & single-source exposure), and Assembly Criticality.
    - Strict separation of financial measures: Annual Consumption Value, Physical On-Hand Stock ($13.71M enterprise total), Working Capital, and Inventory Value at Risk.
-3. **Multi-Persona Intelligence Engine**:
-   - **Data Scientist (`ds`)**: Empirical distribution curves, Gini inequality ($0.81$), statistical outlier thresholds, forecast confidence intervals, and methodological rigor.
-   - **Supply Chain Analyst (`analyst`)**: Operational review cadences (weekly/monthly/quarterly), cycle-count accuracy targets ($99\% / 95\% / 90\%$), downstream assembly line continuity, and replenishment priority queues.
-   - **C-Suite Executive (`exec`)**: Portfolio economic concentration ($78.30\%$ of value in $10.00\%$ of SKUs), working-capital exposure, balance-sheet physical stock protection, and strategic vendor relationship governance.
+3. **Plant Persona Engine**: an organisation is a plant, so every persona is an internal role. Each lens changes the Overview insight, KPIs, table columns and sort, and adds its own *Understand & plan* section.
+   - **Plant Supervisor (`supervisor`)**: which materials could stop a line, days of cover against lead time, and the downstream lines exposed. Next steps: expedite, transfer, or re-sequence.
+   - **Warehouse Manager (`warehouse`)**: ageing and excess stock by lifecycle stage, and the value released by returning, transferring or selling it.
+   - **Materials Planner (`planner`)**: stock runway against the production plan and a 15% demand swing, with the safety-stock line.
+   - **Procurement Officer (`procurement`)**: stock as a share of reorder point, the effect of a supplier delay, and sole or allocated sourcing exposure.
+   - **Finance Controller (`finance`)**: where cash is stuck in the purchase-to-payment cycle, and the working capital each option frees or locks.
 4. **Canonical Workflow (nine stages, fixed order)**:
    - **Entry**: SSO sign-in → solution → access-check modal. A returning user then opens `/app` directly; a first-time user continues to onboarding. The "loaded" flag is stored in `localStorage` (`aitek-onboarded`), set when ingestion completes.
    - **Onboarding (first time only)**: Material selection with ABC tier → ~40-parameter checklist with a source per parameter and a data range (one default range per material, as in the design bible; each parameter can override it) → data sources (the page lists the connectors the chosen parameters need, and continuing is blocked until each is connected) → ingestion and data-quality status. Master-data gaps block the run; warnings do not.
@@ -65,7 +67,8 @@ The platform models raw-material inventory dynamics, downstream multi-product de
 - **Typography**: Urbanist (display headings only), Inter (UI, labels, tables and numerals, with tabular figures) and JetBrains Mono (IDs and code)
 - **Charts**: Responsive SVG built directly in JSX (`src/components/Charts.jsx`), each with a legend and a "View as table" view
 - **Theme**: Light and dark, toggled from the header of every screen (`src/components/ThemeToggle.jsx`) and stored in `localStorage` (`src/lib/theme.js`)
-- **Persona lens**: the top-bar switch (Data Scientist / Analyst / C-Suite) changes the Overview insight, KPIs, table columns and sort, and the insight and detail sections on Data Foundation, Liquidation, Prevention and What-if, as well as the stage pages that already had lens content
+- **Focus today and sourcing comparison**: a strip at the top of the Overview lists at most three decisions waiting for the active persona, ranked by value at risk (`src/components/FocusStrip.jsx`, `src/data/focusItems.js`). For a shortfall such as MAT-4120 at Plant 3, *Compare sourcing options* opens a side-by-side view of moving stock from other plants versus expediting or switching vendors, with total landed cost and a recommendation (`src/components/SourcingDialog.jsx`, `src/data/sourcingOptions.js`). Approving is a proposal for this session only; nothing is executed. Plant stock and vendor terms are illustrative values.
+- **Persona lens**: the top-bar switch (Plant Supervisor / Warehouse Manager / Materials Planner / Procurement Officer / Finance Controller, defined in `src/data/personas.js`) changes the Overview insight, KPIs, table columns and sort and adds the *Understand & plan* section (`src/components/UnderstandAndPlan.jsx`, content in `src/data/personaPlans.jsx`). It also changes the insight sections on Data Foundation, Liquidation, Prevention and What-if. Stage pages not yet rewritten for these personas (ABC, EOQ, RMLC, Optimization, Raw Materials, Decisions) map each persona to their older lens content through `legacyPersona`.
 - **Screen density**: Page and card descriptions sit behind an ⓘ popover (`InfoTip`), and AI insights clamp to two lines with a "Show more" toggle
 
 ---

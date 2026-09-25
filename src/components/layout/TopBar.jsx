@@ -3,15 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { LogOut, Menu } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { usePlatform } from '../../context/PlatformContext';
+import { PERSONAS } from '../../data/personas';
 import ThemeToggle from '../ThemeToggle';
 import PrimaryNav from './PrimaryNav';
 import aitekLogo from '../aitek_logo_bg_removed-removebg-preview.png';
-
-const PERSONAS = [
-  { key: 'ds', label: 'Data Scientist', short: 'DS' },
-  { key: 'analyst', label: 'Analyst' },
-  { key: 'exec', label: 'C-Suite' },
-];
 
 export default function TopBar({ onMenu }) {
   const navigate = useNavigate();
@@ -65,7 +60,7 @@ export default function TopBar({ onMenu }) {
                 />
               )}
               <span className="persona-full">{p.label}</span>
-              <span className="persona-short" aria-hidden="true">{p.short || p.label}</span>
+              <span className="persona-short" aria-hidden="true">{p.short}</span>
             </button>
           );
         })}

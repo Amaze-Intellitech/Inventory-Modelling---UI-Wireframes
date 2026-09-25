@@ -46,7 +46,7 @@ const MATERIAL_METADATA = {
 
 export default function EoqCalibration() {
   const navigate = useNavigate();
-  const { persona, selectedMaterial } = usePlatform();
+  const { legacyPersona: persona, selectedMaterial } = usePlatform();
   const shouldReduceMotion = useReducedMotion();
 
   const materialId = selectedMaterial?.id || 'MAT-1082';
@@ -418,12 +418,12 @@ export default function EoqCalibration() {
           </Insight>
         )}
         {persona === 'analyst' && (
-          <Insight label="Supply Chain Analyst Lens · Lot-Sizing Governance & Replenishment Execution">
+          <Insight label="Plant Operations Lens · Lot-Sizing Governance & Replenishment Execution">
             Current ERP lot sizing of <span className="font-mono font-bold text-ink">{formatNum(currentBatchQty, 0)} {uom}</span> incurs <span className="font-mono font-bold text-ink">{formatCurrency(currentHoldCost)}/yr</span> in annual holding costs. Calibrating lot sizing to <span className="font-mono font-bold text-ink">{formatNum(qStar, 0)} {uom}</span> rightsizes replenishment to <span className="font-mono font-bold text-ink">{formatNum(recDaysOfSupply, 1)} days</span> of supply, capturing <span className="font-mono font-bold text-success">{formatCurrency(netAnnualSavings)}/yr</span> in net savings.
           </Insight>
         )}
         {persona === 'exec' && (
-          <Insight label="C-Suite Executive Lens · Working Capital Velocity & Risk-Balanced Governance">
+          <Insight label="Finance Lens · Working Capital Velocity & Risk-Balanced Governance">
             For <span className="font-mono font-bold text-ink">{selectedMaterial.id}</span>, this modeled EOQ policy reduces relevant annual ordering and carrying cost by <span className="font-mono font-bold text-success">{formatCurrency(netAnnualSavings)}/yr</span> ({formatNum(netSavingsPercent, 1)}% policy cost reduction) and releases an estimated <span className="font-mono font-bold text-success">{formatCurrency(workingCapitalReleased)}</span> in average cycle-stock capital.
           </Insight>
         )}

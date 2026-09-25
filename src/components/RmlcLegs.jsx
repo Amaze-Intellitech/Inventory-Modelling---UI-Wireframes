@@ -20,6 +20,9 @@ const MATERIALS = [
   { id: 'MAT-2041', name: 'Lithium Cell', days: [15, 9, 12, 8, 66, 30], bottleneck: 'fg', why: 'Finished goods are sitting unsold in the warehouse for 66 days.' },
 ];
 
+// Shared with the Finance view of "Understand & Plan".
+export const RMLC_CYCLE_MATERIALS = MATERIALS;
+
 const sum = (a) => a.reduce((x, y) => x + y, 0);
 
 export default function RmlcLegs({ selectedId }) {

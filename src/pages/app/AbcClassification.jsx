@@ -264,7 +264,7 @@ const ENTERPRISE_PHYSICAL_ON_HAND_VALUE = 13710000.0;
 
 export default function AbcClassification() {
   const navigate = useNavigate();
-  const { persona, selectedMaterial } = usePlatform();
+  const { legacyPersona: persona, selectedMaterial } = usePlatform();
   const shouldReduceMotion = useReducedMotion();
 
   const matKey = selectedMaterial?.id || 'MAT-1082';
@@ -377,12 +377,12 @@ export default function AbcClassification() {
             </Insight>
           )}
           {persona === 'analyst' && (
-            <Insight label="Supply Chain Analyst Lens · Control Policy & Review Priority">
+            <Insight label="Plant Operations Lens · Control Policy & Review Priority">
               The top 142 Class A materials ($34.28M annual consumption value) require strict weekly inventory surveillance and tightest lot-size governance. Review cadences and cycle-count accuracy targets scale by segment: <span className="font-mono font-bold text-ink">Class A (99.00% accuracy, weekly)</span> → <span className="font-mono font-bold text-ink">Class B (95.00% accuracy, monthly)</span> → <span className="font-mono font-bold text-ink">Class C (90.00% accuracy, quarterly)</span>. High-consumption Class A items transition directly into algorithmic EOQ calibration.
             </Insight>
           )}
           {persona === 'exec' && (
-            <Insight label="C-Suite Executive Lens · Economic Concentration & Risk Governance">
+            <Insight label="Finance Lens · Economic Concentration & Risk Governance">
               78.30% of annual raw-material consumption value is concentrated in 10.00% of SKUs (142 materials out of 1,420 catalog SKUs totaling <span className="font-mono font-bold text-ink">$34.28M</span>). This high economic concentration justifies dedicated executive supplier governance, disciplined review cadences, and prioritized working-capital control to protect enterprise manufacturing throughput across all plants.
             </Insight>
           )}

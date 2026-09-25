@@ -9,7 +9,6 @@ import {
 import { Badge as UiBadge, StatusShape } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronDown, Info, Sparkles } from 'lucide-react';
-import { usePlatform } from '../context/PlatformContext';
 import { cn } from '@/lib/utils';
 
 export function Badge({ tone = 'neutral', shape, children, className }) {
@@ -254,10 +253,9 @@ export function WhyDisclosure({ summary, drivers = [], meaning = [], action = []
 }
 
 // Technical detail (coefficients, p-values, diagnostics …) — collapsed by default so the business answer leads
-// (design bible §3.5). The Data Scientist persona opens it by default.
-export function DrillDown({ title = 'Drill into detail', hint, children, defaultOpen, className }) {
-  const { persona } = usePlatform();
-  const open = defaultOpen ?? persona === 'ds';
+// (design bible §3.5).
+export function DrillDown({ title = 'Drill into detail', hint, children, defaultOpen = false, className }) {
+  const open = defaultOpen;
   return (
     <div className={cn('drilldown mt-3 rounded-md border border-border bg-surface', className)}>
       <Accordion key={open ? 'open' : 'closed'} type="single" collapsible defaultValue={open ? 'detail' : undefined} className="w-full">

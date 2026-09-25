@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { ViewHead, Badge, Insight, KpiTile } from '../../components/CommonUI';
 import { LifecycleStrip } from '../../components/Lifecycle';
+import UnderstandAndPlan from '../../components/UnderstandAndPlan';
+import FocusStrip from '../../components/FocusStrip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -22,7 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { usePlatform } from '../../context/PlatformContext';
-import { MATERIALS, EOQ_INPUTS, FORECAST_INPUTS, RAW_MATERIAL_ROWS } from '../../data/mockData';
+import { MATERIALS, EOQ_INPUTS, FORECAST_INPUTS, RAW_MATERIAL_ROWS, RMLC_STAGES } from '../../data/mockData';
 
 // ============================================================================
 // COMPLETE CANONICAL INVENTORY DATASET
@@ -269,25 +271,108 @@ const LISTED = (() => {
     shortestCover: byCover[0],
     medianCv: median(rows.map((r) => r.demandCV)),
     mostVolatile: byCv[0],
+    critical: rows.filter((r) => r.criticality === 'Critical'),
+    bomRisk: rows.filter((r) => r.bomCoverage === 'Risk'),
   };
 })();
 
 const joinIds = (rows) => rows.map((r) => r.id).join(' and ');
 
 const PERSONA_COLUMNS = {
-  exec: ['id', 'name', 'plant', 'category', 'qty', 'uom', 'unitCost', 'value', 'annualConsumptionValue', 'daysOfSupply', 'inventoryTurnover', 'stockoutRisk'],
-  analyst: ['id', 'name', 'plant', 'qty', 'uom', 'dailyConsumption', 'leadTimeDays', 'safetyStock', 'reorderPoint', 'daysOfSupply', 'stockoutRisk', 'rmlcStatus', 'supplier', 'sourcingType', 'criticality'],
-  ds: ['id', 'name', 'abcClass', 'annualDemand', 'dailyConsumption', 'demandCV', 'leadTimeDays', 'safetyStock', 'reorderPoint', 'currentBatchQty', 'calibratedEOQ', 'inventoryTurnover', 'bomCoverage'],
+  supervisor: ['id', 'name', 'plant', 'qty', 'uom', 'daysOfSupply', 'leadTimeDays', 'stockoutRisk', 'criticality', 'bomCoverage', 'downstreamLines'],
+  warehouse: ['id', 'name', 'plant', 'category', 'qty', 'uom', 'unitCost', 'value', 'daysOfSupply', 'inventoryTurnover', 'rmlcStatus'],
+  planner: ['id', 'name', 'plant', 'qty', 'uom', 'dailyConsumption', 'daysOfSupply', 'demandCV', 'leadTimeDays', 'safetyStock', 'bomCoverage', 'downstreamLines'],
+  procurement: ['id', 'name', 'plant', 'qty', 'uom', 'daysOfSupply', 'reorderPoint', 'safetyStock', 'leadTimeDays', 'currentBatchQty', 'calibratedEOQ', 'supplier', 'sourcingType'],
+  finance: ['id', 'name', 'plant', 'category', 'qty', 'uom', 'unitCost', 'value', 'annualConsumptionValue', 'daysOfSupply', 'inventoryTurnover', 'stockoutRisk'],
 };
 
 const PERSONA_SORT = {
-  exec: { field: 'value', direction: 'desc' },
-  analyst: { field: 'daysOfSupply', direction: 'asc' },
-  ds: { field: 'demandCV', direction: 'desc' },
+  supervisor: { field: 'daysOfSupply', direction: 'asc' },
+  warehouse: { field: 'daysOfSupply', direction: 'desc' },
+  planner: { field: 'daysOfSupply', direction: 'asc' },
+  procurement: { field: 'daysOfSupply', direction: 'asc' },
+  finance: { field: 'value', direction: 'desc' },
 };
 
+const DEFAULT_LENS = 'supervisor';
+
+const stage = (key) => RMLC_STAGES.find((s) => s.key === key);
+const money = (v) => `$${v.toFixed(2)}M`;
+const SOLE_OR_ALLOCATED = FULL_INVENTORY_DATASET.filter((r) => /sole|allocated/i.test(r.sourcingType));
+const LONGEST_LEAD = [...FULL_INVENTORY_DATASET].sort((a, b) => b.leadTimeDays - a.leadTimeDays)[0];
+
 const PERSONA_LENS = {
-  exec: {
+  supervisor: {
+    label: 'Where production is exposed',
+    insight: (
+      <>
+        <span className="metric">{LISTED.belowReorder.length} of the {LISTED.count} listed materials</span> are below their reorder
+        point: <span className="metric">{joinIds(LISTED.belowReorder)}</span>. <span className="metric">{LISTED.shortestCover.id}</span> has
+        only <span className="metric">{LISTED.shortestCover.daysOfSupply.toFixed(1)} days</span> of cover against a{' '}
+        {LISTED.shortestCover.leadTimeDays}-day lead time, and it feeds {LISTED.shortestCover.downstreamLines}. The table is sorted
+        shortest cover first.
+      </>
+    ),
+    kpis: [
+      { label: 'High stockout risk', value: String(LISTED.highRisk.length), delta: `of ${LISTED.count} listed materials`, deltaTone: 'down', sub: `AI: ${joinIds(LISTED.highRisk)} could run out inside 14 days.` },
+      { label: 'Below reorder point', value: String(LISTED.belowReorder.length), delta: `of ${LISTED.count} listed materials`, deltaTone: 'down', sub: `AI: ${joinIds(LISTED.belowReorder)} need a replenishment decision now.` },
+      { label: 'Shortest cover', value: `${LISTED.shortestCover.daysOfSupply.toFixed(1)} days`, delta: LISTED.shortestCover.id, sub: `AI: ${LISTED.shortestCover.name}, ${LISTED.shortestCover.sourcingType.toLowerCase()}.` },
+      { label: 'Critical materials', value: String(LISTED.critical.length), delta: `of ${LISTED.count} listed materials`, sub: 'AI: a stock-out on any of these stops a downstream line.' },
+    ],
+  },
+  warehouse: {
+    label: 'What is sitting in stores',
+    insight: (
+      <>
+        <span className="metric">{money(stage('atrisk').value + stage('liquidation').value)}</span> of stock across{' '}
+        <span className="metric">{stage('atrisk').count + stage('liquidation').count} SKUs</span> has gone 90 days or more without being
+        used, and <span className="metric">{money(stage('accumulation').value)}</span> more is building faster than it is consumed. About{' '}
+        <span className="metric">$4.2M</span> sits above the optimal position and three transfer options can move it between plants.
+      </>
+    ),
+    kpis: [
+      { label: 'Excess above optimal', value: '$4.2M', delta: '3 transfer options', sub: 'AI: most of it can move between plants instead of being written down.', to: '/app/liquidation' },
+      { label: 'Past 180 days', value: money(stage('liquidation').value), delta: `${stage('liquidation').count} SKUs`, deltaTone: 'down', sub: 'AI: candidates to return, sell or transfer.', to: '/app/liquidation' },
+      { label: 'At risk, 90 to 180 days', value: money(stage('atrisk').value), delta: `${stage('atrisk').count} SKUs`, deltaTone: 'down', sub: 'AI: cycle-count these before they age further.' },
+      { label: 'Building faster than use', value: money(stage('accumulation').value), delta: `${stage('accumulation').count} SKUs`, sub: 'AI: watch these on the Prevention page.', to: '/app/prevention' },
+    ],
+  },
+  planner: {
+    label: 'Cover against the plan',
+    insight: (
+      <>
+        <span className="metric">{LISTED.shortestCover.id}</span> has <span className="metric">{LISTED.shortestCover.daysOfSupply.toFixed(1)} days</span> of
+        cover, the least of the {LISTED.count} listed materials. Demand is least stable for{' '}
+        <span className="metric">{LISTED.mostVolatile.id}</span> (CV <span className="metric">{LISTED.mostVolatile.demandCV.toFixed(2)}</span>), so a
+        high month there would eat into its safety stock first. <span className="metric">{LISTED.bomRisk.length}</span> materials are flagged
+        for BOM coverage risk.
+      </>
+    ),
+    kpis: [
+      { label: 'Shortest cover', value: `${LISTED.shortestCover.daysOfSupply.toFixed(1)} days`, delta: LISTED.shortestCover.id, deltaTone: 'down', sub: `AI: ${LISTED.shortestCover.name}.` },
+      { label: 'Most volatile demand', value: LISTED.mostVolatile.demandCV.toFixed(2), delta: LISTED.mostVolatile.id, deltaTone: 'down', sub: `AI: ${LISTED.mostVolatile.name} has the widest demand swings.` },
+      { label: 'Median demand CV', value: LISTED.medianCv.toFixed(2), delta: `${LISTED.count} listed materials`, sub: 'AI: lower means demand is easier to plan for.' },
+      { label: 'BOM coverage at risk', value: String(LISTED.bomRisk.length), delta: `of ${LISTED.count} listed materials`, deltaTone: 'down', sub: `AI: ${joinIds(LISTED.bomRisk)} may not cover the production plan.` },
+    ],
+  },
+  procurement: {
+    label: 'What to order',
+    insight: (
+      <>
+        <span className="metric">{LISTED.belowReorder.length} of the {LISTED.count} listed materials</span> are below their reorder point (
+        <span className="metric">{joinIds(LISTED.belowReorder)}</span>). <span className="metric">{SOLE_OR_ALLOCATED.length}</span> come from a
+        sole or allocated source, and <span className="metric">{LONGEST_LEAD.id}</span> takes the longest to replenish at{' '}
+        <span className="metric">{LONGEST_LEAD.leadTimeDays} days</span>, so any delay there cannot be made up quickly.
+      </>
+    ),
+    kpis: [
+      { label: 'Below reorder point', value: String(LISTED.belowReorder.length), delta: `of ${LISTED.count} listed materials`, deltaTone: 'down', sub: `AI: ${joinIds(LISTED.belowReorder)} need an order decision now.` },
+      { label: 'Sole or allocated source', value: String(SOLE_OR_ALLOCATED.length), delta: joinIds(SOLE_OR_ALLOCATED) || 'None', deltaTone: 'down', sub: 'AI: no fallback supplier if a delivery slips.' },
+      { label: 'Longest lead time', value: `${LONGEST_LEAD.leadTimeDays} days`, delta: LONGEST_LEAD.id, sub: `AI: ${LONGEST_LEAD.supplier}.` },
+      { label: 'Lot-size recalibrations', value: '46', delta: 'Class A materials', sub: 'AI: recalibrating releases about $3.65M.', to: '/app/eoq' },
+    ],
+  },
+  finance: {
     label: 'Portfolio position',
     insight: (
       <>
@@ -304,41 +389,6 @@ const PERSONA_LENS = {
       { label: 'Excess & ageing exposure', value: '$4.2M', delta: '3 transfer options', sub: 'AI: most of it can move between plants instead of being written down.', to: '/app/liquidation' },
     ],
   },
-  analyst: {
-    label: 'Where to act',
-    insight: (
-      <>
-        <span className="metric">{LISTED.belowReorder.length} of the {LISTED.count} listed materials</span> are below their reorder
-        point: <span className="metric">{joinIds(LISTED.belowReorder)}</span>. <span className="metric">{LISTED.shortestCover.id}</span> has
-        only <span className="metric">{LISTED.shortestCover.daysOfSupply.toFixed(1)} days</span> of cover against a{' '}
-        {LISTED.shortestCover.leadTimeDays}-day lead time. The table is sorted shortest cover first. Three transfer options can also
-        release stock between plants without new purchases.
-      </>
-    ),
-    kpis: [
-      { label: 'High stockout risk', value: String(LISTED.highRisk.length), delta: `of ${LISTED.count} listed materials`, deltaTone: 'down', sub: `AI: ${joinIds(LISTED.highRisk)} could run out inside 14 days.` },
-      { label: 'Below reorder point', value: String(LISTED.belowReorder.length), delta: `of ${LISTED.count} listed materials`, deltaTone: 'down', sub: `AI: ${joinIds(LISTED.belowReorder)} need a replenishment decision now.` },
-      { label: 'Shortest cover', value: `${LISTED.shortestCover.daysOfSupply.toFixed(1)} days`, delta: LISTED.shortestCover.id, sub: `AI: ${LISTED.shortestCover.name}, ${LISTED.shortestCover.sourcingType.toLowerCase()}.` },
-      { label: 'Transfer options', value: '3', delta: '$4.2M excess to place', sub: 'AI: moving stock between plants avoids new purchases.', to: '/app/liquidation' },
-    ],
-  },
-  ds: {
-    label: 'Data and model reliability',
-    insight: (
-      <>
-        The data is <span className="metric">99.80%</span> complete, so the figures below are model-ready. Concentration is steep:{' '}
-        <span className="metric">10% of materials</span> hold <span className="metric">78.30%</span> of consumption value (Gini 0.81),
-        which is why Class A gets full modelling. Demand is least stable for <span className="metric">{LISTED.mostVolatile.id}</span> (CV{' '}
-        <span className="metric">{LISTED.mostVolatile.demandCV.toFixed(2)}</span>), so the table is sorted by demand variability.
-      </>
-    ),
-    kpis: [
-      { label: 'Data completeness', value: '99.80%', sub: 'AI: schema and completeness checks on the last snapshot.', to: '/app/data-foundation' },
-      { label: 'Class A concentration', value: '10% → 78.30%', sub: 'AI: share of materials against share of consumption value (Gini 0.81).', to: '/app/abc' },
-      { label: 'Median demand CV', value: LISTED.medianCv.toFixed(2), delta: `${LISTED.count} listed materials`, sub: 'AI: coefficient of variation of annual demand; lower is easier to forecast.' },
-      { label: 'Most volatile demand', value: LISTED.mostVolatile.demandCV.toFixed(2), delta: LISTED.mostVolatile.id, deltaTone: 'down', sub: `AI: ${LISTED.mostVolatile.name} has the widest demand swings.` },
-    ],
-  },
 };
 
 export default function Overview() {
@@ -346,7 +396,7 @@ export default function Overview() {
   const { persona } = usePlatform();
   const shouldReduceMotion = useReducedMotion();
 
-  const lens = PERSONA_LENS[persona] || PERSONA_LENS.exec;
+  const lens = PERSONA_LENS[persona] || PERSONA_LENS[DEFAULT_LENS];
 
   // Search & Sorting State for Table
   const [searchQuery, setSearchQuery] = useState('');
@@ -356,7 +406,7 @@ export default function Overview() {
 
   // Switching persona re-orders the table for that lens and returns to its column set.
   useEffect(() => {
-    const sort = PERSONA_SORT[persona] || PERSONA_SORT.exec;
+    const sort = PERSONA_SORT[persona] || PERSONA_SORT[DEFAULT_LENS];
     setSortField(sort.field);
     setSortDirection(sort.direction);
     setShowAllColumns(false);
@@ -364,14 +414,16 @@ export default function Overview() {
 
   const visibleColumns = showAllColumns
     ? COLUMNS_CONFIG
-    : COLUMNS_CONFIG.filter((c) => (PERSONA_COLUMNS[persona] || PERSONA_COLUMNS.exec).includes(c.key));
+    : COLUMNS_CONFIG.filter((c) => (PERSONA_COLUMNS[persona] || PERSONA_COLUMNS[DEFAULT_LENS]).includes(c.key));
   const show = (key) => visibleColumns.some((c) => c.key === key);
 
   const subtitle = {
-    exec: "What your working capital, service risk and inventory position mean for this quarter's numbers — and the three decisions worth your attention today.",
-    analyst: 'Inventory health across all plants, with the specific SKUs, drivers and next investigations behind each number.',
-    ds: 'Model-backed view of the inventory estate: classification stability, requirement calculations and data quality underlying every figure below.',
-  }[persona] || "What your working capital, service risk and inventory position mean for this quarter's numbers.";
+    supervisor: 'Which materials could stop a production line, what happens if nothing changes, and the next steps to keep the plant running.',
+    warehouse: 'What is sitting in stores, how old it is, and what clearing it would release.',
+    planner: 'How long each material lasts against the production plan, and how a swing in demand changes that.',
+    procurement: 'What to order and when, given lead times, reorder points and how many suppliers you can fall back on.',
+    finance: "What your working capital, service risk and inventory position mean for this quarter's numbers, and where cash is stuck.",
+  }[persona] || 'Inventory health across the plant, with the decisions worth your attention today.';
 
 
 
@@ -447,6 +499,8 @@ export default function Overview() {
       {/* ===================================================================== */}
       {/* BUSINESS-FIRST SUMMARY: insight → KPIs → lifecycle                    */}
       {/* ===================================================================== */}
+      <FocusStrip rows={FULL_INVENTORY_DATASET} />
+
       <Insight key={persona} label={lens.label} defaultOpen>
         {lens.insight}
       </Insight>
@@ -456,6 +510,8 @@ export default function Overview() {
           <KpiTile key={`${persona}-${kpi.label}`} {...kpi} onClick={to ? () => navigate(to) : undefined} />
         ))}
       </div>
+
+      <UnderstandAndPlan rows={FULL_INVENTORY_DATASET} />
 
       <LifecycleStrip />
 

@@ -427,7 +427,7 @@ function DailyForecastChart({
 
 export default function RawMaterialRequirements() {
   const navigate = useNavigate();
-  const { persona, selectedMaterial } = usePlatform();
+  const { legacyPersona: persona, selectedMaterial } = usePlatform();
   const [showDailySchedule, setShowDailySchedule] = React.useState(false);
 
   // 1. Resolve canonical selected material (Single Source of Truth)
@@ -1440,13 +1440,13 @@ export default function RawMaterialRequirements() {
         )}
 
         {persona === 'analyst' && (
-          <Insight label="Supply Chain Analyst Lens · Replenishment Execution & Scenario Governance">
+          <Insight label="Plant Operations Lens · Replenishment Execution & Scenario Governance">
             For <span className="metric">{selectedMaterial.id}</span> ({name}), baseline demand velocity is <span className="metric">{formatNum(baseDailyDemand, 2)} {uom}/day</span> ({formatNum(avgWeekly, 1)} {uom}/wk) with a modeled trend of <span className="metric">{trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day</span> ({trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk), generating a cumulative 84-day horizon demand of <span className="metric">{formatNum(cumulativeHorizonDemand, 0)} {uom}</span> (averaging {formatNum(avgDailyForecast, 2)} {uom}/day). Planning Reorder Point is <span className="metric">{formatNum(reorderPoint, 1)} {uom}</span> ({formatNum(leadTimeDemand, 1)} {uom} lead-time demand + {formatNum(safetyStock, 1)} {uom} planning safety stock). Current physical stock of <span className="metric">{formatNum(onHandQty, 0)} {uom}</span> provides <span className="metric">{formatNum(daysOfSupply, 1)} days</span> of supply. {belowReorderPoint ? `Inventory is currently below the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) with an exposure gap of ${formatNum(ropGap, 1)} ${uom}. Recommended action: Evaluate replenishment against the planning reorder point and coverage gap; final order quantity should be determined using EOQ/MOQ, open purchase orders, supplier constraints, and downstream demand in Optimization.` : `Inventory remains above the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) by a buffer of +${formatNum(ropBuffer, 1)} ${uom}, indicating no immediate replenishment trigger under current assumptions.`} Recommended action: Test sensitivity to lead-time extensions (+15d) and demand surges (+20%) in What-If Simulation.
           </Insight>
         )}
 
         {persona === 'exec' && (
-          <Insight label="C-Suite Executive Lens · Working Capital Velocity & Revenue Protection">
+          <Insight label="Finance Lens · Working Capital Velocity & Revenue Protection">
             Forward demand intelligence for <span className="metric">{selectedMaterial.id}</span> indicates an annual consumption run-rate of <span className="metric">{formatCurrency(annualConsumptionValue)}/yr</span> ({formatNum(demand, 0)} {uom}/yr at {formatCurrency(unitCost)}/{uom}). Forward 84-day (12-week) cumulative demand outlook totals <span className="metric">{formatCurrency(cumulativeHorizonValue)}</span> ({formatNum(cumulativeHorizonDemand, 0)} {uom}) across the daily time series. Physical on-hand inventory carries <span className="metric">{formatCurrency(onHandValue)}</span> in working capital. Sizing the 95% service planning buffer at <span className="metric">{formatNum(safetyStock, 1)} {uom}</span> allocates <span className="metric">{formatCurrency(safetyStockValue)}</span> in protective cycle capital to buffer supplier lead times ({leadTimeDays} days). {belowReorderPoint ? `Stock position presents replenishment exposure across ${meta.downstream}, warranting purchase authorization in Inventory Agent to avert potential operational interruption.` : `Current inventory is above the planning reorder point, indicating no immediate replenishment trigger under current operating assumptions, supporting standard inventory turnover.`}
           </Insight>
         )}

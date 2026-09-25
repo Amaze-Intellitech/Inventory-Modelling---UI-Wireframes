@@ -60,7 +60,7 @@ const formatCurrency = (v, decimals = 2) =>
 
 export default function Optimization() {
   const navigate = useNavigate();
-  const { persona, selectedMaterial } = usePlatform();
+  const { legacyPersona: persona, selectedMaterial } = usePlatform();
 
   // Horizon selection: '12w' (Authoritative Multivariate Forecast) vs '26w' (Extended Modeled Outlook)
   const [selectedHorizon, setSelectedHorizon] = useState('26w');
@@ -737,7 +737,7 @@ export default function Optimization() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="card__title text-base font-bold text-ink m-0">
-                    Operational Optimization Control (Inventory Analyst Lens)
+                    Operational Optimization Control (Plant Operations Lens)
                   </h2>
                   <Badge tone="success">Tactical Runway, Replenishment & Action Matrix</Badge>
                 </div>
