@@ -1212,7 +1212,7 @@ export default function Optimization() {
           <Badge tone="neutral">Catalog Baseline</Badge>
         </div>
 
-        <div className="border border-border rounded-lg overflow-hidden mb-3.5">
+        <div className="border border-border rounded-lg overflow-x-auto mb-3.5">
           <Table>
             <TableHeader>
               <TableRow>

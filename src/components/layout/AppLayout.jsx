@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import Rail from './Rail';
 import TopBar from './TopBar';
-import PipelineStrip from './PipelineStrip';
 
 // Shell for every screen inside the platform (post-onboarding).
 // Rail + TopBar are persistent; <Outlet/> swaps the active page.
@@ -17,7 +16,7 @@ export default function AppLayout() {
 
   return (
     <div className="app">
-      <Rail open={railOpen} />
+      <Rail open={railOpen} onClose={() => setRailOpen(false)} />
       <div className={`rail-backdrop${railOpen ? ' open' : ''}`} onClick={() => setRailOpen(false)} aria-hidden="true" />
       <TopBar onMenu={() => setRailOpen((o) => !o)} />
       <main className="main">
@@ -28,7 +27,6 @@ export default function AppLayout() {
           transition={{ duration: 0.18, ease: 'easeOut' }}
           className="w-full"
         >
-          <PipelineStrip />
           <Outlet />
         </motion.div>
       </main>

@@ -158,7 +158,23 @@ function buildMaterialContext(selectedMaterial) {
   const abcClass = mat.abcClass || 'A';
 
   const eoqInput = EOQ_INPUTS[id] || { demand: 4800.0, currentBatchQty: 600.0 };
-  const forecastInput = FORECAST_INPUTS[id] || { leadTimeDays: 30, demandCV: 0.12, trendPerWeek: 0.002, modelR2: 0.85, rmseRatio: 0.09 };
+  const forecastInput = FORECAST_INPUTS[id] || {
+    leadTimeDays: 30,
+    demandCV: 0.12,
+    trendPerWeek: 0.002,
+    modelR2: 0.85,
+    rmseRatio: 0.09,
+    validationAccuracy: 0.90,
+    wape: 0.10,
+    forecastBias: -0.20,
+    driftScore: 0.04,
+    previousForecastTotal: 1000.0,
+    drivers: [
+      { name: 'Finished-goods demand', share: 50, beta: 0.50 },
+      { name: 'Supplier lead time', share: 30, beta: 0.30 },
+      { name: 'Historical consumption', share: 20, beta: 0.20 },
+    ],
+  };
 
   const demand = eoqInput.demand;
   const currentBatchQty = eoqInput.currentBatchQty;
@@ -167,6 +183,15 @@ function buildMaterialContext(selectedMaterial) {
   const trendPerWeek = forecastInput.trendPerWeek || 0;
   const modelR2 = forecastInput.modelR2 ?? 0.85;
   const rmseRatio = forecastInput.rmseRatio || 0.09;
+  const validationAccuracy = forecastInput.validationAccuracy ?? 0.934;
+  const wape = forecastInput.wape ?? 0.066;
+  const forecastBias = forecastInput.forecastBias ?? -0.40;
+  const driftScore = forecastInput.driftScore ?? 0.03;
+  const previousForecastTotal = forecastInput.previousForecastTotal ?? 1020.0;
+  const drivers = forecastInput.drivers || [
+    { name: 'Finished-goods demand', share: 52, beta: 0.52 },
+    { name: 'Supplier lead time', share: 26, beta: 0.26 },
+  ];
 
   const holdingCostPerUnit = HOLDING_RATE * unitCost;
   const qStar = holdingCostPerUnit > 0 ? Math.round(Math.sqrt((2 * demand * ORDERING_COST) / holdingCostPerUnit)) : 0;
@@ -181,7 +206,7 @@ function buildMaterialContext(selectedMaterial) {
   const orderQty = Math.max(0, targetBuffer > qty ? Math.round(targetBuffer - qty) : 0);
   const orderValue = orderQty * unitCost;
 
-  const confidencePct = (Math.min(99.9, Math.max(50.0, modelR2 * 100))).toFixed(1);
+  const confidencePct = (Math.min(99.9, Math.max(50.0, validationAccuracy * 100))).toFixed(1);
 
   let lifecycleStateLabel = 'Active Circulation';
   let daysStagnant = 0;
@@ -225,6 +250,12 @@ function buildMaterialContext(selectedMaterial) {
     trendPerWeek,
     modelR2,
     rmseRatio,
+    validationAccuracy,
+    wape,
+    forecastBias,
+    driftScore,
+    previousForecastTotal,
+    drivers,
     holdingCostPerUnit,
     qStar,
     dailyDemand,
@@ -315,29 +346,42 @@ function InventoryPositionChart({ ctx }) {
 }
 
 function DemandForecastChart({ ctx }) {
+  const top1 = ctx.drivers?.[0] || { name: 'Finished-goods demand', share: 52 };
+  const top2 = ctx.drivers?.[1] || { name: 'Supplier lead time', share: 26 };
+
   return (
     <div className="flex flex-col gap-3 text-xs">
       <div className="grid grid-cols-4 gap-2">
         <div className="bg-bg p-2 rounded border border-border ">
-          <span className="text-xs text-subtle uppercase block font-semibold">Model Fit</span>
+          <span className="text-xs text-subtle uppercase block font-semibold">Model Fit (R²)</span>
           <strong className="num text-sm text-primary block">{ctx.modelR2.toFixed(2)}</strong>
-          <span className="text-xs text-subtle">{ctx.confidencePct}% conf</span>
+          <span className="text-xs text-subtle">{(ctx.modelR2 * 100).toFixed(1)}% explained</span>
+        </div>
+        <div className="bg-bg p-2 rounded border border-border ">
+          <span className="text-xs text-subtle uppercase block font-semibold">Validation Accuracy</span>
+          <strong className="num text-sm text-success-tx block">{(ctx.validationAccuracy * 100).toFixed(1)}%</strong>
+          <span className="text-xs text-subtle font-mono">1 − WAPE</span>
         </div>
         <div className="bg-bg p-2 rounded border border-border ">
           <span className="text-xs text-subtle uppercase block font-semibold">Demand Volatility</span>
-          <strong className="num text-sm text-ink block">CV {ctx.demandCV.toFixed(2)}</strong>
+          <strong className="num text-sm text-ink block">CV {(ctx.demandCV * 100).toFixed(1)}%</strong>
           <span className="text-xs text-subtle font-mono">σ={ctx.sigmaD.toFixed(1)}/d</span>
         </div>
         <div className="bg-bg p-2 rounded border border-border ">
-          <span className="text-xs text-subtle uppercase block font-semibold">Daily Rate</span>
-          <strong className="num text-sm text-ink block">{ctx.dailyDemand.toFixed(1)} {ctx.uom}</strong>
-          <span className="text-xs text-subtle">{formatNum(ctx.demand)}/yr</span>
-        </div>
-        <div className="bg-bg p-2 rounded border border-border ">
-          <span className="text-xs text-subtle uppercase block font-semibold">Trend</span>
+          <span className="text-xs text-subtle uppercase block font-semibold">Weekly Slope</span>
           <strong className="num text-sm text-ink block">{(ctx.trendPerWeek * 100).toFixed(2)}%</strong>
           <span className="text-xs text-subtle">per week</span>
         </div>
+      </div>
+
+      <div className="bg-[color-mix(in_srgb,var(--bg)_70%,transparent)] p-2.5 rounded border border-border flex justify-between items-center text-xs">
+        <div>
+          <span className="text-subtle mr-1">Primary Drivers:</span>
+          <strong className="text-ink font-semibold">{top1.name} ({top1.share}%)</strong>
+          <span className="text-subtle mx-1.5">·</span>
+          <strong className="text-ink font-semibold">{top2.name} ({top2.share}%)</strong>
+        </div>
+        <Badge tone="accent">Canonical Model</Badge>
       </div>
     </div>
   );
@@ -491,8 +535,9 @@ function LifecycleDistributionChart() {
 // Response Dispatcher
 // Stage names the Agent can orchestrate, and where each one lives. `null` = no page (a calculation only).
 const STAGE_ROUTES = {
-  Univariate: '/app/univariate',
-  Bivariate: '/app/bivariate',
+  Descriptive: '/app/descriptive',
+  Univariate: '/app/descriptive?section=univariate',
+  Bivariate: '/app/descriptive?section=bivariate',
   ABC: '/app/abc',
   EOQ: '/app/eoq',
   RMLC: '/app/rmlc',
@@ -606,6 +651,39 @@ function buildAgentResponse(query, ctx, persona) {
     };
   }
 
+  // 2. FORECAST RISK & MULTIVARIATE INTELLIGENCE
+  if (intent === 'forecast_risk') {
+    const top1 = ctx.drivers?.[0] || { name: 'Finished-goods demand', share: 52 };
+    const top2 = ctx.drivers?.[1] || { name: 'Supplier lead time', share: 26 };
+    const fcHorizonSum = ctx.dailyDemand * 84;
+    return {
+      title: `Multivariate Forecast & Risk Intelligence — ${ctx.id}`,
+      summary: `Canonical multivariate model projects an 84-day cumulative demand of ${formatNum(fcHorizonSum, 0)} ${ctx.uom} (${formatCurrency(fcHorizonSum * ctx.unitCost)}) for ${ctx.id} (${ctx.name}) with ${(ctx.validationAccuracy * 100).toFixed(1)}% out-of-sample validation accuracy.`,
+      evidence: [
+        `Demand Outlook: Daily forecast averages ${ctx.dailyDemand.toFixed(1)} ${ctx.uom}/day with a weekly slope of ${(ctx.trendPerWeek * 100).toFixed(2)}%/wk across the 84-day horizon.`,
+        `Model Fit & Accuracy: Explanatory fit R² = ${ctx.modelR2.toFixed(2)} in-sample; out-of-sample backtest accuracy is ${(ctx.validationAccuracy * 100).toFixed(1)}% (WAPE ${(ctx.wape * 100).toFixed(1)}%, bias ${ctx.forecastBias > 0 ? '+' : ''}${ctx.forecastBias.toFixed(2)} ${ctx.uom}/wk).`,
+        `Attributed Drivers: ${top1.name} (${top1.share}%) and ${top2.name} (${top2.share}%) drive the expected trajectory.`,
+        `Inventory Implication: On-hand stock of ${formatNum(ctx.qty)} ${ctx.uom} provides ${ctx.dos.toFixed(1)} days of coverage against the ${ctx.leadTimeDays}-day supplier lead time.`,
+      ],
+      chartType,
+      chartTitle,
+      reasoning: `The forecast trajectory is anchored to 104 weeks of observed demand with Ridge regularization. Variance is driven by ${top1.name.toLowerCase()} rather than random noise.`,
+      recommendation: `Align procurement replenishment orders with the 84-day forecast trajectory (${formatNum(fcHorizonSum, 0)} ${ctx.uom}) and evaluate lot sizing in Optimization.`,
+      impact: `${formatCurrency(fcHorizonSum * ctx.unitCost)} forward demand committed across the next 12 weeks.`,
+      confidence: `${ctx.confidencePct}%`,
+      confidenceTone: 'success',
+      suggestedActions: [
+        { label: 'Open Multivariate Forecast', action: 'nav_forecast', tone: 'accent' },
+        { label: 'Explore Scenarios in What-If', action: 'nav_whatif', tone: 'neutral' },
+      ],
+      followUps: [
+        'Investigate Stockout Risk',
+        'What should my inventory position be for next month?',
+        'Optimize Replenishment',
+      ],
+    };
+  }
+
   // Fallback / standard responses
   return {
     title: `Intelligence Synthesis — ${query.slice(0, 40)}...`,
@@ -638,6 +716,10 @@ function buildAgentResponse(query, ctx, persona) {
 // Canonical worked examples (design bible §9) get purpose-written answers; everything else uses the intent responses above.
 function canonicalResponse(intent, ctx) {
   const base = { evidence: [], suggestedActions: [{ label: 'Send to Approval Queue', action: 'send_queue', tone: 'accent' }], confidence: `${ctx.confidencePct}%`, confidenceTone: 'success' };
+  const top1 = ctx.drivers?.[0] || { name: 'Finished-goods demand', share: 52 };
+  const top2 = ctx.drivers?.[1] || { name: 'Supplier lead time', share: 26 };
+  const top3 = ctx.drivers?.[2] || { name: 'Historical consumption velocity', share: 14 };
+
   if (intent === 'why_increasing') {
     return {
       ...base,
@@ -646,8 +728,8 @@ function canonicalResponse(intent, ctx) {
       chartTitle: 'Inventory Position vs Optimal',
       summary: `Stock for ${ctx.name} has risen mainly because production volume went up 18% while supplier lead time stayed flat, so you are carrying more safety stock than you need.`,
       evidence: [
-        'Bivariate analysis: finished-goods demand (r = 0.91) and supplier lead time (r = 0.82) are the strongest links to stock.',
-        'Multivariate model: demand explains 41% of the movement and lead time 24%; price explains only 6%.',
+        `Bivariate analysis: ${top1.name} and ${top2.name} are the strongest links to stock.`,
+        `Multivariate model: ${top1.name} explains ${top1.share}% of the movement and ${top2.name} ${top2.share}%; ${top3.name} explains ${top3.share}%.`,
       ],
       reasoning: 'The rise is not a demand spike. It comes from reordering earlier than lead times require.',
       recommendation: 'Move the next order out by about 9 days and reset the order size to the current EOQ.',
@@ -849,7 +931,7 @@ export default function DecisionIntelligence() {
     } else if (actionKey === 'nav_abc') {
       navigate('/app/abc');
     } else if (actionKey === 'nav_desc') {
-      navigate('/app/univariate');
+      navigate('/app/descriptive');
     } else {
       handleSendMessage(actionKey);
     }
@@ -1257,7 +1339,7 @@ export default function DecisionIntelligence() {
 
       {/* Decision Inspection Dialog */}
       <Dialog open={!!inspectDecision} onOpenChange={(open) => !open && setInspectDecision(null)}>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="w-[95vw] sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-2 mb-1">
               <Badge tone={TAG_TONE[inspectDecision?.tag] || 'neutral'}>{inspectDecision?.tag}</Badge>

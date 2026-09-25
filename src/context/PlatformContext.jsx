@@ -10,7 +10,7 @@ const ONBOARDED_KEY = 'aitek-onboarded';
 
 // The user's data setup: which parameters they chose (and the source declared for each), and which data
 // sources are connected. It survives sign-out for the same reason as the flag above.
-const PARAMS_KEY = 'aitek-parameters';
+const PARAMS_KEY = 'aitek-parameters-v2';
 const CONNECTED_KEY = 'aitek-connected-sources';
 
 function readJson(key, fallback) {
@@ -34,8 +34,20 @@ function readParameterSelection() {
   const stored = readJson(PARAMS_KEY, null);
   const base = defaultParameterSelection();
   if (!stored || !stored.rows) return base;
-  // keep any parameter added to the catalogue since the selection was stored
-  return { fromYear: stored.fromYear || base.fromYear, toYear: stored.toYear || base.toYear, rows: { ...base.rows, ...stored.rows } };
+  return {
+    fromYear: stored.fromYear || base.fromYear,
+    toYear: stored.toYear || base.toYear,
+    rows: {
+      ...base.rows,
+      ...stored.rows,
+      stock: {
+        ...(base.rows.stock || {}),
+        ...(stored.rows.stock || {}),
+        on: true,
+        required: true,
+      },
+    },
+  };
 }
 
 function readOnboarded() {

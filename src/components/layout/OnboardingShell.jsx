@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Moon, Sun } from 'lucide-react';
 import { Stepper } from '../CommonUI';
 import { useTheme } from '@/lib/theme';
-import aitekLogo from '../aitek_logo_bg_removed-removebg-preview.png';
+import AitekLogo from '../AitekLogo';
 
 export const ONBOARDING_STEPS = ['Material', 'Parameters', 'Data sources', 'Ingestion'];
 // Route of each step, in order. Completed steps in the progress bar link back to these.
@@ -18,7 +18,7 @@ export default function OnboardingShell({ current, children }) {
       <header className="h-16 bg-surface border-b border-border shrink-0">
         <div className="page-wrap h-full flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src={aitekLogo} alt="AITEK Logo" className="h-[42px] w-auto object-contain" />
+          <AitekLogo className="h-[42px] w-auto object-contain" />
           <div className="flex flex-col leading-tight">
             <span className="font-display text-xl font-bold text-ink tracking-tight">AITEK</span>
             <span className="text-xs font-medium text-primary">Inventory Modelling</span>
@@ -34,9 +34,9 @@ export default function OnboardingShell({ current, children }) {
         </button>
         </div>
       </header>
-      <main className="page-wrap py-8">
+      <main className="page-wrap py-5 sm:py-8">
         {current ? (
-          <div className="max-w-xl mx-auto mb-5">
+          <div className="max-w-xl mx-auto mb-4 sm:mb-6">
             <Stepper steps={ONBOARDING_STEPS} current={current} className="mb-0" onStepClick={(n) => navigate(ONBOARDING_ROUTES[n - 1])} />
           </div>
         ) : null}

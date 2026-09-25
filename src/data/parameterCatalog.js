@@ -1,76 +1,171 @@
-// Candidate independent variables for the Multivariate model (design bible §5.3 / §6.3).
-// The named seed parameters come from the SME session; the customer keeps the ones that apply and declares a source for each.
-// `on: false` = not selected by default (e.g. a site with only open warehouses has no storage tanks).
+// Candidate dependent and independent variables for Inventory Modelling.
+// The customer keeps the ones that apply and declares a source and table for each.
 
-export const SOURCE_OPTIONS = ['SAP', 'Oracle', 'DCS', 'PCS', 'LIMS', 'Supplier feed', 'Custom software', 'External feed', 'Excel upload'];
+export const SOURCE_OPTIONS = [
+  'SAP',
+  'Oracle',
+  'DCS',
+  'PCS',
+  'LIMS',
+  'Supplier feed',
+  'Custom software',
+  'External feed',
+  'Excel upload',
+];
 
+export const SOURCE_TABLE_OPTIONS = {
+  SAP: [
+    'MBEW',
+    'MARA',
+    'MARC',
+    'MARD',
+    'MSEG',
+    'VBAK',
+    'VBAP',
+    'EKKO',
+    'EKPO',
+    'ZPRICE',
+  ],
+  Oracle: [
+    'INVENTORY_ITEMS',
+    'ITEM_COSTS',
+    'TRANSACTION_HISTORY',
+    'PURCHASE_ORDERS',
+    'SALES_ORDERS',
+    'QUALITY_MASTER',
+    'SUPPLIER_MASTER',
+  ],
+  DCS: [
+    'PROCESS_TELEMETRY',
+    'PRODUCTION_LOGS',
+    'YIELD_METRICS',
+    'LINE_SPEED',
+    'SCRAP_RECORDS',
+  ],
+  PCS: [
+    'EQUIPMENT_STATUS',
+    'DOWNTIME_LOGS',
+    'BATCH_EXECUTION',
+    'CHANGEOVER_EVENTS',
+    'MAINTENANCE_EVENTS',
+  ],
+  LIMS: [
+    'QUALITY_INSPECTION',
+    'BATCH_RELEASE',
+    'NON_CONFORMANCE',
+    'ASSAY_RESULTS',
+    'REJECTION_LOG',
+  ],
+  'Supplier feed': [
+    'SUPPLIER_PORTAL_EDI',
+    'LEAD_TIME_FEED',
+    'CAPACITY_FORECAST',
+    'DISCOUNT_TIERS',
+    'ASN_DISPATCH',
+  ],
+  'Custom software': [
+    'CUSTOM_FORECAST_BIAS',
+    'PROMOTIONS_CALENDAR',
+    'CHANNEL_ALLOCATION',
+    'INTERNAL_REPORTS',
+  ],
+  'External feed': [
+    'COMMODITY_INDICES',
+    'FX_RATES',
+    'MARKET_BENCHMARKS',
+    'WEATHER_FEED',
+    'PORT_CONGESTION_DATA',
+    'INFLATION_METRICS',
+  ],
+  'Excel upload': [
+    'MANUAL_SCHEDULE_EXTRACT.xlsx',
+    'SHIFT_PATTERNS.xlsx',
+    'ANNUAL_TARGETS.xlsx',
+    'ONE_TIME_ADJUSTMENTS.csv',
+  ],
+};
+
+// ---- Available Dependent Variables ----
+export const DEPENDENT_VARIABLES = [
+  {
+    id: 'stock',
+    label: 'Stock',
+    category: 'Dependent variable',
+    source: 'SAP',
+    table: 'MBEW',
+    required: true,
+    isDependent: true,
+    note: 'Primary target metric for inventory analysis & simulation',
+  },
+];
+
+// ---- Available Independent Variables ----
 export const PARAMETER_CATALOG = [
   {
     category: 'Commercial & demand',
     items: [
-      { id: 'price', label: 'Price', source: 'SAP', on: true },
-      { id: 'seasonality', label: 'Seasonality', source: 'External feed', on: true },
-      { id: 'fg-demand', label: 'Finished-goods demand', source: 'SAP', on: true },
-      { id: 'substitution', label: 'Material substitution', source: 'SAP', on: true },
-      { id: 'promotions', label: 'Promotions and campaigns', source: 'Custom software', on: false },
-      { id: 'backlog', label: 'Customer order backlog', source: 'SAP', on: true },
-      { id: 'contract-vol', label: 'Contract volumes', source: 'SAP', on: true },
-      { id: 'forecast-bias', label: 'Forecast bias', source: 'Custom software', on: false },
-      { id: 'returns', label: 'Return rate', source: 'SAP', on: false },
-      { id: 'channel-mix', label: 'Channel mix', source: 'Excel upload', on: false },
+      { id: 'price', label: 'Price', source: 'SAP', table: 'ZPRICE', on: false },
+      { id: 'seasonality', label: 'Seasonality', source: 'External feed', table: 'MARKET_BENCHMARKS', on: false },
+      { id: 'fg-demand', label: 'Finished-goods demand', source: 'SAP', table: 'VBAK', on: false },
+      { id: 'substitution', label: 'Material substitution', source: 'SAP', table: 'MARA', on: false },
+      { id: 'promotions', label: 'Promotions and campaigns', source: 'Custom software', table: 'PROMOTIONS_CALENDAR', on: false },
+      { id: 'backlog', label: 'Customer order backlog', source: 'SAP', table: 'VBAP', on: false },
+      { id: 'contract-vol', label: 'Contract volumes', source: 'SAP', table: 'EKKO', on: false },
+      { id: 'forecast-bias', label: 'Forecast bias', source: 'Custom software', table: 'CUSTOM_FORECAST_BIAS', on: false },
+      { id: 'returns', label: 'Return rate', source: 'SAP', table: 'MSEG', on: false },
+      { id: 'channel-mix', label: 'Channel mix', source: 'Excel upload', table: 'MANUAL_SCHEDULE_EXTRACT.xlsx', on: false },
     ],
   },
   {
     category: 'Production & internal operations',
     items: [
-      { id: 'production', label: 'Production volume (per unit)', source: 'DCS', on: true },
-      { id: 'wip', label: 'Work in progress (WIP)', source: 'SAP', on: true },
-      { id: 'quality', label: 'Quality of finished good', source: 'LIMS', on: true },
-      { id: 'storage-cap', label: 'Storage capacity', source: 'SAP', on: true },
-      { id: 'storage-occ', label: 'Storage occupancy (%)', source: 'SAP', on: true },
-      { id: 'storage-tank', label: 'Storage tank capacity', source: '', on: false, note: 'Not applicable to this site' },
-      { id: 'downtime', label: 'Planned downtime', source: 'PCS', on: true },
-      { id: 'yield', label: 'Yield rate', source: 'DCS', on: true },
-      { id: 'batch', label: 'Batch size', source: 'PCS', on: true },
-      { id: 'changeover', label: 'Changeover time', source: 'PCS', on: false },
-      { id: 'shifts', label: 'Shift pattern', source: 'Excel upload', on: false },
-      { id: 'scrap', label: 'Scrap rate', source: 'DCS', on: true },
+      { id: 'production', label: 'Production volume (per unit)', source: 'DCS', table: 'PRODUCTION_LOGS', on: false },
+      { id: 'wip', label: 'Work in progress (WIP)', source: 'SAP', table: 'MSEG', on: false },
+      { id: 'quality', label: 'Quality of finished good', source: 'LIMS', table: 'QUALITY_INSPECTION', on: false },
+      { id: 'storage-cap', label: 'Storage capacity', source: 'SAP', table: 'MARD', on: false },
+      { id: 'storage-occ', label: 'Storage occupancy (%)', source: 'SAP', table: 'MARD', on: false },
+      { id: 'storage-tank', label: 'Storage tank capacity', source: 'SAP', table: 'MARD', on: false, note: 'Not applicable to this site' },
+      { id: 'downtime', label: 'Planned downtime', source: 'PCS', table: 'DOWNTIME_LOGS', on: false },
+      { id: 'yield', label: 'Yield rate', source: 'DCS', table: 'YIELD_METRICS', on: false },
+      { id: 'batch', label: 'Batch size', source: 'PCS', table: 'BATCH_EXECUTION', on: false },
+      { id: 'changeover', label: 'Changeover time', source: 'PCS', table: 'CHANGEOVER_EVENTS', on: false },
+      { id: 'shifts', label: 'Shift pattern', source: 'Excel upload', table: 'SHIFT_PATTERNS.xlsx', on: false },
+      { id: 'scrap', label: 'Scrap rate', source: 'DCS', table: 'SCRAP_RECORDS', on: false },
     ],
   },
   {
     category: 'Supplier',
     items: [
-      { id: 'supplier', label: 'Supplier (identity and terms)', source: 'Supplier feed', on: true },
-      { id: 'lead-time', label: 'Supplier lead time', source: 'Supplier feed', on: true },
-      { id: 'capacity', label: 'Supplier capacity', source: 'Supplier feed', on: true },
-      { id: 'discount', label: 'Supplier discount', source: 'Supplier feed', on: true },
-      { id: 'otd', label: 'On-time delivery rate', source: 'SAP', on: true },
-      { id: 'moq', label: 'Minimum order quantity', source: 'SAP', on: true },
-      { id: 'pay-terms', label: 'Payment terms', source: 'SAP', on: false },
-      { id: 'transit', label: 'Transit mode', source: 'Supplier feed', on: false },
-      { id: 'rejects', label: 'Quality rejection rate', source: 'LIMS', on: false },
-      { id: 'single-src', label: 'Single-source flag', source: 'SAP', on: true },
+      { id: 'supplier', label: 'Supplier (identity and terms)', source: 'Supplier feed', table: 'SUPPLIER_PORTAL_EDI', on: false },
+      { id: 'lead-time', label: 'Supplier lead time', source: 'Supplier feed', table: 'LEAD_TIME_FEED', on: false },
+      { id: 'capacity', label: 'Supplier capacity', source: 'Supplier feed', table: 'CAPACITY_FORECAST', on: false },
+      { id: 'discount', label: 'Supplier discount', source: 'Supplier feed', table: 'DISCOUNT_TIERS', on: false },
+      { id: 'otd', label: 'On-time delivery rate', source: 'SAP', table: 'EKPO', on: false },
+      { id: 'moq', label: 'Minimum order quantity', source: 'SAP', table: 'MARC', on: false },
+      { id: 'pay-terms', label: 'Payment terms', source: 'SAP', table: 'EKKO', on: false },
+      { id: 'transit', label: 'Transit mode', source: 'Supplier feed', table: 'ASN_DISPATCH', on: false },
+      { id: 'rejects', label: 'Quality rejection rate', source: 'LIMS', table: 'REJECTION_LOG', on: false },
+      { id: 'single-src', label: 'Single-source flag', source: 'SAP', table: 'MARC', on: false },
     ],
   },
   {
     category: 'External & macro',
     items: [
-      { id: 'fx', label: 'Foreign exchange (e.g. INR/USD)', source: 'External feed', on: true },
-      { id: 'market', label: 'External market conditions', source: 'External feed', on: true },
-      { id: 'regulatory', label: 'Regulatory factors', source: 'External feed', on: false },
-      { id: 'geo', label: 'Geopolitical factors', source: 'External feed', on: false },
-      { id: 'commodity', label: 'Commodity index', source: 'External feed', on: true },
-      { id: 'fuel', label: 'Fuel price', source: 'External feed', on: false },
-      { id: 'weather', label: 'Weather', source: 'External feed', on: false },
-      { id: 'port', label: 'Port congestion', source: 'External feed', on: false },
-      { id: 'tariff', label: 'Tariffs and duties', source: 'External feed', on: false },
-      { id: 'inflation', label: 'Inflation', source: 'External feed', on: false },
+      { id: 'fx', label: 'Foreign exchange (e.g. INR/USD)', source: 'External feed', table: 'FX_RATES', on: false },
+      { id: 'market', label: 'External market conditions', source: 'External feed', table: 'MARKET_BENCHMARKS', on: false },
+      { id: 'regulatory', label: 'Regulatory factors', source: 'External feed', table: 'MARKET_BENCHMARKS', on: false },
+      { id: 'geo', label: 'Geopolitical factors', source: 'External feed', table: 'MARKET_BENCHMARKS', on: false },
+      { id: 'commodity', label: 'Commodity index', source: 'External feed', table: 'COMMODITY_INDICES', on: false },
+      { id: 'fuel', label: 'Fuel price', source: 'External feed', table: 'COMMODITY_INDICES', on: false },
+      { id: 'weather', label: 'Weather', source: 'External feed', table: 'WEATHER_FEED', on: false },
+      { id: 'port', label: 'Port congestion', source: 'External feed', table: 'PORT_CONGESTION_DATA', on: false },
+      { id: 'tariff', label: 'Tariffs and duties', source: 'External feed', table: 'MARKET_BENCHMARKS', on: false },
+      { id: 'inflation', label: 'Inflation', source: 'External feed', table: 'INFLATION_METRICS', on: false },
     ],
   },
 ];
 
 // ---- Which connector provides each source system (Data sources step) ----
-// Connector ids match the cards on the Data sources screen.
 export const CONNECTOR_LABELS = {
   erp: 'ERP System',
   sql: 'SQL Database',
@@ -96,12 +191,11 @@ export const SOURCE_TO_CONNECTOR = {
 export const DEFAULT_FROM_YEAR = '2016';
 export const DEFAULT_TO = 'today';
 
-// Years a customer's history can start in (design bible §6.3: "some have data back to 2010, others only 2016 or 2020").
 export const RANGE_YEARS = Array.from({ length: 16 }, (_, i) => String(2010 + i));
 
-/** The range that applies to one parameter: its own override if it has one, else the material-level default. */
-export function effectiveRange(row, selection) {
-  return { from: row.from || selection.fromYear, to: row.to || selection.toYear || DEFAULT_TO };
+/** The range helper preserved for global workflow compatibility. */
+export function effectiveRange(row = {}, selection = {}) {
+  return { from: row.from || selection.fromYear || DEFAULT_FROM_YEAR, to: row.to || selection.toYear || DEFAULT_TO };
 }
 
 export function formatRange({ from, to }) {
@@ -112,24 +206,49 @@ export function isRangeValid({ from, to }) {
   return to === 'today' || Number(from) <= Number(to);
 }
 
-/** The catalogue defaults as a selection: which parameters are on, and the source declared for each. */
+/** Flattened list of all variables (dependent + independent) */
+export function getAllAvailableColumns() {
+  const dep = DEPENDENT_VARIABLES.map((v) => ({ ...v, isDependent: true, groupCategory: 'Dependent variables' }));
+  const ind = PARAMETER_CATALOG.flatMap((g) =>
+    g.items.map((p) => ({ ...p, isDependent: false, groupCategory: g.category }))
+  );
+  return [...dep, ...ind];
+}
+
+/** The catalogue defaults: Stock is required & selected; candidate drivers are available on the left. */
 export function defaultParameterSelection() {
-  const rows = {};
-  PARAMETER_CATALOG.forEach((g) => g.items.forEach((p) => { rows[p.id] = { on: p.on, source: p.source }; }));
+  const rows = {
+    stock: {
+      on: true,
+      source: 'SAP',
+      table: 'MBEW',
+      required: true,
+    },
+  };
+  PARAMETER_CATALOG.forEach((g) =>
+    g.items.forEach((p) => {
+      rows[p.id] = {
+        on: false,
+        source: p.source || 'SAP',
+        table: p.table || (SOURCE_TABLE_OPTIONS[p.source || 'SAP'] ? SOURCE_TABLE_OPTIONS[p.source || 'SAP'][0] : 'MBEW'),
+      };
+    })
+  );
   return { rows, fromYear: DEFAULT_FROM_YEAR, toYear: DEFAULT_TO };
 }
 
 /**
- * The connectors the selected parameters need, with how many parameters depend on each,
- * for example [{ id: 'erp', label: 'ERP System', count: 14 }, …]. Largest first.
+ * The connectors the selected parameters need, with how many parameters depend on each.
  */
-export function requiredConnectors(rows) {
+export function requiredConnectors(rows = {}) {
   const counts = {};
   Object.values(rows).forEach((r) => {
-    const id = r.on && r.source ? SOURCE_TO_CONNECTOR[r.source] : null;
-    if (id) counts[id] = (counts[id] || 0) + 1;
+    if (r && r.on && r.source) {
+      const id = SOURCE_TO_CONNECTOR[r.source];
+      if (id) counts[id] = (counts[id] || 0) + 1;
+    }
   });
   return Object.entries(counts)
-    .map(([id, count]) => ({ id, label: CONNECTOR_LABELS[id], count }))
+    .map(([id, count]) => ({ id, label: CONNECTOR_LABELS[id] || id, count }))
     .sort((a, b) => b.count - a.count);
 }

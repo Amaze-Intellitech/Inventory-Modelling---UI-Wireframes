@@ -6,9 +6,9 @@ import { usePlatform } from '../../context/PlatformContext';
 import { useTheme } from '@/lib/theme';
 
 const PERSONAS = [
-  { key: 'ds', label: 'Data Scientist' },
-  { key: 'analyst', label: 'Analyst' },
-  { key: 'exec', label: 'C-Suite' },
+  { key: 'ds', label: 'Data Scientist', short: 'DS' },
+  { key: 'analyst', label: 'Analyst', short: 'Analyst' },
+  { key: 'exec', label: 'C-Suite', short: 'Exec' },
 ];
 
 export default function TopBar({ onMenu }) {
@@ -30,7 +30,7 @@ export default function TopBar({ onMenu }) {
       <div className="topbar__spacer" />
 
       <div
-        className="persona-switch relative p-1 bg-bg rounded-full border border-border-strong flex gap-1 items-center"
+        className="persona-switch relative p-1 bg-bg rounded-full border border-border-strong flex gap-0.5 sm:gap-1 items-center"
         role="tablist"
         aria-label="Persona lens selection"
       >
@@ -41,7 +41,7 @@ export default function TopBar({ onMenu }) {
               key={p.key}
               role="tab"
               aria-selected={isActive}
-              className={`relative z-10 px-3 py-1 rounded-full text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+              className={`relative z-10 px-2 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 isActive ? 'text-white' : 'text-body-c hover:text-ink'
               }`}
               onClick={() => setPersona(p.key)}
@@ -53,7 +53,8 @@ export default function TopBar({ onMenu }) {
                   transition={{ type: 'spring', stiffness: 450, damping: 35 }}
                 />
               )}
-              {p.label}
+              <span className="hidden sm:inline">{p.label}</span>
+              <span className="sm:hidden">{p.short}</span>
             </button>
           );
         })}
@@ -73,12 +74,13 @@ export default function TopBar({ onMenu }) {
 
       <button
         type="button"
-        className="btn btn-ghost btn-sm topbar__signout inline-flex items-center gap-1.5 text-body-c hover:text-error-tx hover:bg-error-bg transition-colors"
+        className="btn btn-ghost btn-sm topbar__signout inline-flex items-center gap-1.5 text-body-c hover:text-error-tx hover:bg-error-bg transition-colors px-2 sm:px-2.5"
         onClick={handleSignOut}
         aria-label="Sign out of platform"
+        title="Sign Out"
       >
         <LogOut size={14} />
-        <span>Sign Out</span>
+        <span className="hidden sm:inline">Sign Out</span>
       </button>
     </header>
   );

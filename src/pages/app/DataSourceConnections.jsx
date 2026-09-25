@@ -52,7 +52,7 @@ import { Stepper, AlertBar } from '../../components/CommonUI';
 import { ONBOARDING_ROUTES } from '../../components/layout/OnboardingShell';
 import { usePlatform } from '../../context/PlatformContext';
 import { requiredConnectors } from '../../data/parameterCatalog';
-import aitekLogo from '../../components/aitek_logo_bg_removed-removebg-preview.png';
+import AitekLogo from '../../components/AitekLogo';
 
 const sqlFormSchema = z.object({
   engine: z.string().min(1),
@@ -312,7 +312,7 @@ export default function DataSourceConnections() {
   }, []);
 
   // Connector States
-  // The parameters chosen on the previous step decide which sources are required.
+  // Connector States & Modal Dialogs
   const { parameterSelection, connectedSources, setConnectedSources } = usePlatform();
   const wasConnected = (id) => connectedSources.includes(id);
   const [erpConnected, setErpConnected] = useState(() => wasConnected('erp'));
@@ -322,10 +322,87 @@ export default function DataSourceConnections() {
   const [streamingConnected, setStreamingConnected] = useState(() => wasConnected('streaming'));
   const [storageConnected, setStorageConnected] = useState(() => wasConnected('storage'));
 
-  // SQL Connector State & Modal
+  // Dialog open states
+  const [erpDialogOpen, setErpDialogOpen] = useState(false);
   const [sqlDialogOpen, setSqlDialogOpen] = useState(false);
+  const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
+  const [fileDialogOpen, setFileDialogOpen] = useState(false);
+
+  // Form states for ERP, Warehouse, and File
+  const [erpFormData, setErpFormData] = useState({
+    provider: 'SAP S/4HANA',
+    host: 'sap-s4h.enterprise.internal',
+    client: '100',
+    authType: 'OAuth 2.0 / Service Account',
+    username: 'svc_aitek_s4h_ro',
+    password: '••••••••••••',
+    scope: 'Plant 1, Plant 2, Plant 3, Fastener Hub',
+  });
+
+  const [warehouseFormData, setWarehouseFormData] = useState({
+    provider: 'Snowflake',
+    account: 'xy12345.us-east-1.snowflakecomputing.com',
+    warehouse: 'INVENTORY_ANALYTICS_WH_L',
+    database: 'INVENTORY_DB.PUBLIC',
+    username: 'SVC_AITEK_ANALYTICS',
+    password: '••••••••••••',
+    cadence: 'Hourly (Incremental Sync)',
+  });
+
+  const [fileFormData, setFileFormData] = useState({
+    fileName: 'inventory_master_snapshot_2026.xlsx',
+    fileSize: '14.8 MB',
+    domain: 'Inventory Ledger & On-Hand Stock',
+    format: 'Excel (.xlsx)',
+    sheet: 'Stock_Position_Master',
+    delimiter: 'Auto-detect Comma (,)',
+  });
+
+  // SQL Connector State & Modal
   const [sqlConnected, setSqlConnected] = useState(() => wasConnected('sql'));
   const [sqlConnStr, setSqlConnStr] = useState('');
+
+  const onErpConnectSubmit = (e) => {
+    e.preventDefault();
+    setErpConnected(true);
+    setErpDialogOpen(false);
+    toast.success('Connected to ERP System', {
+      description: `Established live pipeline to ${erpFormData.provider} (${erpFormData.host}).`,
+    });
+  };
+
+  const handleErpDisconnect = () => {
+    setErpConnected(false);
+    toast.info('ERP System Disconnected');
+  };
+
+  const onWarehouseConnectSubmit = (e) => {
+    e.preventDefault();
+    setWhConnected(true);
+    setWarehouseDialogOpen(false);
+    toast.success('Connected to Data Warehouse', {
+      description: `Synchronized ${warehouseFormData.provider} (${warehouseFormData.database}).`,
+    });
+  };
+
+  const handleWhDisconnect = () => {
+    setWhConnected(false);
+    toast.info('Data Warehouse Disconnected');
+  };
+
+  const onFileConnectSubmit = (e) => {
+    e.preventDefault();
+    setFileConnected(true);
+    setFileDialogOpen(false);
+    toast.success('File Upload Ingested', {
+      description: `Staged "${fileFormData.fileName}" (${fileFormData.fileSize}) for analytical pipeline.`,
+    });
+  };
+
+  const handleFileDisconnect = () => {
+    setFileConnected(false);
+    toast.info('File extract cleared');
+  };
 
   const connectedNow = [
     erpConnected && 'erp',
@@ -506,9 +583,9 @@ export default function DataSourceConnections() {
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col justify-between relative overflow-hidden bg-bg select-none text-ink"
+      className="min-h-screen w-full flex flex-col justify-between relative overflow-y-auto bg-bg select-none text-ink"
       style={{
-        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: 'var(--font-body)',
       }}
     >
       {/* ========================================================================= */}
@@ -538,12 +615,10 @@ export default function DataSourceConnections() {
         <div className="page-wrap h-full flex items-center justify-between">
         {/* Left: Brand Identity */}
         <div className="flex items-center gap-3">
-          <img
-            src={aitekLogo}
-            alt="AITEK Logo"
+          <AitekLogo
             className="h-[44px] sm:h-[48px] w-auto object-contain"
           />
-          <span className="text-[22px] sm:text-[25px] font-extrabold text-ink tracking-tight leading-none">
+          <span className="font-heading text-[22px] sm:text-[25px] font-extrabold text-ink tracking-tight leading-none">
             AITEK
           </span>
           <span className="text-subtle mx-1 text-lg font-light">|</span>
@@ -595,7 +670,7 @@ export default function DataSourceConnections() {
       {/* ========================================================================= */}
       {/* 3. MAIN CONTENT CONTAINER (Zero Scroll Budget)                            */}
       {/* ========================================================================= */}
-      <main className="flex-1 page-wrap py-3 sm:py-3.5 relative z-10 flex flex-col justify-between overflow-hidden my-auto">
+      <main className="flex-1 page-wrap py-3 sm:py-3.5 relative z-10 flex flex-col justify-between">
         <div>
           
           {/* Header Introduction */}
@@ -603,7 +678,7 @@ export default function DataSourceConnections() {
             <div className="text-xs font-bold text-primary uppercase tracking-wider mb-0.5">
               DATA SOURCES
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-[32px] font-extrabold text-ink tracking-tight leading-tight mb-1">
+            <h1 className="font-heading text-2xl sm:text-3xl lg:text-[32px] font-extrabold text-ink tracking-tight leading-tight mb-1">
               Connect your data sources
             </h1>
             <p className="text-[13px] sm:text-[13.5px] text-subtle leading-snug max-w-3xl font-normal">
@@ -785,16 +860,39 @@ export default function DataSourceConnections() {
 
                 const IconComponent = c.icon;
 
-                const handleCardCta = () => {
-                  if (c.id === 'erp') toggleErpConnection();
-                  else if (c.id === 'sql') {
+                const handleCardCta = (e) => {
+                  if (e) e.stopPropagation();
+                  if (c.id === 'erp') {
+                    if (!erpConnected) setErpDialogOpen(true);
+                    else handleErpDisconnect();
+                  } else if (c.id === 'sql') {
                     if (!sqlConnected) setSqlDialogOpen(true);
                     else handleSqlDisconnect();
-                  } else if (c.id === 'warehouse') toggleWhConnection();
-                  else if (c.id === 'file') toggleFileConnection();
-                  else if (c.id === 'rest') toggleRestConnection();
+                  } else if (c.id === 'warehouse') {
+                    if (!whConnected) setWarehouseDialogOpen(true);
+                    else handleWhDisconnect();
+                  } else if (c.id === 'file') {
+                    if (!fileConnected) setFileDialogOpen(true);
+                    else handleFileDisconnect();
+                  } else if (c.id === 'rest') toggleRestConnection();
                   else if (c.id === 'streaming') toggleStreamingConnection();
                   else if (c.id === 'storage') toggleStorageConnection();
+                };
+
+                const handleCardClick = (e) => {
+                  // Ignore if clicked on an inner button
+                  if (e.target.closest('button')) return;
+                  if (c.id === 'erp') {
+                    setErpDialogOpen(true);
+                  } else if (c.id === 'sql') {
+                    setSqlDialogOpen(true);
+                  } else if (c.id === 'warehouse') {
+                    setWarehouseDialogOpen(true);
+                  } else if (c.id === 'file') {
+                    setFileDialogOpen(true);
+                  } else {
+                    handleCardCta();
+                  }
                 };
 
                 return (
@@ -803,8 +901,9 @@ export default function DataSourceConnections() {
                     initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.15 + index * 0.05 }}
-                    className={`bg-surface rounded-xl border p-4 sm:p-4.5 shadow-2xs hover:shadow-subtle transition-all flex flex-col justify-between min-h-[295px] ${
-                      isConnected ? 'border-success bg-[color-mix(in_srgb,var(--success-bg)_10%,transparent)]' : 'border-border'
+                    onClick={handleCardClick}
+                    className={`bg-surface rounded-xl border p-4 sm:p-4.5 shadow-2xs hover:shadow-subtle transition-all flex flex-col justify-between min-h-[295px] cursor-pointer group/card ${
+                      isConnected ? 'border-success bg-[color-mix(in_srgb,var(--success-bg)_10%,transparent)]' : 'border-border hover:border-primary/60'
                     }`}
                   >
                     <div>
@@ -832,7 +931,7 @@ export default function DataSourceConnections() {
                       </div>
 
                       {/* Title & Description */}
-                      <h3 className="text-[16px] font-bold text-ink tracking-tight mb-0.5 flex items-center gap-2 flex-wrap">
+                      <h3 className="font-heading text-[16px] font-bold text-ink tracking-tight mb-0.5 flex items-center gap-2 flex-wrap">
                         {c.title}
                         {requiredIds.includes(c.id) && (
                           <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-info-bg text-info-tx">
@@ -856,7 +955,8 @@ export default function DataSourceConnections() {
                               <button
                                 key={p}
                                 type="button"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   if (isMoreBadge) {
                                     setPlatformModalData({
                                       title: c.title,
@@ -878,60 +978,57 @@ export default function DataSourceConnections() {
                       </div>
                     </div>
 
-                    {/* Button / Action Area */}
-                    {c.id === 'sql' && sqlConnected ? (
-                      <div className="space-y-1 mt-2">
-                        <div className="text-xs font-mono text-subtle bg-bg p-1 rounded-md border border-border truncate">
-                          {sqlConnStr}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleSqlDisconnect}
-                          className="w-full h-8 rounded-lg border border-error bg-error-bg hover:bg-error-bg text-error-tx font-semibold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
-                        >
-                          <Unlink size={12} />
-                          <span>Disconnect SQL</span>
-                        </button>
+                    {/* Connected Details preview */}
+                    {isConnected && (
+                      <div className="my-1 px-2 py-1 rounded bg-bg/80 border border-border text-[11px] font-mono text-subtle truncate">
+                        {c.id === 'erp' && `${erpFormData.provider} (${erpFormData.host})`}
+                        {c.id === 'sql' && (sqlConnStr || 'PostgreSQL (db.inventory.internal)')}
+                        {c.id === 'warehouse' && `${warehouseFormData.provider} (${warehouseFormData.database})`}
+                        {c.id === 'file' && `${fileFormData.fileName} (${fileFormData.fileSize})`}
+                        {c.id === 'rest' && 'OpenAPI 3.0 / JSON Endpoint'}
+                        {c.id === 'streaming' && 'Apache Kafka (inventory.telemetry)'}
+                        {c.id === 'storage' && 'Amazon S3 (s3://enterprise-inventory-lake)'}
                       </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleCardCta}
-                        className={`w-full h-9 rounded-lg border font-semibold text-[12.5px] flex items-center justify-between px-3 transition-all cursor-pointer group mt-2 ${
-                          isConnected
-                            ? 'border-success bg-success-bg text-success-tx hover:bg-success-bg'
-                            : `bg-surface ${c.theme.btnBorder} ${c.theme.btnText} ${c.theme.btnHover}`
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {isConnected ? (
-                            <Unlink size={13} />
-                          ) : c.id === 'file' ? (
-                            <Upload size={13} />
-                          ) : c.id === 'sql' ? (
-                            <Database size={13} />
-                          ) : c.id === 'warehouse' ? (
-                            <Cloud size={13} />
-                          ) : c.id === 'rest' ? (
-                            <Globe size={13} />
-                          ) : c.id === 'streaming' ? (
-                            <Activity size={13} />
-                          ) : c.id === 'storage' ? (
-                            <HardDrive size={13} />
-                          ) : (
-                            <Link2 size={13} />
-                          )}
-                          <span>
-                            {isConnected
-                              ? c.id === 'file'
-                                ? 'Clear File'
-                                : `Disconnect ${c.title.split(' ')[0]}`
-                              : c.ctaText}
-                          </span>
-                        </div>
-                        <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-                      </button>
                     )}
+
+                    {/* Button / Action Area */}
+                    <button
+                      type="button"
+                      onClick={handleCardCta}
+                      className={`w-full h-9 rounded-lg border font-semibold text-[12.5px] flex items-center justify-between px-3 transition-all cursor-pointer group mt-2 ${
+                        isConnected
+                          ? 'border-error/40 bg-error-bg/30 text-error-tx hover:bg-error-bg/60 hover:border-error'
+                          : `bg-surface ${c.theme.btnBorder} ${c.theme.btnText} ${c.theme.btnHover}`
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {isConnected ? (
+                          <Unlink size={13} />
+                        ) : c.id === 'file' ? (
+                          <Upload size={13} />
+                        ) : c.id === 'sql' ? (
+                          <Database size={13} />
+                        ) : c.id === 'warehouse' ? (
+                          <Cloud size={13} />
+                        ) : c.id === 'rest' ? (
+                          <Globe size={13} />
+                        ) : c.id === 'streaming' ? (
+                          <Activity size={13} />
+                        ) : c.id === 'storage' ? (
+                          <HardDrive size={13} />
+                        ) : (
+                          <Link2 size={13} />
+                        )}
+                        <span>
+                          {isConnected
+                            ? c.id === 'file'
+                              ? 'Clear File'
+                              : `Disconnect ${c.title.split(' ')[0]}`
+                            : c.ctaText}
+                        </span>
+                      </div>
+                      <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+                    </button>
                   </motion.div>
                 );
               })}
@@ -1061,7 +1158,7 @@ export default function DataSourceConnections() {
       {/* SQL CONNECT MODAL DIALOG                                                  */}
       {/* ========================================================================= */}
       <Dialog open={sqlDialogOpen} onOpenChange={setSqlDialogOpen}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="w-[95vw] sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-ink">
               <Database size={17} className="text-primary" />
@@ -1174,10 +1271,333 @@ export default function DataSourceConnections() {
       </Dialog>
 
       {/* ========================================================================= */}
+      {/* ERP SYSTEM CONNECT MODAL DIALOG                                           */}
+      {/* ========================================================================= */}
+      <Dialog open={erpDialogOpen} onOpenChange={setErpDialogOpen}>
+        <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-ink">
+              <Server size={17} className="text-primary" />
+              <span>Connect Enterprise ERP System</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-subtle">
+              Configure ERP connectivity (SAP S/4HANA, Oracle NetSuite, Dynamics 365) to sync material inventory, BOM, and movement ledgers.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={onErpConnectSubmit} className="space-y-3 py-1 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">ERP Provider</label>
+                <Select
+                  value={erpFormData.provider}
+                  onValueChange={(val) => setErpFormData((prev) => ({ ...prev, provider: val }))}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SAP S/4HANA">SAP S/4HANA</SelectItem>
+                    <SelectItem value="SAP ECC">SAP ECC</SelectItem>
+                    <SelectItem value="Oracle NetSuite">Oracle NetSuite</SelectItem>
+                    <SelectItem value="Microsoft Dynamics 365">Microsoft Dynamics 365</SelectItem>
+                    <SelectItem value="Infor M3 / CloudSuite">Infor M3 / CloudSuite</SelectItem>
+                    <SelectItem value="Workday Supply Chain">Workday Supply Chain</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">Client / System ID</label>
+                <Input
+                  placeholder="100 / PRD"
+                  value={erpFormData.client}
+                  onChange={(e) => setErpFormData((prev) => ({ ...prev, client: e.target.value }))}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-ink block mb-1">Instance / Gateway Host URL *</label>
+              <Input
+                required
+                placeholder="https://sap-s4h.enterprise.internal:8443"
+                value={erpFormData.host}
+                onChange={(e) => setErpFormData((prev) => ({ ...prev, host: e.target.value }))}
+                className="h-8 text-xs font-mono"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">Service Account / Username</label>
+                <Input
+                  placeholder="svc_aitek_s4h_ro"
+                  value={erpFormData.username}
+                  onChange={(e) => setErpFormData((prev) => ({ ...prev, username: e.target.value }))}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">API Secret / Password</label>
+                <Input
+                  type="password"
+                  placeholder="••••••••••••"
+                  value={erpFormData.password}
+                  onChange={(e) => setErpFormData((prev) => ({ ...prev, password: e.target.value }))}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-ink block mb-1">Plant / Company Code Scope</label>
+              <Input
+                placeholder="Plant 1, Plant 2, Plant 3 (All Plants)"
+                value={erpFormData.scope}
+                onChange={(e) => setErpFormData((prev) => ({ ...prev, scope: e.target.value }))}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-bg border border-border text-[11px] text-subtle space-y-1">
+              <span className="font-semibold text-ink block">Included Standard BAPIs &amp; Tables:</span>
+              <span className="font-mono text-[10.5px] block text-primary">
+                MBEW (Valuation) · MARC (Plant Data) · MSEG (Movements) · VBAK (Demand) · EKKO (PO)
+              </span>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setErpDialogOpen(false)} className="text-xs h-8">
+                Cancel
+              </Button>
+              <Button type="submit" variant="accent" size="sm" className="gap-1.5 text-xs h-8 bg-primary-solid hover:bg-info-tx text-white">
+                <Link2 size={13} />
+                <span>Test &amp; Connect ERP</span>
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* DATA WAREHOUSE CONNECT MODAL DIALOG                                       */}
+      {/* ========================================================================= */}
+      <Dialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen}>
+        <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-ink">
+              <Cloud size={17} className="text-primary" />
+              <span>Connect Cloud Data Warehouse</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-subtle">
+              Connect Snowflake, Google BigQuery, Redshift, or Databricks Lakehouse for analytical inventory staging.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={onWarehouseConnectSubmit} className="space-y-3 py-1 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">Warehouse Engine</label>
+                <Select
+                  value={warehouseFormData.provider}
+                  onValueChange={(val) => setWarehouseFormData((prev) => ({ ...prev, provider: val }))}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Snowflake">Snowflake</SelectItem>
+                    <SelectItem value="Google BigQuery">Google BigQuery</SelectItem>
+                    <SelectItem value="Amazon Redshift">Amazon Redshift</SelectItem>
+                    <SelectItem value="Databricks Lakehouse">Databricks Lakehouse</SelectItem>
+                    <SelectItem value="ClickHouse">ClickHouse</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">Compute / Warehouse</label>
+                <Input
+                  placeholder="INVENTORY_WH_L"
+                  value={warehouseFormData.warehouse}
+                  onChange={(e) => setWarehouseFormData((prev) => ({ ...prev, warehouse: e.target.value }))}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-ink block mb-1">Account Host / Org Identifier *</label>
+              <Input
+                required
+                placeholder="xy12345.us-east-1.snowflakecomputing.com"
+                value={warehouseFormData.account}
+                onChange={(e) => setWarehouseFormData((prev) => ({ ...prev, account: e.target.value }))}
+                className="h-8 text-xs font-mono"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">Database &amp; Schema</label>
+                <Input
+                  placeholder="INVENTORY_DB.PUBLIC"
+                  value={warehouseFormData.database}
+                  onChange={(e) => setWarehouseFormData((prev) => ({ ...prev, database: e.target.value }))}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">Sync Cadence</label>
+                <Select
+                  value={warehouseFormData.cadence}
+                  onValueChange={(val) => setWarehouseFormData((prev) => ({ ...prev, cadence: val }))}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Hourly (Incremental Sync)">Hourly (Incremental Sync)</SelectItem>
+                    <SelectItem value="Every 4 Hours">Every 4 Hours</SelectItem>
+                    <SelectItem value="Nightly Batch (02:00 UTC)">Nightly Batch (02:00 UTC)</SelectItem>
+                    <SelectItem value="Continuous Real-time">Continuous Real-time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">Role / Username</label>
+                <Input
+                  placeholder="SVC_AITEK_ANALYTICS"
+                  value={warehouseFormData.username}
+                  onChange={(e) => setWarehouseFormData((prev) => ({ ...prev, username: e.target.value }))}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">Password / Private Key</label>
+                <Input
+                  type="password"
+                  placeholder="••••••••••••"
+                  value={warehouseFormData.password}
+                  onChange={(e) => setWarehouseFormData((prev) => ({ ...prev, password: e.target.value }))}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setWarehouseDialogOpen(false)} className="text-xs h-8">
+                Cancel
+              </Button>
+              <Button type="submit" variant="accent" size="sm" className="gap-1.5 text-xs h-8 bg-primary-solid hover:bg-info-tx text-white">
+                <Link2 size={13} />
+                <span>Test &amp; Connect Warehouse</span>
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* FILE UPLOAD MODAL DIALOG                                                  */}
+      {/* ========================================================================= */}
+      <Dialog open={fileDialogOpen} onOpenChange={setFileDialogOpen}>
+        <DialogContent className="w-[95vw] sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-ink">
+              <FileText size={17} className="text-primary" />
+              <span>Upload Inventory File</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-subtle">
+              Upload CSV, Excel (.xlsx, .xls), or Apache Parquet extracts for one-time snapshot or scheduled batch analysis.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={onFileConnectSubmit} className="space-y-3 py-1 text-xs">
+            {/* Visual Dropzone Area */}
+            <div className="border-2 border-dashed border-border-strong hover:border-primary rounded-xl p-5 text-center bg-bg/50 transition-colors cursor-pointer group">
+              <div className="w-10 h-10 rounded-full bg-info-bg border border-border text-primary flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform">
+                <Upload size={18} />
+              </div>
+              <div className="text-xs font-bold text-ink mb-0.5">
+                Drag &amp; drop your data file here, or browse
+              </div>
+              <p className="text-[11px] text-subtle">
+                Supports Excel (.xlsx), CSV, and Parquet up to 150 MB
+              </p>
+            </div>
+
+            {/* Selected File Staging Card */}
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface border border-border">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileText size={16} className="text-primary shrink-0" />
+                <div className="min-w-0">
+                  <span className="font-bold text-ink text-xs block truncate font-mono">
+                    {fileFormData.fileName}
+                  </span>
+                  <span className="text-[11px] text-subtle block">
+                    {fileFormData.fileSize} · ~420,000 rows detected
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-success-bg text-success-tx border border-success/30 shrink-0">
+                Ready
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">Target Data Domain</label>
+                <Select
+                  value={fileFormData.domain}
+                  onValueChange={(val) => setFileFormData((prev) => ({ ...prev, domain: val }))}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Inventory Ledger & On-Hand Stock">Inventory Ledger &amp; On-Hand</SelectItem>
+                    <SelectItem value="Transactions & Movement Logs">Transactions &amp; Movements</SelectItem>
+                    <SelectItem value="Bill of Materials (BOM)">Bill of Materials (BOM)</SelectItem>
+                    <SelectItem value="Supplier & Lead Time Parameters">Supplier &amp; Lead Times</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-ink block mb-1">Worksheet / Delimiter</label>
+                <Input
+                  placeholder="Stock_Position_Master"
+                  value={fileFormData.sheet}
+                  onChange={(e) => setFileFormData((prev) => ({ ...prev, sheet: e.target.value }))}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setFileDialogOpen(false)} className="text-xs h-8">
+                Cancel
+              </Button>
+              <Button type="submit" variant="accent" size="sm" className="gap-1.5 text-xs h-8 bg-primary-solid hover:bg-info-tx text-white">
+                <Upload size={13} />
+                <span>Upload &amp; Stage Data</span>
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
       {/* SUPPORTED PLATFORMS MODAL (when + More clicked on card)                   */}
       {/* ========================================================================= */}
       <Dialog open={!!platformModalData} onOpenChange={(open) => !open && setPlatformModalData(null)}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent className="w-[95vw] sm:max-w-[420px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-ink">
               <Layers size={17} className="text-primary" />
@@ -1218,7 +1638,7 @@ export default function DataSourceConnections() {
       {/* REQUEST CONNECTOR MODAL                                                   */}
       {/* ========================================================================= */}
       <Dialog open={requestModalOpen} onOpenChange={setRequestModalOpen}>
-        <DialogContent className="sm:max-w-[460px]">
+        <DialogContent className="w-[95vw] sm:max-w-[460px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-ink">
               <Sparkles size={17} className="text-primary" />

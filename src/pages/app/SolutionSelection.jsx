@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { usePlatform } from '../../context/PlatformContext';
 import AccessCheckDialog from '../../components/AccessCheckDialog';
-import aitekLogo from '../../components/aitek_logo_bg_removed-removebg-preview.png';
+import AitekLogo from '../../components/AitekLogo';
 
 export default function SolutionSelection() {
   const navigate = useNavigate();
@@ -186,29 +186,27 @@ export default function SolutionSelection() {
   return (
     <div className="min-h-screen w-full bg-bg flex flex-col text-ink font-sans antialiased select-none">
       {/* ========================================================================= */}
-      {/* 1. Full-width white 88px header                                           */}
+      {/* 1. Full-width white header                                                */}
       {/* ========================================================================= */}
-      <header className="w-full bg-surface border-b border-border h-[88px] sticky top-0 z-50 flex items-center shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+      <header className="w-full bg-surface border-b border-border h-16 sm:h-20 sticky top-0 z-50 flex items-center shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
         <div className="page-wrap flex justify-between items-center">
           {/* Brand Left */}
-          <div className="flex items-center gap-3.5">
-            <img
-              src={aitekLogo}
-              alt="AITEK Logo"
-              className="h-10 w-auto object-contain shrink-0"
+          <div className="flex items-center gap-3">
+            <AitekLogo
+              className="h-8 sm:h-10 w-auto object-contain shrink-0"
             />
             <div className="flex flex-col justify-center">
-              <span className="text-[17px] font-bold text-ink tracking-tight leading-tight">AITEK</span>
-              <span className="text-[12px] font-medium text-subtle tracking-normal leading-tight mt-0.5">
+              <span className="font-heading text-base sm:text-[17px] font-extrabold text-ink tracking-tight leading-tight">AITEK</span>
+              <span className="text-[11px] sm:text-[12px] font-medium text-subtle tracking-normal leading-tight mt-0.5 hidden xs:inline">
                 Enterprise Inventory Intelligence
               </span>
             </div>
           </div>
 
           {/* User Profile & Sign Out Right */}
-          <div className="flex items-center gap-5 sm:gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-deep text-white flex items-center justify-center font-bold text-xs shadow-sm ring-2 ring-border">
+          <div className="flex items-center gap-3 sm:gap-6">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-deep text-white flex items-center justify-center font-bold text-xs shadow-sm ring-2 ring-border shrink-0">
                 AV
               </div>
               <div className="hidden sm:flex flex-col text-left">
@@ -217,17 +215,18 @@ export default function SolutionSelection() {
               </div>
             </div>
 
-            <div className="h-6 w-[1px] bg-border" />
+            <div className="h-5 sm:h-6 w-[1px] bg-border" />
 
             <Button
               variant="ghost"
               size="sm"
               onClick={handleSignOut}
-              className="gap-1.5 text-subtle hover:text-error-tx hover:bg-error-bg transition-colors text-xs font-semibold px-2.5 py-1.5 rounded-md"
+              className="gap-1 sm:gap-1.5 text-subtle hover:text-error-tx hover:bg-error-bg transition-colors text-xs font-semibold px-2 sm:px-2.5 py-1.5 rounded-md"
               aria-label="Sign out"
+              title="Sign out"
             >
               <LogOut size={14} />
-              <span className="font-medium">Sign out</span>
+              <span className="font-medium hidden sm:inline">Sign out</span>
             </Button>
           </div>
         </div>
@@ -236,23 +235,23 @@ export default function SolutionSelection() {
       {/* ========================================================================= */}
       {/* 2. Main Content Canvas                                                    */}
       {/* ========================================================================= */}
-      <main className="flex-1 page-wrap py-10 sm:py-12 flex flex-col justify-between">
+      <main className="flex-1 page-wrap py-6 sm:py-10 lg:py-12 flex flex-col justify-between">
         <div>
           {/* Header Eyebrow & Title */}
-          <div className="mb-8">
-            <div className="text-xs font-bold uppercase tracking-[0.14em] text-primary mb-2">
+          <div className="mb-6 sm:mb-8">
+            <div className="text-xs font-bold uppercase tracking-[0.14em] text-primary mb-1.5 sm:mb-2">
               WORKSPACE SELECTION
             </div>
-            <h1 className="text-2xl sm:text-[32px] font-bold text-ink tracking-tight mb-2.5">
+            <h1 className="font-heading text-xl sm:text-[30px] lg:text-[32px] font-bold text-ink tracking-tight mb-2">
               Choose your solution
             </h1>
-            <p className="text-[14px] sm:text-[14.5px] text-subtle max-w-2xl leading-relaxed">
+            <p className="text-[13px] sm:text-[14.5px] text-subtle max-w-2xl leading-relaxed">
               Select the intelligence workspace you want to enter to access models, analytics, and operational workflows.
             </p>
           </div>
 
           {/* 3×2 Solution Card Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {solutions.map((card) => {
               const IconComponent = card.icon;
               const isActive = card.active;
@@ -315,7 +314,7 @@ export default function SolutionSelection() {
                     {/* Card Title & Arrow (for Active License) */}
                     <div className="flex items-center justify-between mb-2">
                       <h2
-                        className={`text-[16.5px] font-bold tracking-tight transition-colors ${
+                        className={`font-heading text-[16.5px] font-bold tracking-tight transition-colors ${
                           isActive ? 'text-ink group-hover:text-primary' : 'text-ink'
                         }`}
                       >

@@ -1,227 +1,325 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ViewHead, KpiTile, WhyDisclosure, Badge, Insight } from '../../components/CommonUI';
+import {
+  LineChart,
+  ScatterChart,
+  ArrowRight,
+  ArrowLeft,
+  Sparkles,
+  TrendingUp,
+  Activity,
+  Layers,
+  ChevronRight,
+  Sliders,
+  BarChart2,
+  Info,
+  Package,
+} from 'lucide-react';
+import { ViewHead, KpiTile, WhyDisclosure, Badge, Insight, Card, CardHead } from '../../components/CommonUI';
 import DriverHeatmap from '../../components/DriverHeatmap';
-import { UnivariateTrendChart, BivariateScatterChart } from '../../components/Charts';
+import { BivariateScatterChart } from '../../components/Charts';
 import { usePlatform } from '../../context/PlatformContext';
+import { Button } from '@/components/ui/button';
 
 // ============================================================================
-// PRE-SELECTED UNIVARIATE VARIABLES DEFINITION
+// CANONICAL DEPENDENT VARIABLE DEFINITION: CLOSING STOCK
+// Source Field: closing_stock (SAP MBEW / inventory_master)
+// Definition: Physical and ledger-verified inventory quantity remaining at the
+//             close of each weekly operating period (measured in EA).
+// Semantic Role: canonical_inventory_dependent_variable
 // ============================================================================
-const UNIVARIATE_VARIABLES = [
-  {
-    id: 'weekly_consumption',
-    name: 'Weekly Consumption',
-    type: 'Continuous · Time-Series',
-    desc: 'Primary operational demand signal & consumption velocity across trailing 104 weeks',
-    tag: 'Primary Demand',
-  },
-  {
-    id: 'unit_cost',
-    name: 'Unit Purchase Price',
-    type: 'Continuous · Financial',
-    desc: 'Procurement contract cost baseline & inventory valuation driver across purchase tranches',
-    tag: 'Valuation & Cost',
-  },
-  {
-    id: 'lead_time',
-    name: 'Supplier Lead Time',
-    type: 'Discrete · Duration',
-    desc: 'Supplier fulfillment latency & transit exposure from purchase order to dock receipt',
-    tag: 'Supply Latency',
-  },
-  {
-    id: 'on_hand_stock',
-    name: 'On-Hand Stock Level',
-    type: 'Continuous · Physical Level',
-    desc: 'Physical warehouse stock buffer position & working capital absorption over time',
-    tag: 'Buffer Position',
-  },
+const CANONICAL_DEPENDENT_VARIABLE = {
+  name: 'Closing Stock',
+  field: 'closing_stock',
+  sourceTable: 'SAP MBEW / MARD',
+  uom: 'EA',
+  definition: 'Inventory quantity physically and ledger-verified remaining at the close of each weekly operating period.',
+  semanticRole: 'canonical_inventory_dependent_variable',
+};
+
+// Canonical Historical Weekly Closing Stock Time-Series (Trailing 30 Weeks)
+const CLOSING_STOCK_SERIES = [
+  1180, 1210, 1260, 1190, 1240, 1310, 1290, 1350, 1280, 1330, 
+  1400, 1360, 1420, 1390, 1450, 1470, 1430, 1500, 1460, 1520, 
+  2410, 1490, 1510, 1540, 1500, 1560, 2050, 1580, 1600, 1620
+];
+
+// Baseline parameters for Closing Stock
+const HISTORICAL_BASELINE_MEAN = 1284.0; // 104-week historical closing stock mean
+const UNIT_COST_BASELINE = 78.65;        // Valuation baseline ($/EA)
+const PLANT_CAPACITY_LIMIT = 2000.0;     // Plant 1 storage / operating cap (EA)
+
+// Rolling Window Definitions for Weekly Closing Stock Cadence
+const ROLLING_WINDOWS = [
+  { key: 4, label: '4-Week Window', shortLabel: '4W (Short-Term)', desc: '1-Month operational closing stock smoothing' },
+  { key: 8, label: '8-Week Window', shortLabel: '8W (Medium-Term)', desc: '2-Month closing stock regime baseline' },
+  { key: 13, label: '13-Week Window', shortLabel: '13W (Quarterly Cycle)', desc: 'Quarterly seasonal cycle (T=13 weeks)' },
 ];
 
 // ============================================================================
-// PRE-SELECTED BIVARIATE RELATIONSHIPS DEFINITION
+// BIVARIATE EXPLANATORY RELATIONSHIPS DEFINITIONS
+// Canonical Closing Stock vs Explanatory Drivers
 // ============================================================================
 const BIVARIATE_RELATIONSHIPS = [
   {
     id: 'lt_vs_stockout',
     varA: 'Supplier Lead Time',
     varB: 'Stockout Frequency',
-    type: 'Supplier Risk Dynamics',
-    meaning: 'Empirical association between transit latency and stockout frequency across 142 Class A SKUs',
+    target: 'Closing Stock Buffer Depletion',
+    type: 'Supply Risk Dynamics',
     tag: 'Lead Time Exposure',
+    shortDesc: 'Empirical association between supplier transit latency and closing stock depletion / stockout frequency across 142 Class A SKUs',
   },
   {
     id: 'order_qty_vs_cost',
     varA: 'Order Batch Quantity',
     varB: 'Unit Purchase Cost',
+    target: 'Closing Stock Valuation',
     type: 'Scale Economics',
-    meaning: 'Volume scale discounts vs inventory carrying cost trade-off across batch tiers',
     tag: 'Procurement Scale',
+    shortDesc: 'Replenishment batch volume scale discounts vs closing stock carrying cost trade-off across batch tiers',
   },
   {
     id: 'demand_vs_ontime',
     varA: 'Demand Volatility (CV)',
     varB: 'Supplier On-Time Rate',
+    target: 'Closing Stock Buffer Stability',
     type: 'Fulfillment Strain',
-    meaning: 'Demand surge volatility relationship with vendor fulfillment reliability & delivery slippage',
     tag: 'Bullwhip Stress',
+    shortDesc: 'Upstream demand volatility relationship with vendor fulfillment reliability and closing stock buffer disruption',
   },
 ];
 
-// Auxiliary Charts
-function UnitCostTrendChart() {
-  const W = 900, H = 260, ML = 60, MR = 24, MT = 24, MB = 32;
-  const data = [76.0, 76.0, 76.0, 77.5, 77.5, 77.5, 78.0, 78.0, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 78.65, 92.0, 78.65, 78.65, 78.65, 79.5, 79.5, 78.65, 78.65, 78.65, 78.65];
-  const yMax = 100, yMin = 60, baseline = 78.65;
+// ============================================================================
+// STATISTICAL & ROLLING CALCULATION HELPERS
+// ============================================================================
+function computeSeriesStats(data) {
+  const n = data.length;
+  if (n === 0) return { mean: 0, median: 0, stdDev: 0, cv: 0, min: 0, max: 0, iqr: 0, p25: 0, p75: 0, slope: 0, r2: 0 };
+
+  const sum = data.reduce((acc, v) => acc + v, 0);
+  const mean = sum / n;
+
+  const sorted = [...data].sort((a, b) => a - b);
+  const min = sorted[0];
+  const max = sorted[n - 1];
+  const median = n % 2 === 0 ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2 : sorted[Math.floor(n / 2)];
+  
+  const p25Index = Math.floor(n * 0.25);
+  const p75Index = Math.floor(n * 0.75);
+  const p25 = sorted[p25Index];
+  const p75 = sorted[p75Index];
+  const iqr = p75 - p25;
+
+  const variance = data.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / (n - 1);
+  const stdDev = Math.sqrt(variance);
+  const cv = mean > 0 ? (stdDev / mean) * 100 : 0;
+
+  // OLS Linear Regression: y = beta0 + beta1 * x
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += i;
+    sumY += data[i];
+    sumXY += i * data[i];
+    sumXX += i * i;
+  }
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  let ssTot = 0, ssRes = 0;
+  for (let i = 0; i < n; i++) {
+    const yPred = intercept + slope * i;
+    ssTot += Math.pow(data[i] - mean, 2);
+    ssRes += Math.pow(data[i] - yPred, 2);
+  }
+  const r2 = ssTot > 0 ? Math.max(0, 1 - ssRes / ssTot) : 0;
+
+  return { mean, median, stdDev, cv, min, max, iqr, p25, p75, slope, r2 };
+}
+
+function computeRollingSeries(data, windowSize) {
+  const result = [];
+  for (let i = 0; i < data.length; i++) {
+    const start = Math.max(0, i - windowSize + 1);
+    const windowSlice = data.slice(start, i + 1);
+    const wLen = windowSlice.length;
+    const wSum = windowSlice.reduce((acc, v) => acc + v, 0);
+    const wMean = wSum / wLen;
+    
+    let wVar = 0;
+    if (wLen > 1) {
+      wVar = windowSlice.reduce((acc, v) => acc + Math.pow(v - wMean, 2), 0) / (wLen - 1);
+    }
+    const wStdDev = Math.sqrt(wVar);
+    const wCv = wMean > 0 ? (wStdDev / wMean) * 100 : 0;
+
+    result.push({
+      index: i,
+      week: i + 1,
+      actual: data[i],
+      mean: wMean,
+      stdDev: wStdDev,
+      cv: wCv,
+      upperBand: wMean + wStdDev,
+      lowerBand: Math.max(0, wMean - wStdDev),
+    });
+  }
+  return result;
+}
+
+// ============================================================================
+// DEDICATED CLOSING STOCK TIME-SERIES & ROLLING DYNAMICS CHART
+// ============================================================================
+function ClosingStockRollingTrendChart({ data, rollingData, windowSize, persona, showVolatilityBand = true }) {
+  const W = 900, H = 280, ML = 64, MR = 28, MT = 28, MB = 36;
+  const yMax = 2600, yMin = 900;
+  const cap = PLANT_CAPACITY_LIMIT;
+
   const x = (i) => ML + (i / (data.length - 1)) * (W - ML - MR);
   const y = (v) => MT + (1 - (v - yMin) / (yMax - yMin)) * (H - MT - MB);
-  const linePath = data.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+
+  // Path for Actual Closing Stock Line
+  const actualLinePath = data.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+
+  // Path for Rolling Mean Line
+  const rollingLinePath = rollingData.map((d, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(d.mean).toFixed(1)}`).join(' ');
+
+  // Area Path for Volatility Ribbon (+/- 1 Std Dev)
+  const upperPoints = rollingData.map((d, i) => `${x(i).toFixed(1)},${y(d.upperBand).toFixed(1)}`);
+  const lowerPoints = [...rollingData].reverse().map((d, i) => {
+    const originalIdx = rollingData.length - 1 - i;
+    return `${x(originalIdx).toFixed(1)},${y(d.lowerBand).toFixed(1)}`;
+  });
+  const volatilityBandPath = `M ${upperPoints.join(' L ')} L ${lowerPoints.join(' L ')} Z`;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
-      {[60, 70, 80, 90, 100].map((v) => (
-        <g key={v}>
-          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--muted-fill)" />
-          <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">
-            ${v.toFixed(2)}
-          </text>
-        </g>
-      ))}
-      <line x1={ML} x2={W - MR} y1={y(baseline)} y2={y(baseline)} stroke="var(--info-tx)" strokeDasharray="4 4" strokeWidth={1.5} />
-      <text x={ML + 8} y={y(baseline) - 6} fontSize={12} fill="var(--info-tx)" textAnchor="start" fontWeight={600}>
-        ■ Master Service Agreement Baseline: $78.65 / EA
-      </text>
-      <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth={2} />
-      {data.map((v, i) => {
-        const isSpike = v > 85;
-        const cx = x(i);
-        const cy = y(v);
-        if (isSpike) {
-          const dSize = 6.5;
-          const points = `${cx},${cy - dSize} ${cx + dSize},${cy} ${cx},${cy + dSize} ${cx - dSize},${cy}`;
+    <div className="w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full block" role="img" aria-label="Weekly closing stock trend with rolling baseline and capacity ceiling">
+        <defs>
+          <linearGradient id="volatilityGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.03" />
+          </linearGradient>
+        </defs>
+
+        {/* Y-Axis Grid Lines & Tick Labels */}
+        {[1000, 1500, 2000, 2500].map((v) => (
+          <g key={v}>
+            <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeWidth={1} strokeDasharray={v === 2000 ? "none" : "2 2"} />
+            <text x={8} y={y(v) + 4} fontSize={11} fill="var(--subtle)" className="font-mono">
+              {v.toLocaleString()} EA
+            </text>
+          </g>
+        ))}
+
+        {/* Policy/Capacity Ceiling Line */}
+        <line x1={ML} x2={W - MR} y1={y(cap)} y2={y(cap)} stroke="var(--warning)" strokeDasharray="4 4" strokeWidth={1.5} />
+        <text x={ML + 8} y={y(cap) - 6} fontSize={11} fill="var(--warning-tx)" textAnchor="start" fontWeight={600}>
+          ■ Plant 1 Storage Policy Ceiling: {cap.toLocaleString()} EA
+        </text>
+
+        {/* Rolling Volatility Band (Ribbon) */}
+        {showVolatilityBand && (
+          <path d={volatilityBandPath} fill="url(#volatilityGrad)" stroke="none" />
+        )}
+
+        {/* Rolling Closing Stock Mean Line */}
+        <path d={rollingLinePath} fill="none" stroke="var(--info-tx)" strokeWidth={2.2} strokeDasharray="5 3" />
+
+        {/* Actual Closing Stock Line */}
+        <path d={actualLinePath} fill="none" stroke="var(--primary)" strokeWidth={2} />
+
+        {/* Data Point Markers & Anomalies */}
+        {data.map((v, i) => {
+          const isStatSpike = v > 2200; // Week 21 (2,410 EA, z=3.61 stock build)
+          const isCapBreach = !isStatSpike && v > cap; // Week 27 (2,050 EA cap breach)
+          const cx = x(i);
+          const cy = y(v);
+
+          if (isStatSpike) {
+            const dSize = 6.5;
+            const points = `${cx},${cy - dSize} ${cx + dSize},${cy} ${cx},${cy + dSize} ${cx - dSize},${cy}`;
+            return (
+              <g key={i}>
+                <polygon points={points} fill="var(--error)" stroke="#fff" strokeWidth={1.5} />
+                <text x={cx} y={cy - 12} fontSize={11} fill="var(--error-tx)" textAnchor="middle" fontWeight={700}>
+                  ◆ Wk {i + 1} · {persona === 'ds' ? 'Anomaly (z=3.61, 2,410 EA)' : 'Stock Surge (2,410 EA)'}
+                </text>
+              </g>
+            );
+          }
+
+          if (isCapBreach) {
+            const sSize = 9;
+            return (
+              <g key={i}>
+                <rect x={cx - sSize / 2} y={cy - sSize / 2} width={sSize} height={sSize} rx={1.5} fill="var(--warning)" stroke="#fff" strokeWidth={1.5} />
+                <text x={cx} y={cy - 12} fontSize={11} fill="var(--warning-tx)" textAnchor="middle" fontWeight={700}>
+                  ■ Wk {i + 1} · Cap Breach ({v.toLocaleString()} EA)
+                </text>
+              </g>
+            );
+          }
+
           return (
-            <g key={i}>
-              <polygon points={points} fill="var(--error)" stroke="#fff" strokeWidth={1.5} />
-              <text x={cx} y={cy - 12} fontSize={12} fill="var(--error)" textAnchor="middle" fontWeight={600}>
-                ◆ Wk {i + 1} · Spot PO Expedited Surcharge ($92.00)
+            <circle key={i} cx={cx} cy={cy} r={2.5} fill="var(--primary)" />
+          );
+        })}
+
+        {/* Baseline Axis */}
+        <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
+
+        {/* X-Axis Ticks */}
+        {[1, 5, 10, 15, 20, 25, 30].map((wk) => {
+          const tickX = x(wk - 1);
+          return (
+            <g key={wk}>
+              <line x1={tickX} x2={tickX} y1={H - MB} y2={H - MB + 5} stroke="var(--border-strong)" />
+              <text x={tickX} y={H - MB + 18} fontSize={11} fill="var(--subtle)" textAnchor="middle" className="font-mono">
+                Wk {wk}
               </text>
             </g>
           );
-        }
-        return <circle key={i} cx={cx} cy={cy} r={2.5} fill="var(--primary)" />;
-      })}
-      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
-    </svg>
+        })}
+      </svg>
+
+      {/* Chart Legend */}
+      <div className="flex items-center justify-between flex-wrap gap-3 pt-2 px-1 text-xs border-t border-border mt-1">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="w-3.5 h-0.5 bg-primary inline-block rounded" />
+            <span className="text-ink font-medium">Weekly Closing Stock</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3.5 h-0.5 border-t-2 border-dashed border-info-tx inline-block" />
+            <span className="text-info-tx font-medium">{windowSize}-Week Rolling Baseline</span>
+          </div>
+          {showVolatilityBand && (
+            <div className="flex items-center gap-1.5">
+              <span className="w-3.5 h-2 bg-primary/20 inline-block rounded-sm" />
+              <span className="text-subtle">Rolling Stock Dispersion (±1σ)</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <span className="w-3.5 h-0.5 border-t border-dashed border-warning inline-block" />
+            <span className="text-warning-tx font-medium">Storage Policy Cap (2,000 EA)</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-subtle font-mono text-[11px]">
+          <span>◆ Outlier (&gt;3σ)</span>
+          <span>■ Capacity Breach</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function LeadTimeTrendChart() {
-  const W = 900, H = 260, ML = 60, MR = 24, MT = 24, MB = 32;
-  const data = [56, 58, 60, 57, 61, 59, 60, 58, 60, 62, 59, 60, 61, 64, 60, 58, 63, 61, 60, 62, 88, 63, 61, 60, 63, 62, 75, 61, 60, 62];
-  const cap = 70, yMax = 100, yMin = 40;
-  const x = (i) => ML + (i / (data.length - 1)) * (W - ML - MR);
-  const y = (v) => MT + (1 - (v - yMin) / (yMax - yMin)) * (H - MT - MB);
-  const linePath = data.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
-      {[40, 60, 80, 100].map((v) => (
-        <g key={v}>
-          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--muted-fill)" />
-          <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">
-            {v}d
-          </text>
-        </g>
-      ))}
-      <line x1={ML} x2={W - MR} y1={y(cap)} y2={y(cap)} stroke="var(--error)" strokeDasharray="4 4" strokeWidth={1.5} />
-      <text x={ML + 8} y={y(cap) - 6} fontSize={12} fill="var(--error)" textAnchor="start" fontWeight={600}>
-        ■ High Risk Latency Threshold: 70 Days
-      </text>
-      <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth={2} />
-      {data.map((v, i) => {
-        const isAnomaly = v > 80;
-        const isBreach = !isAnomaly && v >= cap;
-        const cx = x(i);
-        const cy = y(v);
-        if (isAnomaly) {
-          const dSize = 6.5;
-          const points = `${cx},${cy - dSize} ${cx + dSize},${cy} ${cx},${cy + dSize} ${cx - dSize},${cy}`;
-          return (
-            <g key={i}>
-              <polygon points={points} fill="var(--error)" stroke="#fff" strokeWidth={1.5} />
-              <text x={cx} y={cy - 12} fontSize={12} fill="var(--error)" textAnchor="middle" fontWeight={600}>
-                ◆ Wk {i + 1} · Port Congestion Delay (88d)
-              </text>
-            </g>
-          );
-        }
-        if (isBreach) {
-          const sSize = 9;
-          return (
-            <g key={i}>
-              <rect x={cx - sSize / 2} y={cy - sSize / 2} width={sSize} height={sSize} rx={1.5} fill="var(--warning)" stroke="#fff" strokeWidth={1.5} />
-              <text x={cx} y={cy - 12} fontSize={12} fill="var(--warning)" textAnchor="middle" fontWeight={600}>
-                ■ Wk {i + 1} · Customs Latency (75d)
-              </text>
-            </g>
-          );
-        }
-        return <circle key={i} cx={cx} cy={cy} r={2.5} fill="var(--primary)" />;
-      })}
-      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
-    </svg>
-  );
-}
-
-function OnHandStockTrendChart() {
-  const W = 900, H = 260, ML = 60, MR = 24, MT = 24, MB = 32;
-  const data = [13200, 13000, 12600, 12100, 11800, 15400, 14800, 14200, 13600, 13100, 12400, 11900, 11500, 15800, 15100, 14300, 13700, 13100, 12500, 11800, 7200, 15200, 14600, 13900, 13300, 12700, 13400, 13200, 13100, 13000];
-  const rop = 11500, yMax = 18000, yMin = 5000;
-  const x = (i) => ML + (i / (data.length - 1)) * (W - ML - MR);
-  const y = (v) => MT + (1 - (v - yMin) / (yMax - yMin)) * (H - MT - MB);
-  const linePath = data.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
-      {[5000, 10000, 15000].map((v) => (
-        <g key={v}>
-          <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--muted-fill)" />
-          <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">
-            {v.toLocaleString()} EA
-          </text>
-        </g>
-      ))}
-      <line x1={ML} x2={W - MR} y1={y(rop)} y2={y(rop)} stroke="var(--warning)" strokeDasharray="4 4" strokeWidth={1.5} />
-      <text x={ML + 8} y={y(rop) - 6} fontSize={12} fill="var(--warning)" textAnchor="start" fontWeight={600}>
-        ■ Reorder Point (ROP): 11,500.00 EA (62.7 Days Buffer)
-      </text>
-      <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth={2} />
-      {data.map((v, i) => {
-        const isDepletion = v < rop;
-        const cx = x(i);
-        const cy = y(v);
-        if (isDepletion) {
-          const dSize = 6.5;
-          const points = `${cx},${cy - dSize} ${cx + dSize},${cy} ${cx},${cy + dSize} ${cx - dSize},${cy}`;
-          return (
-            <g key={i}>
-              <polygon points={points} fill="var(--error)" stroke="#fff" strokeWidth={1.5} />
-              <text x={cx} y={cy + 16} fontSize={12} fill="var(--error)" textAnchor="middle" fontWeight={600}>
-                ◆ Wk {i + 1} · Buffer Dip ({v.toLocaleString()} EA)
-              </text>
-            </g>
-          );
-        }
-        return <circle key={i} cx={cx} cy={cy} r={2.5} fill="var(--primary)" />;
-      })}
-      <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
-    </svg>
-  );
-}
-
+// ============================================================================
+// AUXILIARY BIVARIATE SCATTER CHARTS
+// ============================================================================
 function OrderQtyVsCostScatterChart() {
-  const W = 500, H = 320, ML = 55, MR = 20, MT = 20, MB = 38;
+  const W = 500, H = 300, ML = 55, MR = 20, MT = 20, MB = 38;
   const x = (v) => ML + ((v - 200) / 2800) * (W - ML - MR);
   const y = (v) => MT + (1 - (v - 65) / 35) * (H - MT - MB);
 
@@ -232,39 +330,39 @@ function OrderQtyVsCostScatterChart() {
   ];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full" role="img" aria-label="Scatter of order batch quantity against unit purchase cost">
       {[500, 1000, 2000, 3000].map((v) => (
         <g key={v}>
           <line x1={x(v)} x2={x(v)} y1={MT} y2={H - MB} stroke="var(--muted-fill)" />
-          <text x={x(v)} y={H - MB + 16} fontSize={12} fill="var(--subtle)" textAnchor="middle">{v}</text>
+          <text x={x(v)} y={H - MB + 16} fontSize={11} fill="var(--subtle)" textAnchor="middle" className="font-mono">{v}</text>
         </g>
       ))}
       {[70, 80, 90, 100].map((v) => (
         <g key={v}>
           <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--muted-fill)" />
-          <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">${v}</text>
+          <text x={8} y={y(v) + 4} fontSize={11} fill="var(--subtle)" className="font-mono">${v}</text>
         </g>
       ))}
       <line x1={x(300)} y1={y(95)} x2={x(2900)} y2={y(70)} stroke="var(--primary)" strokeWidth={2} strokeDasharray="5 4" />
       {points.map((p, i) => (
         <circle key={i} cx={x(p[0])} cy={y(p[1])} r={3.5} fill="var(--ink)" fillOpacity={0.65} />
       ))}
-      <text x={x(1300)} y={y(83)} fontSize={12} fill="var(--info-tx)" fontWeight={600} textAnchor="start">
+      <text x={x(1300)} y={y(83)} fontSize={11} fill="var(--info-tx)" fontWeight={600} textAnchor="start">
         Power-law empirical fit: r = -0.68
       </text>
       <line x1={x(1200)} x2={x(1200)} y1={MT} y2={H - MB} stroke="var(--success)" strokeWidth={1} strokeDasharray="3 3" />
-      <text x={x(1220)} y={MT + 14} fontSize={12} fill="var(--success)" fontWeight={600}>
+      <text x={x(1220)} y={MT + 14} fontSize={11} fill="var(--success)" fontWeight={600}>
         Observed discount threshold (≥1,200 EA)
       </text>
       <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
       <line x1={ML} x2={ML} y1={MT} y2={H - MB} stroke="var(--border-strong)" />
-      <text x={(ML + W - MR) / 2} y={H - 4} fontSize={12} fill="var(--subtle)" textAnchor="middle">Order Batch Quantity (EA)</text>
+      <text x={(ML + W - MR) / 2} y={H - 4} fontSize={11} fill="var(--subtle)" textAnchor="middle">Order Batch Quantity (EA)</text>
     </svg>
   );
 }
 
 function DemandVsOnTimeScatterChart() {
-  const W = 500, H = 320, ML = 55, MR = 20, MT = 20, MB = 38;
+  const W = 500, H = 300, ML = 55, MR = 20, MT = 20, MB = 38;
   const x = (v) => ML + ((v - 5) / 45) * (W - ML - MR);
   const y = (v) => MT + (1 - (v - 75) / 25) * (H - MT - MB);
 
@@ -275,538 +373,746 @@ function DemandVsOnTimeScatterChart() {
   ];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full" role="img" aria-label="Scatter of demand volatility against supplier on-time rate">
       {[10, 20, 30, 40, 50].map((v) => (
         <g key={v}>
           <line x1={x(v)} x2={x(v)} y1={MT} y2={H - MB} stroke="var(--muted-fill)" />
-          <text x={x(v)} y={H - MB + 16} fontSize={12} fill="var(--subtle)" textAnchor="middle">{v}%</text>
+          <text x={x(v)} y={H - MB + 16} fontSize={11} fill="var(--subtle)" textAnchor="middle" className="font-mono">{v}%</text>
         </g>
       ))}
       {[80, 85, 90, 95, 100].map((v) => (
         <g key={v}>
           <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--muted-fill)" />
-          <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">{v}%</text>
+          <text x={8} y={y(v) + 4} fontSize={11} fill="var(--subtle)" className="font-mono">{v}%</text>
         </g>
       ))}
       <line x1={x(8)} y1={y(98)} x2={x(48)} y2={y(77)} stroke="var(--primary)" strokeWidth={2} strokeDasharray="5 4" />
       {points.map((p, i) => (
         <circle key={i} cx={x(p[0])} cy={y(p[1])} r={3.5} fill="var(--ink)" fillOpacity={0.65} />
       ))}
-      <text x={x(22)} y={y(95)} fontSize={12} fill="var(--info-tx)" fontWeight={600} textAnchor="start">
+      <text x={x(22)} y={y(95)} fontSize={11} fill="var(--info-tx)" fontWeight={600} textAnchor="start">
         Empirical relationship: r = -0.61
       </text>
       <line x1={x(25)} x2={x(25)} y1={MT} y2={H - MB} stroke="var(--error)" strokeWidth={1} strokeDasharray="3 3" />
-      <text x={x(26)} y={MT + 14} fontSize={12} fill="var(--error)" fontWeight={600}>
+      <text x={x(26)} y={MT + 14} fontSize={11} fill="var(--error)" fontWeight={600}>
         Volatility risk threshold (CV &gt; 25%)
       </text>
       <line x1={ML} x2={W - MR} y1={H - MB} y2={H - MB} stroke="var(--border-strong)" />
       <line x1={ML} x2={ML} y1={MT} y2={H - MB} stroke="var(--border-strong)" />
-      <text x={(ML + W - MR) / 2} y={H - 4} fontSize={12} fill="var(--subtle)" textAnchor="middle">Demand Coefficient of Variation (CV %)</text>
+      <text x={(ML + W - MR) / 2} y={H - 4} fontSize={11} fill="var(--subtle)" textAnchor="middle">Demand Coefficient of Variation (CV %)</text>
     </svg>
   );
 }
 
-// `mode` fixes the view to one pipeline stage: 'uni' (Stage 1) or 'bi' (Stage 2). Without it both tabs show.
-export default function Descriptive({ mode }) {
+// ============================================================================
+// MAIN DESCRIPTIVE ANALYTICS VIEW
+// ============================================================================
+export default function Descriptive({ defaultSection = 'univariate' }) {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { persona, selectedMaterial } = usePlatform();
-  const [tab, setTab] = useState(mode || 'uni');
-  const [selectedVarId, setSelectedVarId] = useState('weekly_consumption');
+
+  const urlSection = searchParams.get('section');
+  const initialSection = urlSection === 'bivariate' || urlSection === 'bi' 
+    ? 'bivariate' 
+    : defaultSection === 'bivariate' || defaultSection === 'bi' 
+    ? 'bivariate' 
+    : 'univariate';
+
+  const [activeSection, setActiveSection] = useState(initialSection);
+  const [selectedRollingWindow, setSelectedRollingWindow] = useState(4); // Default to 4-week window
   const [selectedRelId, setSelectedRelId] = useState('lt_vs_stockout');
 
+  // Sync state with URL parameter if it changes
+  useEffect(() => {
+    if (urlSection === 'bivariate' || urlSection === 'bi') {
+      setActiveSection('bivariate');
+    } else if (urlSection === 'univariate' || urlSection === 'uni') {
+      setActiveSection('univariate');
+    }
+  }, [urlSection]);
+
+  const handleSectionChange = (sectionKey) => {
+    setActiveSection(sectionKey);
+    setSearchParams({ section: sectionKey });
+  };
+
+  // Compute canonical summary stats and rolling data for Closing Stock
+  const seriesStats = useMemo(() => computeSeriesStats(CLOSING_STOCK_SERIES), []);
+  const rollingData = useMemo(() => computeRollingSeries(CLOSING_STOCK_SERIES, selectedRollingWindow), [selectedRollingWindow]);
+  const currentRollingPoint = rollingData[rollingData.length - 1];
+  const currentClosingStock = CLOSING_STOCK_SERIES[CLOSING_STOCK_SERIES.length - 1];
+
+  // Derived business metrics for executive/analyst personas
+  const stockGrowthVsBaseline = ((currentClosingStock - HISTORICAL_BASELINE_MEAN) / HISTORICAL_BASELINE_MEAN) * 100;
+  const currentClosingStockValuationM = (currentClosingStock * UNIT_COST_BASELINE) / 1000;
+  const totalWarehouseWorkingCapitalM = (13000.0 * UNIT_COST_BASELINE) / 1000000; // $1.02M total physical position
+  const weeklyStockSpreadValueK = (seriesStats.stdDev * UNIT_COST_BASELINE) / 1000;
+  const storageCapacityUtilizationPct = (currentClosingStock / PLANT_CAPACITY_LIMIT) * 100;
+  const storageCapacityHeadroomPct = 100 - storageCapacityUtilizationPct;
+
   const subtitleText = {
-    ds: 'Statistical evidence, stationarity tests, and distributional diagnostics on the raw demand signal before downstream model fitting.',
-    analyst: 'Trend velocity, operational volatility, and outlier investigations to baseline SKU consumption behavior before classification.',
-    exec: 'Executive business signals, revenue throughput exposure, and capacity risk across core catalog materials.',
-  }[persona] || 'Trend, seasonality and relationship analysis on the raw signal — run before any classification or lot-sizing.';
+    ds: 'Statistical properties, stationarity diagnostics, rolling baseline moments, and empirical cross-variable correlation matrices for Closing Stock modeling.',
+    analyst: 'Operational closing stock levels, rolling buffer baselines, storage capacity breach events, and driver discovery for lot-size calibration.',
+    exec: 'Executive closing stock momentum, warehouse capital commitment, plant storage headroom, and catalog supply chain risk exposure.',
+  }[persona] || 'Canonical Closing Stock profiling, rolling buffer dynamics, and cross-variable relationship discovery.';
 
   return (
     <motion.section 
-      className="view"
-      initial={{ opacity: 0, y: 10 }}
+      className="view max-w-7xl mx-auto space-y-5"
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.22 }}
     >
+      {/* Top Header */}
       <ViewHead
-        title={mode === 'bi' ? 'Bivariate Analysis' : mode === 'uni' ? 'Univariate Analysis' : 'Descriptive Intelligence'}
-        subtitle={<p>{mode === 'bi'
-          ? 'How stock relates to one driver at a time — the result is a ranked shortlist of drivers for the Multivariate model.'
-          : mode === 'uni'
-          ? 'What has happened to stock on its own, before any driver is considered. Causes are explained in the later stages.'
-          : subtitleText}</p>}
+        title="Descriptive Analytics"
+        subtitle={<p className="text-sm text-body-c leading-relaxed">{subtitleText}</p>}
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge tone={selectedMaterial.abcClass === 'A' ? 'accent' : 'neutral'} className="font-mono text-xs">
+              <span className="font-mono">{selectedMaterial.id}</span> · Class {selectedMaterial.abcClass}
+            </Badge>
+            <Badge tone="neutral" className="text-xs font-mono">
+              104 Wks Signal
+            </Badge>
+          </div>
+        }
       />
 
-      {/* Main Tab Bar (hidden when the page is fixed to a single stage) */}
-      {!mode && <div className="tabbar">
-        <button
-          type="button"
-          className={tab === 'uni' ? 'active' : ''}
-          onClick={() => setTab('uni')}
-        >
-          Single-Variable Trend
-        </button>
-        <button
-          type="button"
-          className={tab === 'bi' ? 'active' : ''}
-          onClick={() => setTab('bi')}
-        >
-          Relationship Explorer
-        </button>
-      </div>}
+      {/* ===================================================================== */}
+      {/* SECTION SWITCHER: UNIVARIATE VS BIVARIATE                             */}
+      {/* ===================================================================== */}
+      <div className="bg-surface border border-border rounded-xl p-1.5 shadow-subtle">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {/* Section 1: Univariate Analysis Button */}
+          <button
+            type="button"
+            onClick={() => handleSectionChange('univariate')}
+            className={`p-3 sm:p-3.5 rounded-lg text-left transition-all relative flex items-start gap-3 cursor-pointer ${
+              activeSection === 'univariate'
+                ? 'bg-info-bg/70 border border-primary text-ink shadow-sm'
+                : 'bg-transparent border border-transparent hover:bg-bg text-subtle hover:text-ink'
+            }`}
+          >
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition-colors ${
+                activeSection === 'univariate'
+                  ? 'bg-primary-solid text-white border-primary'
+                  : 'bg-bg text-subtle border-border'
+              }`}
+            >
+              <LineChart size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <span className="font-heading text-sm font-bold tracking-tight text-ink">
+                  Univariate Analysis
+                </span>
+                {activeSection === 'univariate' ? (
+                  <Badge tone="accent" className="text-[10px] uppercase font-bold py-0.5">
+                    Active
+                  </Badge>
+                ) : (
+                  <span className="text-xs font-mono text-subtle">Closing Stock</span>
+                )}
+              </div>
+              <p className="text-xs text-body-c leading-snug line-clamp-1 m-0">
+                Deep temporal & rolling analysis of the canonical dependent variable: Weekly Closing Stock.
+              </p>
+            </div>
+          </button>
 
-      {/* TAB 1: UNIVARIATE ANALYSIS */}
-      {tab === 'uni' && (
-        <div>
-          <Insight label="Stock history">
-            Average weekly consumption is up <span className="metric">26%</span> on the 104-week baseline, and stock has
-            drifted upward at about <span className="metric">2.4% a week</span>. Two weeks stand out: a demand spike in
-            week 21 and a plant-capacity breach in week 27. Why this happened is answered in the later stages.
-          </Insight>
-          {/* Material Context Bar */}
-          <div className="card__head mb-3">
-            <span className="font-semibold text-ink ">
-              {selectedMaterial.id} · {selectedMaterial.name} — {selectedMaterial.plant}
-            </span>
+          {/* Section 2: Bivariate Analysis Button */}
+          <button
+            type="button"
+            onClick={() => handleSectionChange('bivariate')}
+            className={`p-3 sm:p-3.5 rounded-lg text-left transition-all relative flex items-start gap-3 cursor-pointer ${
+              activeSection === 'bivariate'
+                ? 'bg-info-bg/70 border border-primary text-ink shadow-sm'
+                : 'bg-transparent border border-transparent hover:bg-bg text-subtle hover:text-ink'
+            }`}
+          >
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition-colors ${
+                activeSection === 'bivariate'
+                  ? 'bg-primary-solid text-white border-primary'
+                  : 'bg-bg text-subtle border-border'
+              }`}
+            >
+              <ScatterChart size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <span className="font-heading text-sm font-bold tracking-tight text-ink">
+                  Bivariate Analysis
+                </span>
+                {activeSection === 'bivariate' ? (
+                  <Badge tone="accent" className="text-[10px] uppercase font-bold py-0.5">
+                    Active
+                  </Badge>
+                ) : (
+                  <span className="text-xs font-mono text-subtle">Driver Heatmap</span>
+                )}
+              </div>
+              <p className="text-xs text-body-c leading-snug line-clamp-1 m-0">
+                Cross-variable correlation matrix and empirical scatter diagnostics between Closing Stock and candidate drivers.
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* SECTION 1: UNIVARIATE ANALYSIS (CANONICAL CLOSING STOCK)              */}
+      {/* ===================================================================== */}
+      {activeSection === 'univariate' && (
+        <motion.div
+          key="section-univariate"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="space-y-4"
+        >
+          {/* Canonical Dependent Variable Context Header */}
+          <div className="card p-3.5 mb-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Badge tone={selectedMaterial.abcClass === 'A' ? 'accent' : 'neutral'}>
-                Class {selectedMaterial.abcClass} Material
-              </Badge>
-              <span className="badge badge-neutral text-xs">104 weeks historical signal</span>
+              <span className="font-heading text-xs font-bold text-ink flex items-center gap-1.5">
+                <Package size={14} className="text-primary" />
+                Dependent Variable: <span className="text-primary font-bold">Closing Stock</span>
+              </span>
+              <span className="text-xs text-subtle font-mono">
+                · {selectedMaterial.id} ({selectedMaterial.name}) · {selectedMaterial.plant}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge tone="neutral" className="text-[10px] font-mono py-0.5">Field: {CANONICAL_DEPENDENT_VARIABLE.field}</Badge>
+              <Badge tone="accent" className="text-[10px] font-mono py-0.5">Source: {CANONICAL_DEPENDENT_VARIABLE.sourceTable}</Badge>
             </div>
           </div>
 
-          {/* PRE-SELECTED VARIABLES SECTION */}
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-subtle">
-                Pre-Selected Variables
-              </span>
-              <span className="text-xs text-subtle">
-                Click a variable card to inspect its analytical profile
-              </span>
-            </div>
-            <div className="grid-4">
-              {UNIVARIATE_VARIABLES.map((v) => {
-                const isSelected = selectedVarId === v.id;
-                return (
-                  <div
-                    key={v.id}
-                    onClick={() => setSelectedVarId(v.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setSelectedVarId(v.id);
-                      }
-                    }}
-                    className={`card p-3.5 mb-0 cursor-pointer transition-all ${
-                      isSelected 
-                        ? 'border-primary bg-[color-mix(in_srgb,var(--info-bg)_20%,transparent)] shadow-sm ring-1 ring-primary' 
-                        : 'border-border hover:border-border-strong'
+          {/* Persona-Specific Primary KPI Group */}
+          <AnimatePresence mode="wait">
+            {persona === 'ds' && (
+              <motion.div
+                key="ds-uni-kpis"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              >
+                <KpiTile
+                  label="Central Tendency & Median"
+                  value={`${seriesStats.mean.toFixed(2)} EA`}
+                  sub={`Median ${seriesStats.median.toFixed(2)} EA · IQR ${seriesStats.iqr.toFixed(2)} EA (P25: ${seriesStats.p25.toFixed(0)} · P75: ${seriesStats.p75.toFixed(0)})`}
+                />
+                <KpiTile
+                  label="OLS Drift Slope (β₁)"
+                  value={`+${seriesStats.slope.toFixed(2)} EA/wk`}
+                  delta={`+${((seriesStats.slope / HISTORICAL_BASELINE_MEAN) * 100).toFixed(2)}%/wk (p < 0.001)`}
+                  deltaTone="up"
+                  sub={`R² = ${seriesStats.r2.toFixed(3)} · Significant upward stock drift`}
+                />
+                <KpiTile
+                  label="Dispersion & Distribution (σ)"
+                  value={`${seriesStats.stdDev.toFixed(2)} EA`}
+                  sub={`CV = ${seriesStats.cv.toFixed(2)}% · Skewness = +1.18 · Kurtosis = 4.22`}
+                />
+                <KpiTile
+                  label="Rolling Volatility & Periodicity"
+                  value={`${currentRollingPoint.cv.toFixed(1)}% CV`}
+                  sub={`Selected ${selectedRollingWindow}W window · T=13 stock cycle (ACF₁ = 0.68)`}
+                />
+              </motion.div>
+            )}
+
+            {persona === 'analyst' && (
+              <motion.div
+                key="analyst-uni-kpis"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              >
+                <KpiTile
+                  label="Current Closing Stock Position"
+                  value={`${currentClosingStock.toFixed(2)} EA`}
+                  delta={`+${stockGrowthVsBaseline.toFixed(2)}% vs baseline`}
+                  deltaTone="up"
+                  sub={`Historical 104-wk baseline: ${HISTORICAL_BASELINE_MEAN.toFixed(2)} EA`}
+                />
+                <KpiTile
+                  label={`${selectedRollingWindow}-Week Rolling Baseline`}
+                  value={`${currentRollingPoint.mean.toFixed(2)} EA`}
+                  delta={`Trajectory: +${seriesStats.slope.toFixed(2)} EA/wk`}
+                  deltaTone="up"
+                  sub={`${selectedRollingWindow}W moving average smooths weekly stock fluctuation`}
+                />
+                <KpiTile
+                  label="Closing Stock Volatility"
+                  value={`Moderate (CV ${seriesStats.cv.toFixed(1)}%)`}
+                  sub={`Weekly spread ±${seriesStats.stdDev.toFixed(2)} EA (±$${weeklyStockSpreadValueK.toFixed(2)}K/wk)`}
+                />
+                <KpiTile
+                  label="Operational Exception Weeks"
+                  value="2 Breach Weeks"
+                  delta="1 surge · 1 cap breach"
+                  deltaTone="down"
+                  sub="Wk 21 surge (2,410 EA) · Wk 27 cap (2,050 EA)"
+                />
+              </motion.div>
+            )}
+
+            {persona === 'exec' && (
+              <motion.div
+                key="exec-uni-kpis"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              >
+                <KpiTile
+                  label="Closing Stock Momentum"
+                  value={`EXPANDING (+${stockGrowthVsBaseline.toFixed(1)}%)`}
+                  delta="Positive Buffer Build"
+                  deltaTone="up"
+                  sub={`Current ${currentClosingStock.toLocaleString()} EA vs ${HISTORICAL_BASELINE_MEAN.toFixed(0)} EA baseline`}
+                />
+                <KpiTile
+                  label="Warehouse Working Capital"
+                  value={`$${totalWarehouseWorkingCapitalM.toFixed(2)}M Total`}
+                  sub={`Current position valuation ($${UNIT_COST_BASELINE}/EA unit cost)`}
+                />
+                <KpiTile
+                  label="Volatility Capital Exposure"
+                  value={`±$${weeklyStockSpreadValueK.toFixed(2)}K / Week`}
+                  sub={`Moderate variance (CV ${seriesStats.cv.toFixed(1)}%) requires active buffer sizing`}
+                />
+                <KpiTile
+                  label="Plant Storage Headroom"
+                  value={`${storageCapacityHeadroomPct.toFixed(1)}% Remaining`}
+                  delta={`${storageCapacityUtilizationPct.toFixed(1)}% Storage Utilization`}
+                  deltaTone="down"
+                  sub={`Current rate approaching ${PLANT_CAPACITY_LIMIT.toLocaleString()} EA storage limit`}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Primary Visualization Card with Rolling Controls */}
+          <div className="card mb-0 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2.5 border-b border-border">
+              <div>
+                <h2 className="card__title font-heading text-base font-bold text-ink m-0">
+                  {persona === 'ds'
+                    ? 'Closing Stock Series Decomposition & Rolling Statistical Dynamics'
+                    : persona === 'analyst'
+                    ? 'Weekly Closing Stock Trajectory & Rolling Buffer Baseline'
+                    : 'Closing Stock Trajectory & Plant Storage Policy Envelope'}
+                </h2>
+                <p className="card__sub text-xs text-subtle mt-0.5">
+                  {persona === 'ds'
+                    ? `Trailing closing stock series showing linear drift (+${seriesStats.slope.toFixed(2)} EA/wk, R²=${seriesStats.r2.toFixed(2)}) with ${selectedRollingWindow}-week rolling mean & dispersion band`
+                    : persona === 'analyst'
+                    ? `Comparing weekly closing stock against ${selectedRollingWindow}-week moving baseline with flagged operational surge thresholds`
+                    : `Sustained closing stock buffer build ($${totalWarehouseWorkingCapitalM.toFixed(2)}M capital commitment) operating within Plant 1 storage envelope`}
+                </p>
+              </div>
+
+              {/* Interactive Rolling Window Selector */}
+              <div className="flex items-center gap-1.5 self-start sm:self-auto bg-bg p-1 rounded-lg border border-border">
+                <span className="text-[11px] text-subtle font-medium px-2 flex items-center gap-1">
+                  <Sliders size={12} />
+                  Rolling Window:
+                </span>
+                {ROLLING_WINDOWS.map((rw) => (
+                  <button
+                    key={rw.key}
+                    type="button"
+                    onClick={() => setSelectedRollingWindow(rw.key)}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded transition-all cursor-pointer ${
+                      selectedRollingWindow === rw.key
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'text-subtle hover:text-ink hover:bg-surface'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-1.5">
-                      <span className={`text-xs font-bold ${isSelected ? 'text-primary ' : 'text-ink '}`}>
-                        {v.name}
+                    {rw.shortLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Rolling Visual Display */}
+            <div className="chart-shell">
+              <ClosingStockRollingTrendChart
+                data={CLOSING_STOCK_SERIES}
+                rollingData={rollingData}
+                windowSize={selectedRollingWindow}
+                persona={persona}
+                showVolatilityBand={persona !== 'exec'}
+              />
+            </div>
+          </div>
+
+          {/* Persona-Specific Concise Interpretation & Optional Evidence */}
+          <div className="card mb-0 space-y-3">
+            {persona === 'ds' && (
+              <>
+                <Insight label="Statistical Process & Temporal Behavior">
+                  Historical closing stock demonstrates a statistically significant positive linear drift (OLS β₁ = +{seriesStats.slope.toFixed(2)} EA/wk, R² = {seriesStats.r2.toFixed(3)}, p &lt; 0.001) with moderate dispersion (CV {seriesStats.cv.toFixed(2)}%). The {selectedRollingWindow}-week rolling baseline highlights non-stationarity and persistence (ACF₁ = 0.68, quarterly cycle T=13), confirming closing stock is non-stationary and requires first-order differencing or trend terms in downstream multivariate forecasting.
+                </Insight>
+                <WhyDisclosure
+                  summary="Statistical Diagnostics & Parameter Decomposition"
+                  drivers={[
+                    `OLS Linear Drift: +${seriesStats.slope.toFixed(2)} EA/wk (Normalized +${((seriesStats.slope / HISTORICAL_BASELINE_MEAN) * 100).toFixed(2)}%/wk of baseline, R² = ${seriesStats.r2.toFixed(3)}, p < 0.001)`,
+                    `Distributional Moments: Mean = ${seriesStats.mean.toFixed(2)} EA, Median = ${seriesStats.median.toFixed(2)} EA, σ = ${seriesStats.stdDev.toFixed(2)} EA, Skewness = +1.18, Kurtosis = 4.22`,
+                    `Rolling Dynamics (${selectedRollingWindow}W): Current rolling closing stock mean = ${currentRollingPoint.mean.toFixed(2)} EA, rolling CV = ${currentRollingPoint.cv.toFixed(2)}%`,
+                    `Autocorrelation & Seasonality: ACF(1) = 0.68, dominant Fourier spectral harmonic T = 13 weeks (strength 0.31)`,
+                  ]}
+                  meaning={[
+                    'Non-Stationary Target: Mean and rolling variance of closing stock drift upward over time; the raw series requires explicit trend modeling or differencing',
+                    'Right-Tail Asymmetry: Positive skewness (+1.18) indicates stock accumulation surges occur more abruptly than gradual depletion runs',
+                    'Autoregressive Persistence: High lag-1 autocorrelation confirms strong temporal dependency across consecutive weekly closing balances',
+                  ]}
+                  action={[
+                    'Pass OLS trend coefficient and rolling closing stock baseline to Multivariate Forecast as the primary dependent variable target parameters',
+                    'Incorporate 13-week harmonic terms to capture quarterly cyclical inventory buildup cycles',
+                    'Treat Week 21 observation (z=3.61, 2,410 EA) as an exogenous accumulation shock rather than standard Gaussian noise',
+                  ]}
+                />
+              </>
+            )}
+
+            {persona === 'analyst' && (
+              <>
+                <Insight label="Operational Closing Stock Velocity & Baseline Finding">
+                  Closing stock is running +{stockGrowthVsBaseline.toFixed(2)}% above historical baseline at {currentClosingStock.toLocaleString()} EA, supported by an expanding {selectedRollingWindow}-week rolling baseline of {currentRollingPoint.mean.toFixed(2)} EA. Historical stock accumulation breached the {PLANT_CAPACITY_LIMIT.toLocaleString()} EA Plant 1 storage cap in Week 27 (2,050 EA), signaling that current replenishment parameters require lot-size recalibration.
+                </Insight>
+                <WhyDisclosure
+                  summary="Operational Driver Breakdown & Replenishment Signals"
+                  drivers={[
+                    `Current closing stock position is elevated at ${currentClosingStock.toLocaleString()} EA vs ${HISTORICAL_BASELINE_MEAN.toFixed(0)} EA baseline (+${stockGrowthVsBaseline.toFixed(1)}% buffer accumulation)`,
+                    `The ${selectedRollingWindow}-week moving average currently sits at ${currentRollingPoint.mean.toFixed(2)} EA, confirming a sustained upward stock regime`,
+                    `Week 21 stock buildup reached 2,410 EA ($${((2410 * UNIT_COST_BASELINE) / 1000).toFixed(1)}K valuation), exceeding normal warehouse staging space`,
+                    `Week 27 peak hit 2,050 EA, breaching the ${PLANT_CAPACITY_LIMIT.toLocaleString()} EA physical warehouse storage cap by 2.50%`,
+                  ]}
+                  meaning={[
+                    'Current operational closing stock is systematically drifting above historical baseline averages',
+                    'Fixed ordering policies based on trailing 104-week means risk inventory bloat during sustained expansion runs',
+                    'Plant 1 warehouse storage capacity limits create a physical bottleneck during peak replenishment cycles',
+                  ]}
+                  action={[
+                    'Review reorder point (ROP) and safety stock buffers in downstream EOQ lot-size calibration',
+                    'Coordinate with Plant 1 warehouse operations regarding the 2,000 EA storage cap',
+                  ]}
+                />
+              </>
+            )}
+
+            {persona === 'exec' && (
+              <>
+                <Insight label="Executive Closing Stock Momentum & Capital Summary">
+                  Warehouse working capital committed to this material stands at ${totalWarehouseWorkingCapitalM.toFixed(2)}M across active inventory, with sustained buffer growth (+{stockGrowthVsBaseline.toFixed(1)}% over historical baseline). Plant 1 warehouse is operating at {storageCapacityUtilizationPct.toFixed(1)}% storage capacity utilization, leaving {storageCapacityHeadroomPct.toFixed(1)}% headroom before physical storage limits bind.
+                </Insight>
+                <WhyDisclosure
+                  summary="Business Risk & Capital Allocation Signals"
+                  drivers={[
+                    `Closing stock position expanding at +${stockGrowthVsBaseline.toFixed(1)}% pace across $${totalWarehouseWorkingCapitalM.toFixed(2)}M in warehouse working capital`,
+                    `Weekly closing stock valuation sits at $${currentClosingStockValuationM.toFixed(1)}K with a ±$${weeklyStockSpreadValueK.toFixed(1)}K weekly volatility band`,
+                    `Plant 1 storage utilization at ${storageCapacityUtilizationPct.toFixed(1)}% ($${((PLANT_CAPACITY_LIMIT * UNIT_COST_BASELINE) / 1000).toFixed(1)}K capacity threshold)`,
+                  ]}
+                  meaning={[
+                    'Closing stock growth reflects deliberate buffer building to protect production against upstream supplier volatility',
+                    'Current working capital buffer is sufficient for normal demand variability but tight against storage caps during peak batches',
+                    `Operating headroom (${storageCapacityHeadroomPct.toFixed(1)}%) provides runway for near-term inventory positioning before warehouse space expansion is required`,
+                  ]}
+                  action={[
+                    'Maintain active buffer sizing to balance service-level protection against working capital lockup',
+                    'Monitor warehouse storage headroom in executive supply chain reviews',
+                  ]}
+                />
+              </>
+            )}
+          </div>
+
+          {/* Section Transition Footer */}
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            <span className="text-xs text-subtle">
+              Finished Single-Variable Closing Stock profiling? Next explore cross-variable explanatory drivers.
+            </span>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => handleSectionChange('bivariate')}
+              className="gap-2 text-xs font-semibold cursor-pointer"
+            >
+              <span>Explore Bivariate Relationships</span>
+              <ArrowRight size={14} />
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SECTION 2: BIVARIATE ANALYSIS (CROSS-VARIABLE RELATIONSHIPS)          */}
+      {/* ===================================================================== */}
+      {activeSection === 'bivariate' && (
+        <motion.div
+          key="section-bivariate"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="space-y-4"
+        >
+          {/* Driver Heatmap Matrix */}
+          <DriverHeatmap />
+
+          {/* Compact Relationship Selector */}
+          <div className="card p-3.5 mb-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 mb-2.5 border-b border-border">
+              <span className="font-heading text-xs font-bold text-ink">
+                Candidate Explanatory Relationships (Drivers vs Closing Stock)
+              </span>
+              <span className="text-[11px] text-subtle">
+                Select relationship to inspect empirical scatter diagnostics & driver evidence
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {BIVARIATE_RELATIONSHIPS.map((r) => {
+                const isSelected = selectedRelId === r.id;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setSelectedRelId(r.id)}
+                    className={`p-2.5 rounded-lg text-left transition-all border cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-primary bg-info-bg/40 shadow-sm ring-1 ring-primary'
+                        : 'border-border bg-surface hover:border-border-strong hover:bg-bg/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1.5 w-full mb-1">
+                      <span className={`font-heading text-xs font-bold truncate ${isSelected ? 'text-primary' : 'text-ink'}`}>
+                        {r.varA} vs {r.varB}
                       </span>
-                      <Badge tone={isSelected ? 'accent' : 'neutral'}>{v.tag}</Badge>
+                      <Badge tone={isSelected ? 'accent' : 'neutral'} className="text-[10px] py-0 px-1 shrink-0">
+                        {r.tag}
+                      </Badge>
                     </div>
-                    <div className="text-xs font-mono text-subtle mb-1.5">
-                      {v.type}
-                    </div>
-                    <p className="text-xs text-subtle leading-snug m-0">
-                      {v.desc}
-                    </p>
-                  </div>
+                    <span className="text-[11px] text-subtle font-mono truncate">
+                      {r.type}
+                    </span>
+                  </button>
                 );
               })}
             </div>
           </div>
 
-          {/* UNIVARIATE ANALYSIS CONTENT */}
-          {selectedVarId === 'weekly_consumption' && (
-            <div>
-              {/* PRIMARY PERSONA KPIs */}
+          {/* RELATIONSHIP 1: LEAD TIME VS STOCKOUT FREQUENCY */}
+          {selectedRelId === 'lt_vs_stockout' && (
+            <div className="space-y-4">
+              {/* Persona-Specific Relationship KPIs */}
               <AnimatePresence mode="wait">
                 {persona === 'ds' && (
                   <motion.div
-                    key="ds-kpi"
+                    key="ds-bi-kpi"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="grid-4 mb-4"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
                   >
                     <KpiTile
-                      label="Mean & Central Tendency"
-                      value="1,284.00 EA"
-                      sub="Median 1,190.00 EA · IQR 360.00 EA (P25: 1,120 · P75: 1,480)"
-                    />
-                    <KpiTile
-                      label="Normalized Trend Slope (OLS β₁)"
-                      value="+2.40%/wk"
-                      delta="+30.82 EA/wk (t=4.82, p < 0.001)"
+                      label="Pearson Correlation (r)"
+                      value="0.74"
+                      delta="t = 6.24 · p < 0.0001"
                       deltaTone="up"
-                      sub="R² = 0.84 · Statistically significant linear ramp"
+                      sub="Strong linear association with stockout risk"
                     />
                     <KpiTile
-                      label="Variance & Distribution (σ)"
-                      value="312.00 EA"
-                      sub="CV = 24.30% · Skewness = +1.18 · Kurtosis = 4.22"
+                      label="Determination (R²)"
+                      value="0.548"
+                      sub="54.80% of stockout variance explained"
                     />
                     <KpiTile
-                      label="Seasonality & Spectral"
-                      value="0.31 Strength"
-                      sub="Quarterly cycle (T=13 wks) · ACF(1) = 0.68"
+                      label="Spearman Rank (ρ)"
+                      value="0.71"
+                      sub="Monotonic rank agreement across tail"
+                    />
+                    <KpiTile
+                      label="OLS Regression Fit"
+                      value="y = 0.218x - 1.78"
+                      sub="SE(β₁) = 0.035 · RMSE 1.94%"
                     />
                   </motion.div>
                 )}
 
                 {persona === 'analyst' && (
                   <motion.div
-                    key="analyst-kpi"
+                    key="analyst-bi-kpi"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="grid-4 mb-4"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
                   >
                     <KpiTile
-                      label="Current Consumption Velocity"
-                      value="1,620.00 EA/wk"
-                      delta="+26.17% vs 104-wk baseline"
-                      deltaTone="up"
-                      sub="Baseline 1,284.00 EA/wk (+$26.43K/wk volume)"
-                    />
-                    <KpiTile
-                      label="Demand Expansion Trajectory"
-                      value="+30.82 EA/wk"
-                      delta="Sustained ramp, 9 of last 12 weeks"
-                      deltaTone="up"
-                      sub="+2.40% of baseline/wk linear velocity"
-                    />
-                    <KpiTile
-                      label="Demand Volatility"
-                      value="Moderate (CV 24.30%)"
-                      sub="Std dev ±312.00 EA (±$24.54K/wk value spread)"
-                    />
-                    <KpiTile
-                      label="Flagged Operational Events"
-                      value="2 Breach Weeks"
-                      delta="1 extreme surge · 1 cap breach"
+                      label="Operational Driver"
+                      value="Lead Time → Stockout"
+                      delta="Primary stockout driver"
                       deltaTone="down"
-                      sub="Investigation required before lot-size calibration"
+                      sub="Empirical link across 142 Class A SKUs"
+                    />
+                    <KpiTile
+                      label="Association Strength"
+                      value="Strong (r = 0.74)"
+                      sub="54.80% of stockout variance explained"
+                    />
+                    <KpiTile
+                      label="Critical Latency Threshold"
+                      value=">45 Days Transit"
+                      delta="3.2× delivery variance"
+                      deltaTone="down"
+                      sub="Suppliers >45d exhibit sharp failure spikes"
+                    />
+                    <KpiTile
+                      label="High-Exposure Materials"
+                      value="28 Materials"
+                      sub="$11.85M spend single-sourced >45d"
                     />
                   </motion.div>
                 )}
 
                 {persona === 'exec' && (
                   <motion.div
-                    key="exec-kpi"
+                    key="exec-bi-kpi"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="grid-4 mb-4"
+                    className="grid grid-cols-1 sm:grid-cols-3 gap-3"
                   >
                     <KpiTile
-                      label="Demand Health & Momentum"
-                      value="EXPANDING (+26.17%)"
-                      delta="Positive Market Momentum"
-                      deltaTone="up"
-                      sub="Current 1,620 EA/wk vs 1,284 EA historical baseline"
-                    />
-                    <KpiTile
-                      label="Annual Throughput Value"
-                      value="$5.25M / Year"
-                      sub="Weekly throughput $100.99K/wk ($78.65/EA unit cost)"
-                    />
-                    <KpiTile
-                      label="Demand Volatility Exposure"
-                      value="±$24.54K / Week"
-                      sub="Moderate variance (CV 24.30%) requires active buffer sizing"
-                    />
-                    <KpiTile
-                      label="Plant Capacity Utilization"
-                      value="81.00% of Limit"
-                      delta="19.00% Headroom Remaining"
+                      label="Supply Chain Risk Signal"
+                      value="HIGH EXPOSURE"
+                      delta="Lead Time → Stockout Driver"
                       deltaTone="down"
-                      sub="Current 1,620 EA/wk approaching 2,000 EA line cap"
+                      sub="Strong correlation (r = 0.74) across catalog"
+                    />
+                    <KpiTile
+                      label="Capital Value at Risk"
+                      value="$34.28M in Scope"
+                      sub="142 Class A materials subject to transit latency risk"
+                    />
+                    <KpiTile
+                      label="Critical Vendor Cohort"
+                      value="28 Single-Sourced"
+                      sub="$11.85M spend tied to overseas transit >45 days"
                     />
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* MAIN VISUALIZATION CARD */}
-              <div className="card mb-4">
-                <div className="card__head mb-3">
-                  <div>
-                    <h2 className="card__title text-base font-bold text-ink m-0">
-                      {persona === 'ds'
-                        ? '104-Week Demand Series Decomposition & Anomaly Identification'
-                        : persona === 'analyst'
-                        ? 'Weekly Consumption Velocity with Flagged Operational Breaches'
-                        : 'Consumption Demand Trajectory & Plant Operating Envelope'}
-                    </h2>
-                    <p className="card__sub text-xs text-subtle mt-0.5">
-                      {persona === 'ds'
-                        ? 'Raw time-series exhibiting OLS linear drift (+30.82 EA/wk, +2.40%/wk of baseline) with distinct statistical anomaly (>3σ)'
-                        : persona === 'analyst'
-                        ? 'Two distinct operational outliers surfaced: statistical demand shock vs plant policy capacity breach'
-                        : 'Strong expansion trajectory with capacity ceiling alert at Plant 1 assembly line ($157.30K/wk threshold)'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="chart-shell">
-                  <UnivariateTrendChart />
-                </div>
-
-                {/* Structured Annotation Card */}
-                <div className="mt-3.5 p-3 bg-bg rounded-md border border-border text-xs">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div>
-                      <span className="text-xs font-bold uppercase text-subtle block mb-0.5">1. What Happened</span>
-                      <p className="text-body-c font-medium m-0">
-                        Week 41 demand spiked to 2,410.00 EA (z=3.61); Week 67 hit 2,050.00 EA, breaching the 2,000.00 EA cap.
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold uppercase text-subtle block mb-0.5">2. How Significant</span>
-                      <p className="text-body-c font-medium m-0">
-                        Week 41 is 87.70% above baseline ($189.55K value); overall trend slope is +30.82 EA/wk (R²=0.84).
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold uppercase text-subtle block mb-0.5">3. Why It Matters</span>
-                      <p className="text-body-c font-medium m-0">
-                        Static lot sizes and fixed 2,000 EA caps create replenishment deficits during surge periods.
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold uppercase text-subtle block mb-0.5">4. What Next</span>
-                      <p className="text-body-c font-medium m-0">
-                        Recalibrate lot sizing parameters and incorporate linear trend slope in Multivariate Forecast.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Explainability Panel */}
-              <div className="card">
-                <Insight label="Analytical Synthesis">
-                  Demand for {selectedMaterial.id} has expanded at <span className="metric">+30.82 EA/week</span> (+26.17% above historical baseline) with moderate volatility (CV <span className="metric">24.30%</span>). While baseline consumption is steady at $100.99K/week, peak spikes have tested the 2,000.00 EA plant policy limit ($157.30K/wk capacity threshold).
-                </Insight>
-
-                <WhyDisclosure
-                  summary="Analytical Breakdown: Finding → Meaning → Implication → Action"
-                  drivers={[
-                    'Finding: Sustained OLS trend (+30.82 EA/wk, +2.40% of baseline/wk) pushes current consumption to 1,620.00 EA/wk ($127.41K/wk value)',
-                    'Finding: Week 41 statistical anomaly reached 2,410.00 EA (z=3.61, $189.55K value), exceeding the 2,000.00 EA line cap by 20.50%',
-                    'Finding: Demand CV of 24.30% generates ±$24.54K/wk of weekly throughput volatility',
-                  ]}
-                  meaning={[
-                    'What it means: The current demand regime is materially higher than the historical 104-week average baseline (1,284.00 EA/wk)',
-                    'What it means: The material is experiencing genuine customer volume expansion rather than random noise',
-                    'What it means: Plant 1 assembly line capacity constraints are becoming active bottlenecks during peak surge periods',
-                  ]}
-                  action={[
-                    'Business Implication: Static lot sizing based on historical averages will systematically under-replenish future demand',
-                    'Recommended Action: Adapt forecasting baseline in Multivariate Forecast to incorporate trend drift and seasonal cycles',
-                    'Recommended Action: Revisit the 2,000.00 EA policy cap with Plant 1 operations before Q4 surge cycles',
-                  ]}
-                />
-              </div>
-            </div>
-          )}
-
-          {selectedVarId === 'unit_cost' && (
-            <div className="card">
-              <div className="card__head mb-3">
-                <div>
-                  <h2 className="card__title text-base font-bold text-ink m-0">Unit Purchase Price Trajectory ($78.65/EA baseline)</h2>
-                  <p className="card__sub text-xs text-subtle mt-0.5">Contract master baseline with spot surcharge anomalies across purchase tranches</p>
-                </div>
-              </div>
-              <div className="chart-shell"><UnitCostTrendChart /></div>
-              <div className="grid-3 mt-3.5">
-                <KpiTile label="Baseline Contract Cost" value="$78.65 / EA" sub="Master Service Agreement fixed pricing" />
-                <KpiTile label="Price Volatility (CV)" value="5.34%" sub="±$4.20 spread across purchase tranches" />
-                <KpiTile label="Annual Procurement Spend" value="$5.25M" sub="Based on 66,768 EA/yr baseline volume" />
-              </div>
-            </div>
-          )}
-
-          {selectedVarId === 'lead_time' && (
-            <div className="card">
-              <div className="card__head mb-3">
-                <div>
-                  <h2 className="card__title text-base font-bold text-ink m-0">Supplier Replenishment Lead Time (60 Days Baseline)</h2>
-                  <p className="card__sub text-xs text-subtle mt-0.5">Transit duration history with port congestion outliers exceeding high-risk threshold (70d)</p>
-                </div>
-              </div>
-              <div className="chart-shell"><LeadTimeTrendChart /></div>
-              <div className="grid-3 mt-3.5">
-                <KpiTile label="Nominal Lead Time" value="60.00 Days" sub="Supplier contract SLA: 60 calendar days" />
-                <KpiTile label="Lead Time Volatility (σ)" value="±14.20 Days" sub="CV 23.67% · Heavy right-skewed delivery tail" />
-                <KpiTile label="Pipeline Capital Exposure" value="$865.61K" sub="8.57 weeks of demand (11,006 EA) in transit" />
-              </div>
-            </div>
-          )}
-
-          {selectedVarId === 'on_hand_stock' && (
-            <div className="card">
-              <div className="card__head mb-3">
-                <div>
-                  <h2 className="card__title text-base font-bold text-ink m-0">On-Hand Stock Level vs Reorder Point (11,500.00 EA)</h2>
-                  <p className="card__sub text-xs text-subtle mt-0.5">Physical warehouse position tracking with safety buffer depletion events</p>
-                </div>
-              </div>
-              <div className="chart-shell"><OnHandStockTrendChart /></div>
-              <div className="grid-3 mt-3.5">
-                <KpiTile label="Current On-Hand Stock" value="13,000.00 EA" sub="$1.02M total warehouse working capital" />
-                <KpiTile label="Days of Supply" value="70.87 Days" sub="10.9 days safety buffer above 60-day lead time" />
-                <KpiTile label="Inventory Turnover" value="5.15x / yr" sub="Turning within Class A target bandwidth" />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 2: BIVARIATE RELATIONSHIP EXPLORER */}
-      {tab === 'bi' && (
-        <div>
-          <Insight label="Driver relationships">
-            Longer supplier lead times go with more stock-outs (<span className="metric">r = 0.74</span>), and finished-goods
-            demand is the strongest single link to stock. Three drivers clear the bar for the Multivariate model; price
-            barely matters for this must-buy material.
-          </Insight>
-          <DriverHeatmap />
-          <div className="mb-4" />
-          {/* PRE-SELECTED RELATIONSHIPS SECTION */}
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-subtle">
-                Pre-Selected Relationships
-              </span>
-              <span className="text-xs text-subtle">
-                Click a relationship card to inspect cross-variable correlation
-              </span>
-            </div>
-            <div className="grid-3">
-              {BIVARIATE_RELATIONSHIPS.map((r) => {
-                const isSelected = selectedRelId === r.id;
-                return (
-                  <div
-                    key={r.id}
-                    onClick={() => setSelectedRelId(r.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setSelectedRelId(r.id);
-                      }
-                    }}
-                    className={`card p-3.5 mb-0 cursor-pointer transition-all ${
-                      isSelected 
-                        ? 'border-primary bg-[color-mix(in_srgb,var(--info-bg)_20%,transparent)] shadow-sm ring-1 ring-primary' 
-                        : 'border-border hover:border-border-strong'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-1.5">
-                      <span className={`text-xs font-bold ${isSelected ? 'text-primary ' : 'text-ink '}`}>
-                        {r.varA} vs {r.varB}
-                      </span>
-                      <Badge tone={isSelected ? 'accent' : 'neutral'}>{r.tag}</Badge>
-                    </div>
-                    <div className="text-xs font-mono text-subtle mb-1.5">
-                      {r.type}
-                    </div>
-                    <p className="text-xs text-subtle leading-snug m-0">
-                      {r.meaning}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* BIVARIATE CONTENT */}
-          {selectedRelId === 'lt_vs_stockout' && (
-            <div>
-              <div className="grid-4 mb-4">
-                <KpiTile
-                  label="Pearson Correlation (r)"
-                  value="0.74"
-                  delta="t = 6.24 · p < 0.0001 (Significant)"
-                  deltaTone="up"
-                  sub="Strong positive linear association across 142 SKUs"
-                />
-                <KpiTile
-                  label="Coefficient of Determination (R²)"
-                  value="0.548"
-                  sub="54.80% of stockout variance explained by lead time"
-                />
-                <KpiTile
-                  label="Spearman Rank Correlation (ρ)"
-                  value="0.71"
-                  sub="Monotonic rank agreement · Non-linear tail effect"
-                />
-                <KpiTile
-                  label="OLS Regression Equation"
-                  value="y = 0.218x - 1.78"
-                  sub="SE(β₁) = 0.035 · 95% CI [0.149, 0.287] · RMSE 1.94%"
-                />
-              </div>
-
+              {/* Scatter Visualization & Relationship Intelligence */}
               <div className="two-col">
-                <div className="card">
-                  <div className="card__head mb-3">
+                <div className="card mb-0">
+                  <div className="card__head mb-2.5">
                     <div>
-                      <h2 className="card__title text-base font-bold text-ink m-0">Supplier Lead Time vs Stockout Frequency</h2>
+                      <h2 className="card__title font-heading text-base font-bold text-ink m-0">Supplier Lead Time vs Stockout Frequency</h2>
                       <p className="card__sub text-xs text-subtle mt-0.5">142 Class A materials ($34.28M value), trailing 12 months</p>
                     </div>
-                    <Badge tone="risk">Critical Risk Zone: &gt;45 Days</Badge>
+                    <Badge tone="risk">Critical Risk: &gt;45 Days</Badge>
                   </div>
                   <div className="chart-shell">
                     <BivariateScatterChart />
                   </div>
                 </div>
 
-                <div className="card">
-                  <h2 className="card__title text-base font-bold text-ink mb-3">Relationship Intelligence</h2>
-                  <Insight label="Correlation vs Causation Standard">
-                    Statistical analysis establishes a <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> between supplier lead time and stockout frequency across 142 Class A materials. While this empirical relationship is highly significant, correlation does not prove direct isolated causality — delivery transit variance (σ_LT), right-skewed shipping tails, and single-sourcing are key contributing operational drivers.
-                  </Insight>
+                <div className="card mb-0 space-y-3">
+                  <h2 className="card__title font-heading text-base font-bold text-ink m-0">Relationship Intelligence</h2>
+                  
+                  {persona === 'ds' && (
+                    <>
+                      <Insight label="Statistical Diagnostics">
+                        Empirical correlation (r = 0.74, R² = 0.548, p &lt; 0.0001) confirms significant linear association between supplier lead time and closing stock depletion / stockout frequency across 142 Class A materials. Monotonic rank agreement (ρ = 0.71) indicates transit latency is a primary candidate feature for downstream predictive modeling.
+                      </Insight>
+                      <WhyDisclosure
+                        summary="Statistical Methodology & Regression Diagnostics"
+                        drivers={[
+                          'Pearson linear correlation r = 0.74 (t = 6.24, p < 0.0001, N = 142 Class A SKUs)',
+                          'Coefficient of determination R² = 0.548 (54.80% variance explained by linear transit term)',
+                          'Spearman rank correlation ρ = 0.71 confirms monotonic agreement without undue leverage from outliers',
+                        ]}
+                        meaning={[
+                          'Correlation indicates empirical covariance; unobserved confounders include supplier tiering and customs clearance variance',
+                          'Residual standard error (RMSE = 1.94%) indicates moderate dispersion around linear fit',
+                          'Lead time variance (σ_LT) exhibits right-skewed tail requiring non-Gaussian treatment in safety buffer models',
+                        ]}
+                        action={[
+                          'Carry supplier lead time into Multivariate Model as a primary explanatory covariate for closing stock buffer sizing',
+                          'Evaluate log-transformed lead time to linearize right-tail extreme transit events',
+                        ]}
+                      />
+                    </>
+                  )}
 
-                  <WhyDisclosure
-                    summary="Why lead time variability correlates with stockout frequency"
-                    drivers={[
-                      'Lead times >45 days exhibit 3.20× higher delivery variance than suppliers with <20-day transit',
-                      'Static safety stock models fail to account for right-skewed supplier delivery tails',
-                      '28 Class A materials ($11.85M illustrative exposure) currently single-sourced without regional buffer stocking',
-                    ]}
-                    meaning={[
-                      'Stockouts originate primarily in transit variance rather than internal consumption spikes',
-                      'Buffer sizing must scale with lead-time standard deviation (σ_LT) rather than static averages',
-                      'Operational effort concentrated on these 28 materials addresses the primary source of historical stockout events',
-                    ]}
-                    action={[
-                      'Incorporate lead-time variance into safety buffer calculations',
-                      'Qualify secondary localized suppliers for SKUs with >45-day lead times',
-                      'Negotiate vendor-managed inventory (VMI) buffer terms for top-tier Class A overseas parts',
-                    ]}
-                  />
+                  {persona === 'analyst' && (
+                    <>
+                      <Insight label="Operational Risk Finding">
+                        Supplier transit times exceeding 45 days drive 3.2× higher delivery variance and closing stock buffer depletions. 28 single-sourced Class A materials ($11.85M exposure) account for the majority of historical stockout events.
+                      </Insight>
+                      <WhyDisclosure
+                        summary="Operational Breakdown & Buffer Sizing Evidence"
+                        drivers={[
+                          'Lead times >45 days exhibit 3.20× higher delivery variance than suppliers with <20-day transit',
+                          'Static safety stock models fail to account for right-skewed supplier delivery tails',
+                          '28 Class A materials ($11.85M exposure) currently single-sourced without regional buffer stocking',
+                        ]}
+                        meaning={[
+                          'Closing stock depletions originate primarily in transit latency variance rather than internal consumption spikes',
+                          'Buffer sizing must scale with lead-time standard deviation rather than static averages',
+                          'Operational focus on these 28 materials directly addresses the primary source of historical stockouts',
+                        ]}
+                        action={[
+                          'Incorporate lead-time variance into safety buffer calculations in downstream EOQ/Safety Stock',
+                          'Investigate dual-sourcing options for SKUs with >45-day lead times',
+                        ]}
+                      />
+                    </>
+                  )}
+
+                  {persona === 'exec' && (
+                    <>
+                      <Insight label="Executive Supply Chain Risk Signal">
+                        Supplier delivery latency is the single largest external predictor of inventory stockouts across $34.28M in Class A inventory, with transit delays over 45 days creating severe stockout exposure across 28 single-sourced materials.
+                      </Insight>
+                      <WhyDisclosure
+                        summary="Executive Risk Drivers & Downstream Governance"
+                        drivers={[
+                          'Supplier transit latency directly drives stockout exposure across $34.28M in Class A catalog value',
+                          '28 critical overseas materials ($11.85M spend) lack regional safety buffers or secondary suppliers',
+                        ]}
+                        meaning={[
+                          'Supply chain vulnerability is concentrated in extended-transit overseas supply lines',
+                          'Mitigating transit risk requires strategic vendor agreements and localized buffer sizing',
+                        ]}
+                        action={[
+                          'Prioritize supply assurance agreements and vendor-managed buffers for top-tier Class A suppliers',
+                          'Pass risk evidence to ABC & Inventory Policy for governance review',
+                        ]}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
+          {/* RELATIONSHIP 2: ORDER QUANTITY VS UNIT COST */}
           {selectedRelId === 'order_qty_vs_cost' && (
             <div className="two-col">
-              <div className="card">
-                <div className="card__head mb-3">
+              <div className="card mb-0">
+                <div className="card__head mb-2.5">
                   <div>
-                    <h2 className="card__title text-base font-bold text-ink m-0">Order Quantity vs Unit Purchase Cost</h2>
+                    <h2 className="card__title font-heading text-base font-bold text-ink m-0">Order Quantity vs Unit Purchase Cost</h2>
                     <p className="card__sub text-xs text-subtle mt-0.5">Scale discounts vs holding cost trade-off across catalog order batches</p>
                   </div>
                   <Badge tone="accent">r = -0.68 · Scale Economics</Badge>
@@ -814,37 +1120,40 @@ export default function Descriptive({ mode }) {
                 <div className="chart-shell"><OrderQtyVsCostScatterChart /></div>
               </div>
 
-              <div className="card">
-                <h2 className="card__title text-base font-bold text-ink mb-3">Batch Sizing Summary</h2>
+              <div className="card mb-0 space-y-3">
+                <h2 className="card__title font-heading text-base font-bold text-ink m-0">Batch Sizing Summary</h2>
                 <Insight label="Scale Elasticity">
-                  Unit purchase cost exhibits an inverse relationship with batch size (r = <span className="metric">-0.68</span>). Beyond 1,200 EA, marginal unit price savings plateau while inventory carrying costs scale linearly.
+                  {persona === 'ds'
+                    ? 'Unit purchase price exhibits an empirical inverse relationship with batch size (r = -0.68). Marginal savings plateau above 1,200 EA while holding costs scale linearly.'
+                    : persona === 'analyst'
+                    ? 'Supplier volume discounts plateau at 1,200 EA batch sizes. Ordering beyond 1,200 EA increases carrying cost without delivering meaningful unit price savings.'
+                    : 'Procurement scale discounts deliver savings up to 1,200 EA batch tiers; order quantities beyond this threshold tie up working capital with diminishing price returns.'}
                 </Insight>
                 <WhyDisclosure
-                  summary="Why batch size recalibration is necessary"
+                  summary="Scale Elasticity & Lot Sizing Evidence"
                   drivers={[
                     'Suppliers offer tiered pricing discounts up to 1,200 EA batch thresholds',
-                    'Current batch policies over-order low-volume items and under-order high-volume Class A items',
-                    'Holding costs scale at 6.00% carrying rate on average inventory value',
+                    'Holding costs scale at 6.00% annual carrying rate on average warehouse closing stock valuation',
                   ]}
                   meaning={[
                     'Optimal lot sizing balances supplier volume discounts against working capital carrying costs',
-                    'Recalibration delivers immediate working capital release without sacrificing discounts',
+                    'Batch recalibration delivers working capital release without sacrificing contractual discount tiers',
                   ]}
                   action={[
-                    'Review mathematically optimal batch sizes for Class A SKUs',
-                    'Harmonize purchase orders with supplier minimum order quantity (MOQ) constraints',
+                    'Pass scale curve to EOQ Optimization for mathematical lot-size calibration',
                   ]}
                 />
               </div>
             </div>
           )}
 
+          {/* RELATIONSHIP 3: DEMAND VOLATILITY VS SUPPLIER ON-TIME RATE */}
           {selectedRelId === 'demand_vs_ontime' && (
             <div className="two-col">
-              <div className="card">
-                <div className="card__head mb-3">
+              <div className="card mb-0">
+                <div className="card__head mb-2.5">
                   <div>
-                    <h2 className="card__title text-base font-bold text-ink m-0">Demand Volatility (CV) vs Supplier On-Time Rate</h2>
+                    <h2 className="card__title font-heading text-base font-bold text-ink m-0">Demand Volatility (CV) vs Supplier On-Time Rate</h2>
                     <p className="card__sub text-xs text-subtle mt-0.5">Fulfillment strain: High-volatility SKUs exhibit lower supplier on-time delivery</p>
                   </div>
                   <Badge tone="watch">r = -0.61 · Fulfillment Stress</Badge>
@@ -852,31 +1161,55 @@ export default function Descriptive({ mode }) {
                 <div className="chart-shell"><DemandVsOnTimeScatterChart /></div>
               </div>
 
-              <div className="card">
-                <h2 className="card__title text-base font-bold text-ink mb-3">Volatility Impact Summary</h2>
+              <div className="card mb-0 space-y-3">
+                <h2 className="card__title font-heading text-base font-bold text-ink m-0">Volatility Impact Summary</h2>
                 <Insight label="Bullwhip Stress">
-                  Demand volatility is negatively associated with supplier delivery punctuality (r = <span className="metric">-0.61</span>). Erratic order patterns amplify supplier schedule disruption.
+                  {persona === 'ds'
+                    ? 'Empirical relationship indicates demand volatility is negatively associated with vendor on-time delivery (r = -0.61). High-CV SKUs (>25%) experience amplified fulfillment latency.'
+                    : persona === 'analyst'
+                    ? 'Erratic order patterns disrupt supplier schedules: materials with demand CV >25% suffer a drop in on-time delivery from 98.5% to 77.0%.'
+                    : 'Internal order volatility directly degrades supplier reliability, dropping vendor on-time rates from 98% to 77% on high-variability SKUs.'}
                 </Insight>
                 <WhyDisclosure
-                  summary="Why demand volatility triggers supplier delivery failure"
+                  summary="Bullwhip Volatility Drivers & Fulfillment Evidence"
                   drivers={[
                     'Erratic purchase orders exceed supplier planned safety capacity buffers',
-                    'Suppliers prioritize steady-demand clients during raw material allocations',
-                    'Lack of long-term forecast sharing prevents upstream capacity planning',
+                    'Suppliers prioritize steady-demand clients during raw material allocation constraints',
                   ]}
                   meaning={[
                     'Internal order volatility is strongly associated with degraded external vendor fulfillment reliability',
                     'Stabilizing replenishment cadence supports vendor on-time recovery to >95.00%',
                   ]}
                   action={[
-                    'Share rolling 12-week multivariate demand forecasts with tier-1 component suppliers',
-                    'Dampen order volatility using smoothed replenishment schedules',
+                    'Pass volatility classification to ABC Classification & Multivariate Forecast',
                   ]}
                 />
               </div>
             </div>
           )}
-        </div>
+
+          {/* Section Transition Footer */}
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleSectionChange('univariate')}
+              className="gap-2 text-xs font-semibold cursor-pointer"
+            >
+              <ArrowLeft size={14} />
+              <span>Back to Univariate</span>
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => navigate('/app/abc')}
+              className="gap-2 text-xs font-semibold cursor-pointer"
+            >
+              <span>Continue to ABC Classification</span>
+              <ArrowRight size={14} />
+            </Button>
+          </div>
+        </motion.div>
       )}
     </motion.section>
   );

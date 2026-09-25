@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { MATERIALS } from '../../data/mockData';
 import { usePlatform } from '../../context/PlatformContext';
-import aitekLogo from '../../components/aitek_logo_bg_removed-removebg-preview.png';
+import AitekLogo from '../../components/AitekLogo';
 
 export default function MaterialSelection() {
   const navigate = useNavigate();
@@ -24,9 +24,9 @@ export default function MaterialSelection() {
 
   return (
     <div
-      className="h-screen max-h-screen w-full flex flex-col justify-between relative overflow-hidden bg-bg select-none"
+      className="min-h-screen w-full flex flex-col justify-between relative overflow-y-auto bg-bg select-none"
       style={{
-        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: 'var(--font-body)',
       }}
     >
       {/* Background Decorative Ambient Blobs */}
@@ -50,27 +50,25 @@ export default function MaterialSelection() {
       {/* 1. Top Bar */}
       <header className="h-14 sm:h-16 bg-surface border-b border-border z-20 relative shrink-0">
         <div className="page-wrap h-full flex items-center gap-3">
-          <img
-            src={aitekLogo}
-            alt="AITEK Logo"
-            className="h-[42px] sm:h-[46px] w-auto object-contain"
+          <AitekLogo
+            className="h-[38px] sm:h-[46px] w-auto object-contain"
           />
           <div className="flex flex-col justify-center">
-            <span className="text-[20px] sm:text-[22px] font-extrabold text-ink tracking-tight leading-none">
+            <span className="font-heading text-[18px] sm:text-[22px] font-extrabold text-ink tracking-tight leading-none">
               AITEK
             </span>
-            <span className="text-xs sm:text-xs font-medium text-primary leading-tight mt-0.5">
+            <span className="text-[11px] sm:text-xs font-medium text-primary leading-tight mt-0.5">
               Inventory Modelling
             </span>
           </div>
         </div>
       </header>
 
-      {/* 2. Main Content (Zero Scroll Budget) */}
-      <main className="flex-1 flex flex-col items-center justify-center page-wrap py-2 sm:py-3 my-auto relative z-10 overflow-hidden">
+      {/* 2. Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-center page-wrap py-5 sm:py-8 my-auto relative z-10">
         
         {/* Stepper */}
-        <div className="w-full max-w-xl mb-3 sm:mb-3.5 shrink-0">
+        <div className="w-full max-w-xl mb-4 sm:mb-6 shrink-0">
           <Stepper steps={['Material', 'Parameters', 'Data sources', 'Ingestion']} current={1} className="mb-0" />
         </div>
 
@@ -79,20 +77,20 @@ export default function MaterialSelection() {
           initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="w-full max-w-3xl bg-surface border border-border rounded-xl p-5 sm:p-6 shadow-[0_8px_30px_rgba(15,23,42,0.05)] shrink-0"
+          className="w-full max-w-3xl bg-surface border border-border rounded-xl p-4 sm:p-6 shadow-[0_8px_30px_rgba(15,23,42,0.05)]"
         >
-          <div className="mb-3">
-            <h1 className="text-lg sm:text-xl font-bold text-ink tracking-tight mb-0.5">
+          <div className="mb-3.5">
+            <h1 className="font-heading text-lg sm:text-xl font-bold text-ink tracking-tight mb-1">
               Select focus material
             </h1>
-            <p className="text-[12.5px] sm:text-[13px] text-subtle leading-snug">
+            <p className="text-[12.5px] sm:text-[13px] text-subtle leading-relaxed">
               Choose a specific SKU for deep-dive calibration, or proceed with the system-recommended focus part.
             </p>
           </div>
 
           {/* Recommendation Banner */}
           <motion.div
-            className={`rounded-lg p-2.5 sm:p-3 mb-3 border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+            className={`rounded-lg p-3 mb-4 border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
               isRecommended
                 ? 'border-border bg-gradient-to-r from-info-bg to-info-bg shadow-2xs'
                 : 'border-border bg-bg'
@@ -107,8 +105,8 @@ export default function MaterialSelection() {
                 <div className="text-xs font-bold text-info-tx uppercase tracking-[0.05em]">
                   System recommended focus
                 </div>
-                <div className="font-bold text-[13px] text-ink">
-                  MAT-1082 · Hydraulic Pump 250BAR (Plant 1)
+                <div className="text-[13px] text-ink">
+                  <span className="font-mono font-bold">MAT-1082</span> · Hydraulic Pump 250BAR (Plant 1)
                 </div>
               </div>
             </div>
@@ -117,10 +115,10 @@ export default function MaterialSelection() {
               variant={isRecommended ? 'primary' : 'outline'}
               size="sm"
               onClick={() => setSelectedMaterialId('MAT-1082')}
-              className="shrink-0 text-xs h-7 px-3 font-semibold"
+              className="shrink-0 text-xs h-7 px-3 font-semibold w-full sm:w-auto"
             >
               {isRecommended ? (
-                <span className="flex items-center gap-1">
+                <span className="flex items-center justify-center gap-1">
                   <PackageCheck size={13} /> Selected
                 </span>
               ) : (
@@ -130,8 +128,8 @@ export default function MaterialSelection() {
           </motion.div>
 
           {/* Select Dropdown */}
-          <div className="mb-3">
-            <div className="flex justify-between items-center mb-1">
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-1.5">
               <label
                 className="text-[12px] font-semibold text-ink"
                 htmlFor="material-select-trigger"
@@ -146,12 +144,12 @@ export default function MaterialSelection() {
             <Select value={selectedMaterialId} onValueChange={(val) => setSelectedMaterialId(val)}>
               <SelectTrigger id="material-select-trigger" className="w-full h-9 bg-surface text-[13px]">
                 <SelectValue>
-                  <div className="flex items-center gap-2 text-left">
+                  <div className="flex items-center gap-2 text-left truncate">
                     <Box size={14} className="text-primary shrink-0" />
-                    <span className="font-bold text-ink">{selectedMaterial.id}</span>
+                    <span className="font-mono font-bold text-ink">{selectedMaterial.id}</span>
                     <span className="text-subtle">·</span>
-                    <span className="text-ink font-medium">{selectedMaterial.name}</span>
-                    <span className="text-subtle text-xs">({selectedMaterial.plant})</span>
+                    <span className="text-ink font-medium truncate">{selectedMaterial.name}</span>
+                    <span className="text-subtle text-xs hidden sm:inline">({selectedMaterial.plant})</span>
                   </div>
                 </SelectValue>
               </SelectTrigger>
@@ -159,11 +157,11 @@ export default function MaterialSelection() {
                 {MATERIALS.map((m) => (
                   <SelectItem key={m.id} value={m.id} className="py-2">
                     <div className="flex items-center justify-between w-full gap-4 pr-2 text-[12.5px]">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-ink">{m.id}</span>
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="font-mono font-bold text-ink">{m.id}</span>
                         <span className="text-subtle">·</span>
-                        <span className="text-ink font-medium">{m.name}</span>
-                        <span className="text-subtle text-xs">({m.plant} — {m.category})</span>
+                        <span className="text-ink font-medium truncate">{m.name}</span>
+                        <span className="text-subtle text-xs hidden md:inline">({m.plant} — {m.category})</span>
                       </div>
                       <Badge tone={m.abcClass === 'A' ? 'accent' : 'neutral'} className="text-xs shrink-0 py-0">
                         Class {m.abcClass}
@@ -175,8 +173,8 @@ export default function MaterialSelection() {
             </Select>
           </div>
 
-          {/* Material group / type and ABC tier (design bible Screen B) */}
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-1 text-[12.5px]">
+          {/* Material group / type and ABC tier */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-4 text-[12.5px] p-3 bg-bg/60 rounded-lg border border-border">
             <span className="text-subtle">Material group: <strong className="text-ink">{selectedMaterial.category}</strong></span>
             <span className="text-subtle">Material type: <strong className="text-ink">Raw material</strong></span>
             <span className="flex items-center gap-1.5 text-subtle">
@@ -184,7 +182,7 @@ export default function MaterialSelection() {
               {['A', 'B', 'C'].map((t) => (
                 <span
                   key={t}
-                  className="inline-flex items-center justify-center w-6 h-6 rounded-sm text-xs font-bold"
+                  className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-sm text-xs font-bold"
                   style={{
                     background: `var(--ord-${t.toLowerCase()})`,
                     color: `var(--ord-${t.toLowerCase()}t)`,
@@ -201,11 +199,11 @@ export default function MaterialSelection() {
           </div>
 
           {/* Action Row */}
-          <div className="flex justify-end pt-3">
+          <div className="flex flex-col sm:flex-row justify-end pt-2">
             <Button
               type="button"
               variant="primary"
-              className="h-10 px-6 gap-2 text-[13.5px] bg-primary-solid hover:bg-info-tx text-white font-semibold shadow-sm"
+              className="h-10 px-6 gap-2 text-[13.5px] bg-primary-solid hover:bg-info-tx text-white font-semibold shadow-sm w-full sm:w-auto justify-center"
               onClick={() => navigate('/parameter-mapping')}
             >
               <span>Continue to Parameters</span>
@@ -216,11 +214,11 @@ export default function MaterialSelection() {
       </main>
 
       {/* 3. Footer */}
-      <footer className="border-t border-border py-2 px-6 sm:px-10 lg:px-16 flex flex-col sm:flex-row justify-between items-center gap-2 text-[12px] text-subtle z-20 relative bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] backdrop-blur-xs shrink-0">
+      <footer className="border-t border-border py-3 px-4 sm:px-10 lg:px-16 flex flex-col sm:flex-row justify-between items-center gap-2 text-[12px] text-subtle z-20 relative bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] backdrop-blur-xs shrink-0 text-center sm:text-left">
         <div className="flex items-center gap-2">
           <span>© 2026 AITEK. All rights reserved.</span>
-          <span className="text-subtle font-light">|</span>
-          <span>Enterprise Inventory Intelligence</span>
+          <span className="text-subtle font-light hidden sm:inline">|</span>
+          <span className="hidden sm:inline">Enterprise Inventory Intelligence</span>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center text-[12px]">

@@ -1,122 +1,299 @@
 import React from 'react';
 import { Badge, Card, CardHead, Insight, DrillDown } from './CommonUI';
 
-// Stage 5: how long money stays tied up, and WHICH leg of the cycle causes the delay (design bible §4 Stage 5).
-// Fixed event sequence: Supplier PO → Material Arrival → Supplier Payment → Production Issue → FG Production → FG Sale → Customer Payment.
-export const RMLC_EVENTS = ['Supplier PO', 'Material arrival', 'Supplier payment', 'Production issue', 'FG production', 'FG sale', 'Customer payment'];
+/**
+ * Stage 5 / RMLC: Complete PO-to-Cash Lifecycle Legs
+ * Tracks how capital moves from raw-material procurement through material receipt,
+ * inventory holding, production, sales fulfillment, and customer cash collection.
+ * 
+ * 6 Canonical PO-to-Cash Legs:
+ * 1. Procurement: PO Generated → Supplier Confirmation
+ * 2. Inbound: Material Dispatched → Material Received (GRN)
+ * 3. Inventory: Material Received → Material Consumed (Production Issue)
+ * 4. Production: Material Consumed → Finished Goods Staged
+ * 5. Sales: Finished Goods Staged → Customer Invoiced
+ * 6. Receivables: Customer Invoiced → Customer Payment (Cash Recovered)
+ */
+
+export const RMLC_EVENTS = [
+  'PO Generated',
+  'Supplier Confirmed',
+  'Material Dispatched',
+  'Material Received',
+  'Material Consumed',
+  'FG Available',
+  'Customer Invoiced',
+  'Cash Recovered',
+];
+
 export const RMLC_LEGS = [
-  { key: 'lead', short: 'Supplier lead time', from: 0, to: 1 },
-  { key: 'credit', short: 'Supplier credit period', from: 1, to: 2 },
-  { key: 'store', short: 'Wait in stores', from: 2, to: 3 },
-  { key: 'make', short: 'Production time', from: 3, to: 4 },
-  { key: 'fg', short: 'Finished goods unsold', from: 4, to: 5 },
-  { key: 'cust', short: 'Customer payment terms', from: 5, to: 6 },
+  { key: 'procurement', short: 'Procurement', from: 'PO Generated', to: 'Supplier Confirmed', desc: 'PO creation to supplier confirmation' },
+  { key: 'inbound', short: 'Inbound Transit', from: 'Material Dispatched', to: 'Material Received', desc: 'Freight transit and port/customs delivery' },
+  { key: 'inventory', short: 'Inventory Holding', from: 'Material Received', to: 'Material Consumed', desc: 'Warehouse storage prior to production issuance' },
+  { key: 'production', short: 'Production', from: 'Material Consumed', to: 'FG Available', desc: 'Manufacturing, assembly, and QC testing' },
+  { key: 'sales', short: 'Sales Conversion', from: 'FG Available', to: 'Customer Invoiced', desc: 'Finished goods dispatch to invoice generation' },
+  { key: 'receivables', short: 'Receivables', from: 'Customer Invoiced', to: 'Cash Recovered', desc: 'Invoicing to customer cash remittance' },
 ];
 
-// Days per leg, example data.
-const MATERIALS = [
-  { id: 'MAT-4120', name: 'Microcontroller', days: [6, 4, 5, 4, 10, 6], bottleneck: 'fg', why: 'Cycle is healthy; nothing stands out.' },
-  { id: 'MAT-1082', name: 'Hydraulic Pump', days: [12, 10, 8, 6, 14, 20], bottleneck: 'cust', why: 'Customer payment terms lengthened from 30 to 45 days last quarter.' },
-  { id: 'MAT-2041', name: 'Lithium Cell', days: [15, 9, 12, 8, 66, 30], bottleneck: 'fg', why: 'Finished goods are sitting unsold in the warehouse for 66 days.' },
+// Authoritative multi-material lifecycle leg durations (in days)
+export const RMLC_PORTFOLIO_MATERIALS = [
+  {
+    id: 'MAT-4120',
+    name: 'Microcontroller MCU-64',
+    category: 'Components',
+    days: [2, 9, 3, 4, 6, 6],
+    total: 30,
+    status: 'completed',
+    bottleneck: 'inbound',
+    bottleneckIdx: 1,
+    bottleneckDays: 9,
+    why: 'Rapid dynamic cycle (30 days total). Inbound air-freight consolidation accounts for 9 days (30.0% of cycle).',
+    trend: 'Accelerating (-4d vs baseline)',
+    tone: 'ok',
+  },
+  {
+    id: 'MAT-1082',
+    name: 'Hydraulic Pump 250BAR',
+    category: 'Components',
+    days: [7, 12, 19, 9, 6, 14],
+    total: 67,
+    status: 'completed',
+    bottleneck: 'inventory',
+    bottleneckIdx: 2,
+    bottleneckDays: 19,
+    why: 'PO-to-Cash lengthened to 67 days (+25d vs previous cycle). Primary delays in Inventory (+8d) and Receivables (+9d due to Net 45 customer terms).',
+    trend: 'Extended (+25d vs baseline)',
+    tone: 'watch',
+  },
+  {
+    id: 'MAT-2041',
+    name: 'Lithium Cell 21700',
+    category: 'Raw Materials',
+    days: [5, 9, 54, 14, 60, 30],
+    total: 172,
+    status: 'in_progress',
+    bottleneck: 'sales',
+    bottleneckIdx: 4,
+    bottleneckDays: 60,
+    why: 'Sub-lot L-2241 (18,500 EA) idle in inventory for 95 days. Overall lifecycle takes 172 days, with 60 days in finished pack staging.',
+    trend: 'Elevated (+32d vs baseline)',
+    tone: 'risk',
+  },
+  {
+    id: 'MAT-5501',
+    name: 'High-Temp Sealant Paste',
+    category: 'Consumables',
+    days: [3, 6, 165, null, null, null],
+    total: 174,
+    status: 'partial',
+    bottleneck: 'inventory',
+    bottleneckIdx: 2,
+    bottleneckDays: 165,
+    why: 'Plant consumable with 165 days idle in stores. Downstream customer sales and cash recovery legs are not connected.',
+    trend: 'Stagnant (165d in stores)',
+    tone: 'risk',
+  },
 ];
 
-const sum = (a) => a.reduce((x, y) => x + y, 0);
+const sumValid = (arr) => arr.reduce((acc, v) => (typeof v === 'number' ? acc + v : acc), 0);
 
 export default function RmlcLegs({ selectedId }) {
-  const rows = MATERIALS.map((m) => {
-    const total = sum(m.days);
-    const maxDays = Math.max(...m.days);
+  const rows = RMLC_PORTFOLIO_MATERIALS.map((m) => {
+    const total = sumValid(m.days);
+    const validDays = m.days.map((d) => (typeof d === 'number' ? d : 0));
+    const maxDays = Math.max(...validDays);
     const idx = m.days.indexOf(maxDays);
-    return { ...m, total, bottleneckIdx: idx };
+    return { ...m, total, bottleneckIdx: idx >= 0 ? idx : 0 };
   });
+
   const scale = Math.max(...rows.map((r) => r.total));
-  const focus = rows.find((r) => r.id === selectedId) || rows[rows.length - 1];
-  const worst = rows[rows.length - 1];
+  const focus = rows.find((r) => r.id === selectedId) || rows[1] || rows[0];
+  const worst = rows.find((r) => r.id === 'MAT-2041') || rows[rows.length - 1];
 
   return (
     <div className="space-y-4 mb-6">
-      <Insight label="Cash cycle">
-        <span className="metric">{worst.id} · {worst.name}</span> takes <span className="metric">{worst.total} days</span> to turn
-        a purchase into cash, {(worst.total / rows[0].total).toFixed(0)}× longer than {rows[0].id}.{' '}
-        {worst.days[worst.bottleneckIdx]} of those days ({Math.round((worst.days[worst.bottleneckIdx] / worst.total) * 100)}%) are
-        spent in one place: <strong>{RMLC_LEGS[worst.bottleneckIdx].short.toLowerCase()}</strong>. Supplier and production
-        timings are normal.
+      <Insight label="PO-to-Cash Lifecycle Overview">
+        Capital commitment duration across the enterprise ranges from{' '}
+        <span className="metric font-bold">30 days</span> ({rows[0].id}) up to{' '}
+        <span className="metric font-bold">{worst.total} days</span> ({worst.id}). For selected material{' '}
+        <strong className="text-ink">{focus.id} ({focus.name})</strong>, the complete PO-to-Cash lifecycle requires{' '}
+        <span className="metric font-bold">{focus.total} days</span>, with the largest single duration residing in{' '}
+        <strong className="text-ink">{RMLC_LEGS[focus.bottleneckIdx].short}</strong> ({focus.days[focus.bottleneckIdx]} days,{' '}
+        {Math.round(((focus.days[focus.bottleneckIdx] || 0) / (focus.total || 1)) * 100)}% of total elapsed cycle).
       </Insight>
 
       <Card className="mb-0">
         <CardHead
-          title="Days from purchase order to customer payment"
-          sub="Each bar is one material. Segments follow the fixed sequence of events; the longest leg is highlighted."
-          right={<Badge tone="neutral" shape={false}>Example data</Badge>}
+          title="PO-to-Cash Duration Comparison Across Materials"
+          sub="Duration in days from purchase order creation through material receipt, inventory holding, production, customer invoicing, and cash collection."
+          right={
+            <div className="flex items-center gap-2">
+              <Badge tone="accent">6 Canonical Legs</Badge>
+              <Badge tone="neutral">PO-to-Cash</Badge>
+            </div>
+          }
         />
 
-        <ol className="rmlc-events" aria-label="Event sequence">
-          {RMLC_EVENTS.map((e, i) => (
-            <li key={e}><span>{i + 1}</span>{e}</li>
-          ))}
-        </ol>
-
-        <div className="rmlc-bars">
-          {rows.map((r) => (
-            <div key={r.id} className={`rmlc-row ${r.id === focus.id ? 'rmlc-row--focus' : ''}`}>
-              <div className="rmlc-row__label">
-                <strong>{r.id}</strong>
-                <span>{r.name}</span>
-              </div>
-              <div className="rmlc-row__bar" style={{ width: `${(r.total / scale) * 100}%` }} role="img"
-                aria-label={`${r.id}: ${r.total} days in total`}>
-                {r.days.map((d, i) => (
-                  <span
-                    key={RMLC_LEGS[i].key}
-                    className={`rmlc-seg ${i === r.bottleneckIdx ? 'rmlc-seg--hot' : ''}`}
-                    style={{ flexGrow: d }}
-                    title={`${RMLC_LEGS[i].short}: ${d} days`}
-                  >
-                    {d >= 8 ? d : ''}
+        {/* 6 Lifecycle Event Points */}
+        <div className="mb-4 pb-3 border-b border-border">
+          <div className="text-xs font-semibold uppercase tracking-wider text-subtle mb-2">
+            PO-to-Cash Event Sequence:
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            {RMLC_LEGS.map((leg, idx) => (
+              <div key={leg.key} className="p-2 bg-bg/80 rounded border border-border text-xs">
+                <div className="font-bold text-ink flex items-center gap-1 mb-0.5">
+                  <span className="w-4 h-4 rounded-full bg-deep text-white flex items-center justify-center text-[10px] font-mono">
+                    {idx + 1}
                   </span>
-                ))}
+                  <span>{leg.short}</span>
+                </div>
+                <div className="text-[11px] text-body-c truncate">{leg.from} → {leg.to}</div>
               </div>
-              <div className="rmlc-row__total num">{r.total} days</div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        <div className="chart-legend">
-          <span><span className="legend-dot" style={{ background: 'var(--s1)' }} /> Each leg (days)</span>
-          <span><span className="legend-dot" style={{ background: 'var(--s2)' }} /> Longest leg, the bottleneck</span>
+        {/* Stacked Horizon Bar Chart */}
+        <div className="rmlc-bars space-y-3 mb-4">
+          {rows.map((r) => {
+            const isFocus = r.id === focus.id;
+            return (
+              <div
+                key={r.id}
+                className={`p-3 rounded-md border transition-all ${
+                  isFocus ? 'bg-info-bg/30 border-primary shadow-subtle' : 'bg-surface border-border hover:border-border-strong'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                  <div className="flex items-center gap-2">
+                    <strong className="text-ink font-bold">{r.id}</strong>
+                    <span className="text-xs text-body-c font-medium">{r.name}</span>
+                    <Badge tone={r.tone === 'ok' ? 'success' : r.tone === 'watch' ? 'watch' : 'risk'}>
+                      {r.trend}
+                    </Badge>
+                    {r.status === 'partial' && <Badge tone="neutral">Partial Lifecycle</Badge>}
+                    {isFocus && <Badge tone="accent">Selected</Badge>}
+                  </div>
+                  <div className="text-xs font-mono font-bold text-ink">
+                    Total: {r.total} Days {r.status === 'in_progress' ? '(In-Progress)' : ''}
+                  </div>
+                </div>
+
+                {/* Stacked bar segments */}
+                <div className="flex items-stretch h-7 rounded-sm overflow-hidden bg-muted-fill border border-border">
+                  {r.days.map((d, i) => {
+                    const leg = RMLC_LEGS[i];
+                    if (d === null) {
+                      return (
+                        <div
+                          key={leg.key}
+                          className="flex items-center justify-center bg-stripes-muted text-subtle text-[10px] px-2"
+                          style={{ flexGrow: 1 }}
+                          title={`${leg.short}: Data Not Connected`}
+                        >
+                          Not Connected
+                        </div>
+                      );
+                    }
+                    const isBottleneck = i === r.bottleneckIdx;
+                    return (
+                      <div
+                        key={leg.key}
+                        className={`flex items-center justify-center text-[11px] font-mono font-bold transition-opacity hover:opacity-90 ${
+                          isBottleneck
+                            ? 'bg-warning-tx text-white'
+                            : i % 2 === 0
+                            ? 'bg-primary-solid text-white'
+                            : 'bg-info-tx text-white'
+                        }`}
+                        style={{ flexGrow: d, minWidth: d > 0 ? '24px' : '0' }}
+                        title={`${leg.short}: ${d} days (${Math.round((d / r.total) * 100)}% of cycle)`}
+                      >
+                        {d >= 6 ? `${d}d` : d > 0 ? d : ''}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="rmlc-why">
-          <Badge tone="watch">Bottleneck · {focus.id}</Badge>
-          <span>
+        {/* Chart Legend */}
+        <div className="chart-legend flex items-center gap-4 text-xs text-body-c pt-2 border-t border-border flex-wrap">
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-primary-solid inline-block" />
+            Procurement &amp; Inbound
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-info-tx inline-block" />
+            Inventory &amp; Production
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-warning-tx inline-block" />
+            Primary Lifecycle Bottleneck
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-muted-fill border border-dashed border-border-strong inline-block" />
+            Not Connected / Internal Consumable
+          </span>
+        </div>
+
+        {/* Selected Bottleneck Explanation */}
+        <div className="rmlc-why mt-3 p-3 bg-bg rounded border border-border text-xs leading-relaxed flex items-start gap-2.5">
+          <Badge tone={focus.tone === 'ok' ? 'success' : focus.tone === 'watch' ? 'watch' : 'risk'}>
+            Bottleneck · {focus.id}
+          </Badge>
+          <span className="text-ink">
             <strong>{RMLC_LEGS[focus.bottleneckIdx].short}</strong> ({focus.days[focus.bottleneckIdx]} days). {focus.why}
           </span>
         </div>
       </Card>
 
-      <DrillDown title="Leg-by-leg durations" hint="Days between events">
-        <div className="table-wrap">
-          <table>
+      {/* Drill-down Table */}
+      <DrillDown title="PO-to-Cash Stage-by-Stage Duration Matrix" hint="Empirical days between events for all materials">
+        <div className="table-wrap overflow-x-auto">
+          <table className="w-full text-xs">
             <thead>
-              <tr>
-                <th>Material</th>
-                {RMLC_LEGS.map((l) => <th key={l.key} className="num">{l.short}</th>)}
-                <th className="num">Total</th>
+              <tr className="border-b border-border">
+                <th className="text-left p-2">Material SKU</th>
+                {RMLC_LEGS.map((l) => (
+                  <th key={l.key} className="text-right p-2 font-mono">{l.short}</th>
+                ))}
+                <th className="text-right p-2 font-mono font-bold">Total PO-to-Cash</th>
+                <th className="text-left p-2">Primary Bottleneck</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id}>
-                  <td><strong className="text-ink">{r.id}</strong> · {r.name}</td>
-                  {r.days.map((d, i) => <td key={i} className="num">{d}</td>)}
-                  <td className="num"><strong>{r.total}</strong></td>
+                <tr key={r.id} className={`border-b border-border/50 ${r.id === focus.id ? 'bg-info-bg/30 font-semibold' : ''}`}>
+                  <td className="p-2">
+                    <strong className="text-ink">{r.id}</strong> · {r.name}
+                  </td>
+                  {r.days.map((d, i) => (
+                    <td key={i} className={`text-right p-2 font-mono ${i === r.bottleneckIdx ? 'font-bold text-warning-tx' : ''}`}>
+                      {d !== null ? `${d}d` : <span className="text-subtle italic">N/A</span>}
+                    </td>
+                  ))}
+                  <td className="text-right p-2 font-mono font-bold text-ink">
+                    {r.total}d {r.status === 'in_progress' ? '(In-Progress)' : r.status === 'partial' ? '(Partial)' : ''}
+                  </td>
+                  <td className="p-2">
+                    <Badge tone={r.tone === 'ok' ? 'success' : r.tone === 'watch' ? 'watch' : 'risk'}>
+                      {RMLC_LEGS[r.bottleneckIdx].short} ({r.days[r.bottleneckIdx]}d)
+                    </Badge>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="footnote">Computed directly from transaction timestamps; no model is fitted at this stage.</p>
+        <p className="footnote text-[11px] text-subtle mt-2">
+          Computed directly from ERP timestamps (PO creation, ASN dispatch, GRN receipt, goods issue requisition, work order release, commercial invoice, and bank remittance). No synthetic durations are generated.
+        </p>
       </DrillDown>
     </div>
   );
 }
+
