@@ -135,6 +135,68 @@ const PROMPT_LIBRARY = [
 
 const TAG_TONE = { 'Act now': 'risk', Optimize: 'accent', Monitor: 'watch', Prevent: 'neutral' };
 
+// Which 2-3 prompts each persona is most likely to reach for first; the rest keep their library order.
+const PERSONA_PINNED_PROMPTS = {
+  supervisor: ['stockout_risk', 'canon_leadtime', 'lifecycle_risk'],
+  warehouse: ['working_capital', 'lifecycle_risk', 'explain_health'],
+  planner: ['forecast_risk', 'optimize_replenishment', 'canon_position'],
+  procurement: ['optimize_replenishment', 'canon_leadtime', 'stockout_risk'],
+  finance: ['working_capital', 'exec_summary', 'canon_position'],
+};
+
+function orderPromptsForPersona(persona) {
+  const pinned = PERSONA_PINNED_PROMPTS[persona] || [];
+  const pinnedItems = pinned.map((id) => PROMPT_LIBRARY.find((p) => p.id === id)).filter(Boolean);
+  const rest = PROMPT_LIBRARY.filter((p) => !pinned.includes(p.id));
+  return [...pinnedItems, ...rest];
+}
+
+// One short "so what" sentence per persona, appended to the Agent's recommendation — the
+// evidence/reasoning stays a single source of truth; only this closing takeaway varies.
+const PERSONA_TAKEAWAY = {
+  why_increasing: {
+    supervisor: () => 'Downstream lines keep the same buffer they have today.',
+    warehouse: () => 'Expect on-hand to drop before the next receipt — flag it in the cycle count.',
+    planner: () => "Update the production plan's material call before the new order date.",
+    procurement: (ctx) => `Issue the revised PO for the EOQ quantity with ${ctx.supplierName}.`,
+    finance: () => "That's the $0.62M showing up in next quarter's cash position.",
+  },
+  position_next_month: {
+    supervisor: () => 'Coverage still holds above the lead-time floor for downstream lines.',
+    warehouse: () => 'Less cycle stock to shelve and count each cycle.',
+    planner: () => "Confirm this level against next month's confirmed build schedule.",
+    procurement: (ctx) => `Size the next PO to the ${formatNum(ctx.qStar)} ${ctx.uom} lot, not the current batch.`,
+    finance: () => 'Turnover improves while coverage stays inside the service-level floor.',
+  },
+  leadtime_whatif: {
+    supervisor: () => 'A 3-day-earlier reorder point keeps downstream lines protected.',
+    warehouse: () => 'Expect to hold slightly more cycle stock if the lead-time change sticks.',
+    planner: () => 'Re-check the production plan against the new 8-day lead time before it lands.',
+    procurement: () => 'Start qualifying a second supplier now, before the lead-time change is confirmed.',
+    finance: () => "That's roughly $0.31M of extra working capital tied up if no action is taken.",
+  },
+  explain_health: {
+    supervisor: (ctx) => `Coverage of ${ctx.dos.toFixed(1)} days keeps downstream lines protected.`,
+    warehouse: () => 'No excess or ageing flags on this material right now.',
+    planner: () => 'Demand and lead time are in balance — no plan adjustment needed.',
+    procurement: () => 'No expedite or PO change needed while coverage holds.',
+    finance: (ctx) => `${formatCurrency(ctx.value)} is active operating capital, not at-risk exposure.`,
+  },
+  default: {
+    supervisor: (ctx) => `Check whether this affects the ${ctx.leadTimeDays}-day coverage on ${ctx.id}.`,
+    warehouse: (ctx) => `Check for excess or ageing impact on ${ctx.id}'s physical stock.`,
+    planner: (ctx) => `Check this against the production plan for ${ctx.id}.`,
+    procurement: (ctx) => `Check whether this changes the reorder point or lot size for ${ctx.id}.`,
+    finance: (ctx) => `Check the working-capital impact of ${formatCurrency(ctx.value)} tied up in ${ctx.id}.`,
+  },
+};
+
+function withPersonaTakeaway(response, intentKey, ctx, persona) {
+  const takeawayFn = (PERSONA_TAKEAWAY[intentKey] || PERSONA_TAKEAWAY.default)[persona];
+  if (!takeawayFn || !response.recommendation) return response;
+  return { ...response, recommendation: `${response.recommendation} ${takeawayFn(ctx)}` };
+}
+
 // ============================================================================
 // CONTEXTUAL INTELLIGENCE SYNTHESIS ENGINE
 // ============================================================================
@@ -571,7 +633,7 @@ function buildAgentResponse(query, ctx, persona) {
 
   // 1. INVENTORY HEALTH
   if (intent === 'explain_health') {
-    return {
+    return withPersonaTakeaway({
       title: `Inventory Health Assessment — ${ctx.id}`,
       summary: `Synthesized inventory health profile across Material Foundation, ABC Pareto, and RMLC telemetry for ${ctx.id} (${ctx.name}).`,
       evidence: [
@@ -596,11 +658,11 @@ function buildAgentResponse(query, ctx, persona) {
         'Review Lifecycle Risk',
         'Optimize Replenishment',
       ],
-    };
+    }, 'explain_health', ctx, persona);
   }
 
   // Fallback / standard responses
-  return {
+  return withPersonaTakeaway({
     title: `Intelligence Synthesis — ${query.slice(0, 40)}...`,
     summary: `Synthesizing available enterprise intelligence for "${query}" on active material ${ctx.id} (${ctx.name}).`,
     evidence: [
@@ -625,14 +687,14 @@ function buildAgentResponse(query, ctx, persona) {
       'Find Working Capital Opportunities',
       'Executive Decision Summary',
     ],
-  };
+  }, 'default', ctx, persona);
 }
 
 // Canonical worked examples (design bible §9) get purpose-written answers; everything else uses the intent responses above.
-function canonicalResponse(intent, ctx) {
+function canonicalResponse(intent, ctx, persona) {
   const base = { evidence: [], suggestedActions: [{ label: 'Send to Approval Queue', action: 'send_queue', tone: 'accent' }], confidence: `${ctx.confidencePct}%`, confidenceTone: 'success' };
   if (intent === 'why_increasing') {
-    return {
+    return withPersonaTakeaway({
       ...base,
       title: `Why is inventory rising — ${ctx.id}`,
       chartType: 'inventory_position',
@@ -650,10 +712,10 @@ function canonicalResponse(intent, ctx) {
         { label: 'Open the analysis', action: 'nav_forecast', tone: 'neutral' },
       ],
       followUps: ['What should my inventory position be for next month?', 'What happens if supplier lead time increases from 5 to 8 days?'],
-    };
+    }, 'why_increasing', ctx, persona);
   }
   if (intent === 'position_next_month') {
-    return {
+    return withPersonaTakeaway({
       ...base,
       title: `Recommended position for next month — ${ctx.id}`,
       chartType: 'inventory_position',
@@ -671,9 +733,9 @@ function canonicalResponse(intent, ctx) {
         { label: 'Open the Optimization Plan', action: 'nav_opt', tone: 'neutral' },
       ],
       followUps: ['Why is the inventory for this material increasing?', 'What happens if supplier lead time increases from 5 to 8 days?'],
-    };
+    }, 'position_next_month', ctx, persona);
   }
-  return {
+  return withPersonaTakeaway({
     ...base,
     title: `Lead time 5 → 8 days — ${ctx.id}`,
     chartType: 'coverage_leadtime',
@@ -691,13 +753,13 @@ function canonicalResponse(intent, ctx) {
       { label: 'Explore in What-If', action: 'nav_whatif', tone: 'neutral' },
     ],
     followUps: ['Why is the inventory for this material increasing?', 'What should my inventory position be for next month?'],
-  };
+  }, 'leadtime_whatif', ctx, persona);
 }
 
 function generateDeterministicAgentResponse(query, ctx, persona) {
   const { intent } = detectIntent((query || '').toLowerCase().trim());
   const res = ['why_increasing', 'position_next_month', 'leadtime_whatif'].includes(intent)
-    ? canonicalResponse(intent, ctx)
+    ? canonicalResponse(intent, ctx, persona)
     : buildAgentResponse(query, ctx, persona);
   return { ...res, trace: TRACE_BY_INTENT[intent] || TRACE_BY_INTENT.unknown };
 }
@@ -724,7 +786,7 @@ function AgentTrace({ trace }) {
 
 export default function DecisionIntelligence() {
   const navigate = useNavigate();
-  const { persona: activePersona, legacyPersona: persona, selectedMaterial } = usePlatform();
+  const { persona, selectedMaterial } = usePlatform();
 
   const [tab, setTab] = useState('ws');
   const [authorized, setAuthorized] = useState({});
@@ -853,7 +915,8 @@ export default function DecisionIntelligence() {
     setInputText('');
   };
 
-  const personaMeta = PERSONA_DESCRIPTIONS[activePersona] || PERSONA_DESCRIPTIONS.supervisor;
+  const personaMeta = PERSONA_DESCRIPTIONS[persona] || PERSONA_DESCRIPTIONS.supervisor;
+  const orderedPrompts = orderPromptsForPersona(persona);
 
   return (
     <motion.section 
@@ -1094,7 +1157,7 @@ export default function DecisionIntelligence() {
               />
 
               <div className="grid grid-cols-2 gap-2">
-                {PROMPT_LIBRARY.map((item) => (
+                {orderedPrompts.map((item) => (
                   <div
                     key={item.id}
                     onClick={() => handleSendMessage(item.query)}

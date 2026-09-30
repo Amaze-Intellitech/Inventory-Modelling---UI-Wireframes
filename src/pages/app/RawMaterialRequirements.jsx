@@ -427,7 +427,7 @@ function DailyForecastChart({
 
 export default function RawMaterialRequirements() {
   const navigate = useNavigate();
-  const { legacyPersona: persona, selectedMaterial } = usePlatform();
+  const { persona, selectedMaterial } = usePlatform();
   const [showDailySchedule, setShowDailySchedule] = React.useState(false);
 
   // 1. Resolve canonical selected material (Single Source of Truth)
@@ -534,6 +534,224 @@ export default function RawMaterialRequirements() {
   const formatCurrency = (val, decimals = 2) =>
     `$${val.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 
+  // The 5-tile physical/replenishment grid is a fact set every operational persona cares about;
+  // only the framing (title, badge, closing note) changes per persona.
+  const renderOperationalGrid = ({ title, sub, badgeText, badgeTone, noteBody }) => (
+    <div className="card mb-4">
+      <div className="card__head">
+        <div>
+          <h2 className="card__title">{title}</h2>
+          <p className="card__sub">{sub}</p>
+        </div>
+        <Badge tone={badgeTone}>{badgeText}</Badge>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-3.5">
+        <div className="p-3 bg-bg rounded-md border border-border ">
+          <div className="text-xs font-bold uppercase text-subtle mb-1">1. Current Inventory</div>
+          <div className="text-base font-bold text-ink font-mono mb-0.5">{formatNum(onHandQty, 0)} {uom}</div>
+          <div className="text-xs text-body-c font-mono">{formatCurrency(onHandValue)}</div>
+          <div className="text-xs text-subtle mt-1 font-mono">{formatNum(daysOfSupply, 1)} days supply</div>
+        </div>
+        <div className="p-3 bg-bg rounded-md border border-border ">
+          <div className="text-xs font-bold uppercase text-subtle mb-1">2. Baseline Consumption</div>
+          <div className="text-base font-bold text-ink font-mono mb-0.5">{formatNum(avgDaily, 2)} {uom}/d</div>
+          <div className="text-xs text-body-c font-mono">{formatNum(avgWeekly, 1)} {uom}/wk</div>
+          <div className="text-xs text-subtle mt-1 font-mono">CV = {(demandCV * 100).toFixed(1)}%</div>
+        </div>
+        <div className="p-3 bg-bg rounded-md border border-border ">
+          <div className="text-xs font-bold uppercase text-subtle mb-1">3. Lead-Time Demand</div>
+          <div className="text-base font-bold text-ink font-mono mb-0.5">{formatNum(leadTimeDemand, 1)} {uom}</div>
+          <div className="text-xs text-body-c ">{leadTimeDays}d lead time</div>
+          <div className="text-xs text-subtle mt-1 font-mono">{formatNum(avgDaily, 2)}/d × {leadTimeDays}d</div>
+        </div>
+        <div className="p-3 bg-bg rounded-md border border-border ">
+          <div className="text-xs font-bold uppercase text-subtle mb-1">4. Safety Stock</div>
+          <div className="text-base font-bold text-primary font-mono mb-0.5">{formatNum(safetyStock, 1)} {uom}</div>
+          <div className="text-xs text-body-c font-mono">{formatCurrency(safetyStockValue)}</div>
+          <div className="text-xs text-subtle mt-1 font-mono">Z=1.65 · σ_d · √L</div>
+        </div>
+        <div className={`p-3 rounded-md border ${belowReorderPoint ? 'bg-[color-mix(in_srgb,var(--error-bg)_70%,transparent)] border-error ' : 'bg-[color-mix(in_srgb,var(--success-bg)_70%,transparent)] border-success '}`}>
+          <div className={`text-xs font-bold uppercase mb-1 ${belowReorderPoint ? 'text-error-tx' : 'text-success-tx'}`}>5. Reorder Point (ROP)</div>
+          <div className={`text-base font-bold font-mono mb-0.5 ${belowReorderPoint ? 'text-error-tx ' : 'text-success-tx '}`}>{formatNum(reorderPoint, 1)} {uom}</div>
+          <div className="text-xs font-semibold text-ink font-mono">
+            {belowReorderPoint ? `Gap: -${formatNum(ropGap, 1)} ${uom}` : `Buffer: +${formatNum(ropBuffer, 1)} ${uom}`}
+          </div>
+          <div className="text-xs text-subtle mt-1">Lead Demand + SS</div>
+        </div>
+      </div>
+
+      <div className={`p-3.5 rounded-md text-xs leading-relaxed border ${belowReorderPoint ? 'bg-[color-mix(in_srgb,var(--error-bg)_80%,transparent)] border-error ' : 'bg-[color-mix(in_srgb,var(--success-bg)_80%,transparent)] border-success '}`}>
+        {noteBody}
+      </div>
+    </div>
+  );
+
+  const downstreamShort = meta.downstream.split('(')[0].trim();
+  const supplierShort = meta.supplier.split('(')[0].trim();
+
+  const PERSONA_LENS = {
+    supervisor: {
+      headerSubtitle: <p>Forward demand outlook and reorder status for <strong>{selectedMaterial.id} ({name})</strong>, focused on whether downstream lines stay protected through the 12-week horizon.</p>,
+      graphStrip: [
+        { heading: '1. Coverage Today', body: `${formatNum(daysOfSupply, 1)} days of supply against a ${leadTimeDays}-day lead time — ${daysOfSupply < leadTimeDays ? 'below the buffer downstream lines need' : 'holding the buffer downstream lines need'}.` },
+        { heading: '2. Downstream Lines Fed', body: meta.downstream },
+        { heading: '3. Reorder Status', body: belowReorderPoint ? `Already ${formatNum(ropGap, 1)} ${uom} below the reorder trigger.` : `${formatNum(ropBuffer, 1)} ${uom} above the reorder trigger.` },
+        { heading: '4. 12-Week Trend', body: `Demand moves from ${formatNum(day1Forecast, 2)} to ${formatNum(day84Forecast, 2)} ${uom}/day — ${trendPerWeek >= 0.003 ? 'rising' : trendPerWeek <= -0.003 ? 'easing' : 'steady'}.` },
+      ],
+      scopeNoteLabel: 'Line-Continuity Note:',
+      scopeNoteBody: `This view tracks whether on-hand stock and the forward forecast keep ${downstreamShort} running through the ${leadTimeDays}-day supplier lead time.`,
+      kpis: [
+        { label: '1. Coverage vs Lead Time', value: `${formatNum(daysOfSupply, 1)} Days`, valueStyle: { color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }, delta: daysOfSupply < leadTimeDays ? `LEAN: ${formatNum(leadTimeDays - daysOfSupply, 1)}d below lead time` : `Covered: +${formatNum(daysOfSupply - leadTimeDays, 1)}d beyond lead time`, deltaTone: daysOfSupply < leadTimeDays ? 'down' : 'up', sub: `Supplier lead time is ${leadTimeDays} days` },
+        { label: '2. Downstream Lines Fed', value: downstreamShort, delta: 'Stops here if this material runs out', deltaTone: 'flat', sub: meta.downstream },
+        { label: '3. Reorder Status', value: belowReorderPoint ? 'Trigger Active' : 'Protected', valueStyle: { color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }, delta: belowReorderPoint ? `Gap: -${formatNum(ropGap, 1)} ${uom}` : `Buffer: +${formatNum(ropBuffer, 1)} ${uom}`, deltaTone: belowReorderPoint ? 'down' : 'up', sub: `ROP at ${formatNum(reorderPoint, 1)} ${uom}` },
+        { label: '4. 12-Week Trend', value: `${formatNum(day1Forecast, 2)} → ${formatNum(day84Forecast, 2)} ${uom}/d`, delta: `${trendPerWeek >= 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk`, deltaTone: trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat', sub: 'Day 1 to Day 84 daily rate' },
+      ],
+      deepDive: { title: 'Line-Continuity Stock Check', sub: `Physical position behind ${downstreamShort} for ${selectedMaterial.id}.`, badgeText: belowReorderPoint ? 'Reorder Trigger Active' : 'Lines Protected', badgeTone: belowReorderPoint ? 'risk' : 'success', noteBody: belowReorderPoint ? `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} sits ${formatNum(ropGap, 1)} ${uom} below the reorder point — ${meta.downstream} has no buffer until the next receipt.` : `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} keeps ${formatNum(ropBuffer, 1)} ${uom} of buffer above the reorder point, protecting ${meta.downstream}.` },
+      insightLabel: 'Plant Supervisor Lens · Will This Material Still Be There When the Line Needs It',
+      insightBody: `${selectedMaterial.id}'s forecast reaches ${formatNum(day84Forecast, 2)} ${uom}/day by week 12. ${belowReorderPoint ? `Stock is already below the reorder trigger — ${meta.downstream} is exposed until the next receipt lands.` : `On-hand stock protects ${meta.downstream} through the full 12-week horizon.`}`,
+      whyHeading: `Why ${selectedMaterial.id} will${belowReorderPoint ? ' not' : ''} keep ${downstreamShort} running`,
+      whySummary: 'Line-continuity drivers behind the forecast and reorder position',
+      whyDrivers: [
+        `Forecast demand moves from ${formatNum(day1Forecast, 2)} to ${formatNum(day84Forecast, 2)} ${uom}/day across the 12-week horizon.`,
+        `Supplier lead time is ${leadTimeDays} days (${leadTimeWeeks.toFixed(1)} wks) from ${supplierShort}.`,
+        `${selectedMaterial.id} feeds ${meta.downstream}.`,
+      ],
+      whyMeaning: [belowReorderPoint ? `On-hand stock of ${formatNum(onHandQty, 0)} ${uom} sits ${formatNum(ropGap, 1)} ${uom} below the reorder point — downstream lines have no buffer until the next receipt.` : `On-hand stock of ${formatNum(onHandQty, 0)} ${uom} sits ${formatNum(ropBuffer, 1)} ${uom} above the reorder point — downstream lines stay covered.`],
+      whyAction: belowReorderPoint
+        ? [`Escalate replenishment for ${selectedMaterial.id} — downstream lines have no protective buffer.`, `Confirm which specific lines are exposed and how long they can run on remaining stock.`, `Proceed to Optimization Plan to size the replenishment order.`]
+        : [`Maintain standard monitoring — no immediate line-stoppage risk from ${selectedMaterial.id}.`, `Recheck this position after any change to the ${downstreamShort} build schedule.`],
+      handoffBody: `Confirm downstream schedules for ${downstreamShort} can absorb the 12-week forecast before it's stress-tested in What-If.`,
+    },
+    warehouse: {
+      headerSubtitle: <p>Physical stock this forecast implies holding for <strong>{selectedMaterial.id} ({name})</strong> — safety-stock buffer, on-hand footprint, and what's driving each.</p>,
+      graphStrip: [
+        { heading: '1. Safety-Stock Sizing', body: `${formatNum(safetyStock, 1)} ${uom} (${formatCurrency(safetyStockValue)}) held purely as a buffer against demand and lead-time variability.` },
+        { heading: '2. On-Hand vs Forecast', body: `${formatNum(onHandQty, 0)} ${uom} on-hand against ${formatNum(cumulativeHorizonDemand, 0)} ${uom} forecast to move over 12 weeks.` },
+        { heading: '3. Storage Footprint', body: `${formatNum(daysOfSupply, 1)} days of supply currently on the shelf.` },
+        { heading: '4. Replenishment Rhythm', body: belowReorderPoint ? 'Expect a receipt soon — stock is below the reorder point.' : 'No receipt imminent — stock is above the reorder point.' },
+      ],
+      scopeNoteLabel: 'Storage Note:',
+      scopeNoteBody: 'Safety stock and on-hand figures here are the floor to keep on the shelf regardless of the reorder decision made in Optimization.',
+      kpis: [
+        { label: '1. On-Hand Inventory', value: `${formatNum(onHandQty, 0)} ${uom}`, delta: formatCurrency(onHandValue), deltaTone: 'flat', sub: `${formatNum(daysOfSupply, 1)} days of supply` },
+        { label: '2. Safety-Stock Buffer', value: `${formatNum(safetyStock, 1)} ${uom}`, delta: formatCurrency(safetyStockValue), deltaTone: 'flat', sub: `Z=1.65 · CV ${(demandCV * 100).toFixed(1)}%` },
+        { label: '3. Lead-Time Demand', value: `${formatNum(leadTimeDemand, 1)} ${uom}`, delta: `${leadTimeDays} days of consumption`, deltaTone: 'flat', sub: 'Floor stock needed before next receipt' },
+        { label: '4. 12-Week Volume to Shelve', value: `${formatNum(cumulativeHorizonDemand, 0)} ${uom}`, delta: `${formatNum(avgDailyForecast, 2)} ${uom}/day avg`, deltaTone: 'flat', sub: 'Total forecast volume moving through storage' },
+      ],
+      deepDive: { title: 'Physical Stock & Buffer Breakdown', sub: `Storage footprint and safety-stock sizing for ${selectedMaterial.id}.`, badgeText: belowReorderPoint ? 'Replenishment Due' : 'Stable Footprint', badgeTone: belowReorderPoint ? 'risk' : 'success', noteBody: belowReorderPoint ? `On-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatNum(daysOfSupply, 1)} days of supply) is ${formatNum(ropGap, 1)} ${uom} below the reorder point — expect a receipt to land soon.` : `On-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatNum(daysOfSupply, 1)} days of supply) sits ${formatNum(ropBuffer, 1)} ${uom} above the reorder point — no incoming receipt expected imminently.` },
+      insightLabel: 'Warehouse Manager Lens · How Much Stock This Forecast Implies Holding',
+      insightBody: `Meeting the 12-week forecast of ${formatNum(cumulativeHorizonDemand, 0)} ${uom} means carrying ${formatNum(safetyStock, 1)} ${uom} (${formatCurrency(safetyStockValue)}) of safety buffer on top of lead-time stock — the floor to keep on the shelf regardless of the reorder decision.`,
+      whyHeading: `Why ${selectedMaterial.id} needs ${formatNum(safetyStock, 1)} ${uom} of safety stock on the shelf`,
+      whySummary: 'Physical buffer sizing and storage implications',
+      whyDrivers: [
+        `Demand variability (CV = ${(demandCV * 100).toFixed(1)}%) combined with a ${leadTimeDays}-day lead time sets the safety-stock size.`,
+        `Current on-hand stock is ${formatNum(onHandQty, 0)} ${uom} (${formatCurrency(onHandValue)}), providing ${formatNum(daysOfSupply, 1)} days of supply.`,
+      ],
+      whyMeaning: [`Safety stock of ${formatNum(safetyStock, 1)} ${uom} (${formatCurrency(safetyStockValue)}) is the floor that should stay on the shelf even as cycle stock is drawn down.`],
+      whyAction: [`Keep ${formatNum(safetyStock, 1)} ${uom} of ${selectedMaterial.id} reserved as untouchable buffer stock.`, `Flag any pick that would drop on-hand below the safety-stock floor.`],
+      handoffBody: `Check that current shelf allocation for ${selectedMaterial.id} can hold the ${formatNum(safetyStock, 1)} ${uom} safety-stock floor before lot sizes change in Optimization.`,
+    },
+    planner: {
+      headerSubtitle: <p>Demand trend and reorder position for <strong>{selectedMaterial.id} ({name})</strong>, to check against the confirmed production plan.</p>,
+      graphStrip: [
+        { heading: '1. Baseline Daily Demand', body: `${formatNum(baseDailyDemand, 2)} ${uom}/day (${formatNum(avgWeekly, 1)} ${uom}/wk).` },
+        { heading: '2. Trend Slope', body: `${trendPerDay > 0 ? '+' : ''}${formatNum(trendMagnitudeDailyPct, 4)}%/day (${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk) — check this against the confirmed build schedule.` },
+        { heading: '3. Reorder Point vs Plan', body: belowReorderPoint ? `On-hand is ${formatNum(ropGap, 1)} ${uom} below the reorder point.` : `On-hand is ${formatNum(ropBuffer, 1)} ${uom} above the reorder point.` },
+        { heading: '4. Demand Volatility (CV)', body: `${(demandCV * 100).toFixed(1)}% — ${demandCV <= 0.15 ? 'stable' : 'elevated, worth a closer plan check'}.` },
+      ],
+      scopeNoteLabel: 'Plan-Alignment Note:',
+      scopeNoteBody: `Trend and reorder figures here should be checked against the confirmed production plan for ${downstreamShort}, not treated as a fixed forecast.`,
+      kpis: [
+        { label: '1. Baseline Daily Demand', value: `${formatNum(baseDailyDemand, 2)} ${uom}/d`, delta: `${formatNum(avgWeekly, 1)} ${uom}/wk`, deltaTone: 'flat', sub: 'Anchor rate for the 12-week horizon' },
+        { label: '2. Trend Slope', value: `${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk`, deltaTone: trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat', delta: `Day 1: ${formatNum(day1Forecast, 2)} · Day 84: ${formatNum(day84Forecast, 2)} ${uom}/d`, sub: 'Check against confirmed build schedule' },
+        { label: '3. Reorder Point vs On-Hand', value: `${formatNum(reorderPoint, 1)} ${uom}`, delta: belowReorderPoint ? `On-hand is ${formatNum(ropGap, 1)} ${uom} below` : `${formatNum(ropBuffer, 1)} ${uom} of buffer`, deltaTone: belowReorderPoint ? 'down' : 'up', sub: `${formatNum(leadTimeDemand, 1)} ${uom} LT demand + ${formatNum(safetyStock, 1)} ${uom} SS` },
+        { label: '4. Review Cadence', value: `Class ${abcClass}`, delta: demandCV <= 0.15 ? 'Stable demand' : 'Elevated volatility', deltaTone: demandCV <= 0.15 ? 'up' : 'down', sub: `CV ${(demandCV * 100).toFixed(1)}%` },
+      ],
+      deepDive: { title: 'Demand & Replenishment Alignment', sub: `Baseline demand, trend and reorder position for ${selectedMaterial.id} against the production plan.`, badgeText: belowReorderPoint ? 'Plan Check Needed' : 'Plan Aligned', badgeTone: belowReorderPoint ? 'risk' : 'success', noteBody: belowReorderPoint ? `Reorder point (${formatNum(reorderPoint, 1)} ${uom}) is ahead of on-hand stock by ${formatNum(ropGap, 1)} ${uom} — confirm this against the confirmed production plan before the order is placed.` : `On-hand stock covers the reorder point with ${formatNum(ropBuffer, 1)} ${uom} to spare — check this still lines up with the confirmed production plan.` },
+      insightLabel: 'Materials Planner Lens · Cover Against the Plan',
+      insightBody: `At a modeled trend of ${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk, demand moves from ${formatNum(day1Forecast, 2)} to ${formatNum(day84Forecast, 2)} ${uom}/day over 12 weeks. Reorder point is ${formatNum(reorderPoint, 1)} ${uom} (${formatNum(leadTimeDemand, 1)} ${uom} lead-time demand + ${formatNum(safetyStock, 1)} ${uom} safety stock) — check this against the confirmed production plan before locking the order.`,
+      whyHeading: `Why ${selectedMaterial.id}'s reorder position needs a plan check`,
+      whySummary: 'Trend, demand stability, and reorder drivers relative to the plan',
+      whyDrivers: [
+        `Modeled trend of ${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk projects 12-week cumulative demand of ${formatNum(cumulativeHorizonDemand, 0)} ${uom}.`,
+        `Demand CV of ${(demandCV * 100).toFixed(1)}% sets how much planning buffer this material needs beyond the trend line.`,
+      ],
+      whyMeaning: [belowReorderPoint ? `On-hand stock is ${formatNum(ropGap, 1)} ${uom} below the reorder point — confirm against the plan before this becomes a line-continuity issue.` : `On-hand stock covers the reorder point with ${formatNum(ropBuffer, 1)} ${uom} to spare under the current plan.`],
+      whyAction: [`Check this trend and reorder position against the confirmed ${downstreamShort} build schedule.`, `Stress-test demand swings for ${selectedMaterial.id} in What-If before the plan is finalized.`],
+      handoffBody: `Confirm the trend and reorder point for ${selectedMaterial.id} against the production plan before stress-testing it in What-If.`,
+    },
+    procurement: {
+      headerSubtitle: <p>When and how much to order for <strong>{selectedMaterial.id} ({name})</strong>, given lead time and the forward forecast.</p>,
+      graphStrip: [
+        { heading: '1. Lead-Time Demand', body: `${formatNum(leadTimeDemand, 1)} ${uom} required to cover the ${leadTimeDays}-day lead time from ${supplierShort}.` },
+        { heading: '2. Reorder Point', body: `${formatNum(reorderPoint, 1)} ${uom} trigger (${formatNum(leadTimeDemand, 1)} ${uom} lead-time demand + ${formatNum(safetyStock, 1)} ${uom} safety stock).` },
+        { heading: '3. Supplier', body: meta.supplier },
+        { heading: '4. Gap or Buffer', body: belowReorderPoint ? `${formatNum(ropGap, 1)} ${uom} (${formatCurrency(ropGap * unitCost)}) below the reorder point — order now.` : `${formatNum(ropBuffer, 1)} ${uom} (${formatCurrency(ropBuffer * unitCost)}) above the reorder point — no order needed yet.` },
+      ],
+      scopeNoteLabel: 'Execution Note:',
+      scopeNoteBody: `Order timing and sizing here should be reconciled with ${supplierShort}'s MOQ and packaging increments before it's committed.`,
+      kpis: [
+        { label: '1. Reorder Point vs On-Hand', value: `${formatNum(reorderPoint, 1)} ${uom}`, valueStyle: { color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }, delta: belowReorderPoint ? `Gap: -${formatNum(ropGap, 1)} ${uom}` : `Buffer: +${formatNum(ropBuffer, 1)} ${uom}`, deltaTone: belowReorderPoint ? 'down' : 'up', sub: `On-hand is ${formatNum(onHandQty, 0)} ${uom}` },
+        { label: '2. Lead Time', value: `${leadTimeDays} Days`, delta: `${leadTimeWeeks.toFixed(1)} wks`, deltaTone: 'flat', sub: supplierShort },
+        { label: '3. Order Decision', value: belowReorderPoint ? 'Order Now' : 'Hold', valueStyle: { color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }, delta: belowReorderPoint ? formatCurrency(ropGap * unitCost) : formatCurrency(ropBuffer * unitCost), deltaTone: belowReorderPoint ? 'down' : 'up', sub: belowReorderPoint ? 'Gap value at risk' : 'Buffer value held' },
+        { label: '4. 12-Week Demand to Plan Against', value: `${formatNum(cumulativeHorizonDemand, 0)} ${uom}`, delta: formatCurrency(cumulativeHorizonValue), deltaTone: 'flat', sub: `${formatNum(avgDailyForecast, 2)} ${uom}/day avg` },
+      ],
+      deepDive: { title: 'Reorder Position & Supply Execution', sub: `When and how much to order for ${selectedMaterial.id} from ${supplierShort}.`, badgeText: belowReorderPoint ? 'Order Now' : 'No Order Needed Yet', badgeTone: belowReorderPoint ? 'risk' : 'success', noteBody: belowReorderPoint ? `Place the order now — on-hand stock is ${formatNum(ropGap, 1)} ${uom} (${formatCurrency(ropGap * unitCost)}) below the reorder point against the ${leadTimeDays}-day lead time from ${meta.supplier}.` : `No order needed yet — on-hand stock is ${formatNum(ropBuffer, 1)} ${uom} (${formatCurrency(ropBuffer * unitCost)}) above the reorder point.` },
+      insightLabel: 'Procurement Officer Lens · When and How Much to Order',
+      insightBody: belowReorderPoint ? `On-hand is ${formatNum(ropGap, 1)} ${uom} below the reorder point — place the order now against the ${leadTimeDays}-day lead time from ${supplierShort}.` : `Stock is ${formatNum(ropBuffer, 1)} ${uom} above the reorder point — no order needed yet.`,
+      whyHeading: `Why ${selectedMaterial.id} ${belowReorderPoint ? 'needs an order now' : "doesn't need an order yet"}`,
+      whySummary: 'Reorder timing and sizing drivers',
+      whyDrivers: [
+        `Lead-time demand of ${formatNum(leadTimeDemand, 1)} ${uom} plus safety stock of ${formatNum(safetyStock, 1)} ${uom} sets the reorder point at ${formatNum(reorderPoint, 1)} ${uom}.`,
+        `Supplier lead time is ${leadTimeDays} days from ${meta.supplier}.`,
+      ],
+      whyMeaning: [belowReorderPoint ? `On-hand stock of ${formatNum(onHandQty, 0)} ${uom} is ${formatNum(ropGap, 1)} ${uom} short of the reorder point.` : `On-hand stock of ${formatNum(onHandQty, 0)} ${uom} is ${formatNum(ropBuffer, 1)} ${uom} above the reorder point.`],
+      whyAction: belowReorderPoint
+        ? [`Place the replenishment order for ${selectedMaterial.id} now.`, `Confirm the order quantity against MOQ and packaging increments with ${supplierShort}.`]
+        : [`No order action needed yet for ${selectedMaterial.id}.`, `Recheck once on-hand stock approaches the reorder point.`],
+      handoffBody: `Confirm order timing and quantity for ${selectedMaterial.id} against supplier constraints before sizing the lot in Optimization.`,
+    },
+    finance: {
+      headerSubtitle: <p>Executive demand outlook, working-capital valuation, supplier lead-time vulnerability, and continuity governance for <strong>{selectedMaterial.id} ({name})</strong>.</p>,
+      graphStrip: [
+        { heading: '1. Annual Spend Baseline', body: `Annual consumption run-rate: ${formatCurrency(annualConsumptionValue)}/yr (${formatNum(demand, 0)} ${uom}/yr).` },
+        { heading: '2. 12-Week Horizon Spend', body: `Estimated 84-day demand value from daily series: ${formatCurrency(cumulativeHorizonValue)} (${formatNum(cumulativeHorizonDemand, 0)} ${uom}).` },
+        { heading: '3. Working Capital Sunk', body: `On-hand inventory holds ${formatCurrency(onHandValue)} in active working capital.` },
+        { heading: '4. Supply Vulnerability', body: `${leadTimeDays}-day supplier replenishment window from ${supplierShort}.` },
+      ],
+      scopeNoteLabel: 'Executive Scope Note:',
+      scopeNoteBody: `Displayed history: 56 days · Forecast horizon: 84 days (12 wks) · Sourcing replenishment window: ${leadTimeDays} days. The shaded envelope illustrates projected demand variability across the planning cycle.`,
+      kpis: [
+        { label: '1. Annual Consumption Run-Rate', value: formatCurrency(annualConsumptionValue), delta: `${formatNum(demand, 0)} ${uom}/yr`, deltaTone: 'flat', sub: `Unit cost: ${formatCurrency(unitCost)}/${uom} · Class ${abcClass}` },
+        { label: '2. Physical Inventory Capital', value: formatCurrency(onHandValue), delta: `${formatNum(onHandQty, 0)} ${uom} on-hand`, deltaTone: 'flat', sub: `Turning at ${formatNum(annualTurns, 2)} turns/yr` },
+        { label: '3. 12-Week Horizon Spend', value: formatCurrency(cumulativeHorizonValue), delta: `${formatNum(cumulativeHorizonDemand, 0)} ${uom} total`, deltaTone: trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat', sub: `Avg: ${formatNum(avgDailyForecast, 2)} ${uom}/day` },
+        { label: '4. Safety-Buffer Capital', value: formatCurrency(safetyStockValue), delta: `${formatNum(safetyStock, 1)} ${uom} planning buffer`, deltaTone: 'flat', sub: 'Capital held against demand/lead-time variability' },
+      ],
+      insightLabel: 'Finance Controller Lens · Cash Committed Against This Forecast',
+      insightBody: `On-hand inventory carries ${formatCurrency(onHandValue)} in working capital, with ${formatCurrency(safetyStockValue)} held purely as a demand/lead-time buffer. Meeting the 12-week forecast implies ${formatCurrency(cumulativeHorizonValue)} of consumption value moving through the material, turning at ${formatNum(annualTurns, 2)}×/yr.`,
+      whyHeading: `Executive Rationale: Working Capital & Supply Continuity Assessment for ${selectedMaterial.id}`,
+      whySummary: 'Strategic demand outlook, working-capital valuation, and executive governance priorities',
+      whyDrivers: [
+        `Annual consumption run-rate is ${formatCurrency(annualConsumptionValue)}/yr across ${downstreamShort}.`,
+        `Physical on-hand inventory carries ${formatCurrency(onHandValue)} in operating working capital at ${plant}.`,
+        `Protective safety stock buffer represents ${formatCurrency(safetyStockValue)} (${formatNum(safetyStock, 1)} ${uom}) to protect against demand and supply volatility.`,
+        `Supplier replenishment lead time is ${leadTimeDays} days with ${supplierShort}.`,
+      ],
+      whyMeaning: [
+        `Current inventory covers ${formatNum(daysOfSupply, 1)} days of supply against the ${leadTimeDays}-day supplier lead time.`,
+        belowReorderPoint
+          ? `Replenishment exposure of ${formatCurrency(ropGap * unitCost)} exists, creating operational vulnerability if replenishment is delayed.`
+          : 'Operating stock safely buffers supplier lead time, indicating no immediate replenishment trigger under current operating assumptions.',
+      ],
+      whyAction: belowReorderPoint
+        ? [`Authorize expedited replenishment purchase order in Inventory Agent to protect downstream assembly schedules.`, `Review supplier performance and capacity constraints in Optimization Plan.`, `Verify working-capital availability for upcoming replenishment cycles.`]
+        : [`Maintain active turnover monitoring across Class ${abcClass} catalog materials.`, `Review multi-echelon working capital allocation in Optimization Plan.`, `Evaluate quarterly vendor scorecard for ${supplierShort}.`],
+      handoffBody: 'Use forecast, scenario, and optimization intelligence to govern working capital and protect supply continuity in Inventory Agent.',
+    },
+  };
+  const lens = PERSONA_LENS[persona] || PERSONA_LENS.supervisor;
+
   return (
     <motion.section 
       className="view" 
@@ -547,21 +765,7 @@ export default function RawMaterialRequirements() {
       {/* ==================================================================== */}
       <ViewHead
         title="Multivariate Analysis · Forecast"
-        subtitle={
-          persona === 'ds' ? (
-            <p>
-              Autoregressive Ridge regression modeling, in-sample fit diagnostics (R² / RMSE), feature normalization, and service-planning buffer derivation for <strong>{selectedMaterial.id} ({name})</strong>.
-            </p>
-          ) : persona === 'analyst' ? (
-            <p>
-              Forward demand trajectory, Planning Reorder Point evaluation, lead-time exposure, and replenishment trigger intelligence for <strong>{selectedMaterial.id} ({name})</strong>.
-            </p>
-          ) : (
-            <p>
-              Executive demand outlook, working-capital valuation, supplier lead-time vulnerability, and continuity governance for <strong>{selectedMaterial.id} ({name})</strong>.
-            </p>
-          )
-        }
+        subtitle={lens.headerSubtitle}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -729,151 +933,25 @@ export default function RawMaterialRequirements() {
 
         {/* Persona-Specific Graph Trajectory Interpretation Strip */}
         <AnimatePresence mode="wait">
-          {persona === 'ds' && (
-            <motion.div
-              key="ds-strip"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              className="grid-4 mt-3.5 pt-3 border-t border-border text-xs"
-            >
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  1. Daily Series Resolution
-                </div>
-                <div className="text-ink font-mono">
-                  84 discrete daily forecast points across 12-week horizon ($t = 1 \dots 84$), anchored to <strong>{formatNum(baseDailyDemand, 2)} {uom}/d</strong> baseline.
-                </div>
+          <motion.div
+            key={persona}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="grid-4 mt-3.5 pt-3 border-t border-border text-xs"
+          >
+            {lens.graphStrip.map((item) => (
+              <div key={item.heading}>
+                <div className="text-xs font-bold uppercase text-subtle mb-1">{item.heading}</div>
+                <div className="text-ink ">{item.body}</div>
               </div>
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  2. Linear Daily Slope (β_d)
-                </div>
-                <div className="text-ink font-mono">
-                  Daily slope is <strong>{trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day</strong>. Day 1: {formatNum(day1Forecast, 2)} {uom}/d; Day 84: {formatNum(day84Forecast, 2)} {uom}/d ({formatNum(week12ProjectedMean, 1)} {uom}/wk).
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  3. Daily Band Expansion (Z·σ_d·√h)
-                </div>
-                <div className="text-ink font-mono">
-                  Z = 1.65 planning factor expands: ±{formatNum(dailyForecastSeries[0].bandHalfWidth, 2)} {uom}/d at Day 1 to ±{formatNum(dailyForecastSeries[83].bandHalfWidth, 2)} {uom}/d at Day 84.
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  4. Lead-Time Window
-                </div>
-                <div className="text-ink font-mono">
-                  Supplier replenishment latency sits at <strong>Day +{leadTimeDays} (+{leadTimeWeeks.toFixed(1)} wks)</strong>, covering {formatNum(leadTimeDemand, 1)} {uom} base demand.
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {persona === 'analyst' && (
-            <motion.div
-              key="analyst-strip"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              className="grid-4 mt-3.5 pt-3 border-t border-border text-xs"
-            >
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  1. Daily Consumption Trajectory
-                </div>
-                <div className="text-ink ">
-                  Day 1 starts at <strong>{formatNum(day1Forecast, 2)} {uom}/day</strong>, trending to <strong>{formatNum(day84Forecast, 2)} {uom}/day</strong> at Day 84 ({trendPerWeek >= 0.003 ? 'ramping demand' : trendPerWeek <= -0.003 ? 'declining demand' : 'steady pace'}).
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  2. 84-Day Horizon Total
-                </div>
-                <div className="text-ink ">
-                  Sum of all 84 daily forecasts: <strong>{formatNum(cumulativeHorizonDemand, 0)} {uom}</strong> (averaging {formatNum(avgDailyForecast, 2)} {uom}/day).
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  3. Lead-Time Arrival Marker
-                </div>
-                <div className="text-ink ">
-                  Order placed today arrives at <strong>Day +{leadTimeDays} (+{leadTimeWeeks.toFixed(1)} wks)</strong> from {meta.supplier.split('(')[0].trim()}.
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  4. Replenishment Status
-                </div>
-                <div className="text-ink ">
-                  {belowReorderPoint ? `On-hand stock is ${formatNum(ropGap, 1)} ${uom} below Planning ROP.` : `On-hand stock maintains a +${formatNum(ropBuffer, 1)} ${uom} protective buffer.`}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {persona === 'exec' && (
-            <motion.div
-              key="exec-strip"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              className="grid-4 mt-3.5 pt-3 border-t border-border text-xs"
-            >
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  1. Annual Spend Baseline
-                </div>
-                <div className="text-ink ">
-                  Annual consumption run-rate: <strong>{formatCurrency(annualConsumptionValue)}/yr</strong> ({formatNum(demand, 0)} {uom}/yr).
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  2. 12-Week Horizon Spend
-                </div>
-                <div className="text-ink ">
-                  Estimated 84-day demand value from daily series: <strong>{formatCurrency(cumulativeHorizonValue)}</strong> ({formatNum(cumulativeHorizonDemand, 0)} {uom}).
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  3. Working Capital Sunk
-                </div>
-                <div className="text-ink ">
-                  On-hand inventory holds <strong>{formatCurrency(onHandValue)}</strong> in active working capital.
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase text-subtle mb-1">
-                  4. Supply Vulnerability
-                </div>
-                <div className="text-ink ">
-                  {leadTimeDays}-day supplier replenishment window from <strong>{meta.supplier.split('(')[0].trim()}</strong>.
-                </div>
-              </div>
-            </motion.div>
-          )}
+            ))}
+          </motion.div>
         </AnimatePresence>
 
         <div className="mt-3 pt-2.5 border-t border-border flex flex-wrap justify-between items-start gap-2">
           <span className="text-xs text-subtle flex-1 min-w-0">
-            {persona === 'ds' ? (
-              <>
-                <strong>Analytical Scope Note:</strong> Model training: 104 weeks · Displayed history: 56 daily points (8 wks) · Forecast horizon: 84 discrete daily points (12 wks). The shaded envelope represents a planning buffer derived from a one-sided 95% service-level factor (Z = 1.65) and daily demand variance (CV = {(demandCV * 100).toFixed(1)}%) expanding over time (σ_d · √(t/7)), rather than a conventional two-sided 95% statistical confidence interval.
-              </>
-            ) : persona === 'analyst' ? (
-              <>
-                <strong>Operational Scope Note:</strong> Displayed history: 56 days (8 wks) · Forecast horizon: 84 daily forecast points (12 wks) · Supplier replenishment lead time: {leadTimeDays} days. The shaded band illustrates the protective planning buffer across the forward daily horizon.
-              </>
-            ) : (
-              <>
-                <strong>Executive Scope Note:</strong> Displayed history: 56 days · Forecast horizon: 84 days (12 wks) · Sourcing replenishment window: {leadTimeDays} days. The shaded envelope illustrates projected demand variability across the planning cycle.
-              </>
-            )}
+            <strong>{lens.scopeNoteLabel}</strong> {lens.scopeNoteBody}
           </span>
           <span className="text-xs text-primary font-semibold shrink-0">
             Hover over chart to inspect any of the 84 individual calendar days
@@ -981,404 +1059,23 @@ export default function RawMaterialRequirements() {
       {/* E. PERSONA-SPECIFIC SUMMARY KPIS & DIAGNOSTIC INTELLIGENCE          */}
       {/* ==================================================================== */}
       <AnimatePresence mode="wait">
-        {persona === 'ds' && (
-          <motion.div
-            key="ds-kpi"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="grid-3 mb-3.5"
-          >
-            <KpiTile
-              label="1. Baseline Demand (d_0 · W_0) [Observed / Derived]"
-              value={`${formatNum(baseDailyDemand, 2)} ${uom}/d`}
-              delta={`${formatNum(avgWeekly, 1)} ${uom}/wk baseline`}
-              deltaTone="flat"
-              sub={`104-week training baseline from catalog demand (${formatNum(demand, 0)} ${uom}/yr)`}
-            />
-            <KpiTile
-              label="2. Modeled Slope (β_d · β_w) [Model Output]"
-              value={`${trendPerDay > 0 ? '+' : ''}${formatNum(trendMagnitudeDailyPct, 4)}%/day`}
-              valueStyle={{ color: Math.abs(trendPerWeek) >= 0.003 ? 'var(--primary)' : 'var(--ink)' }}
-              delta={`${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk slope`}
-              deltaTone={trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat'}
-              sub={`Linear daily slope: trendPerDay = ${trendPerDay >= 0 ? '+' : ''}${formatNum(trendPerDay, 5)} across 84-day horizon`}
-            />
-            <KpiTile
-              label="3. 12-Week Forecast Total (84 Days) [Time Series]"
-              value={`${formatNum(cumulativeHorizonDemand, 1)} ${uom}`}
-              delta={`Next-Day: ${formatNum(day1Forecast, 2)} ${uom}/d · Wk 12: ${formatNum(week12ForecastDaily, 2)} ${uom}/d`}
-              deltaTone={trendPerWeek > 0 ? 'up' : 'flat'}
-              sub={`Sum of 84 daily points · Avg daily: ${formatNum(avgDailyForecast, 2)} ${uom}/d (${formatNum(week12ProjectedMean, 1)} ${uom}/wk endpoint)`}
-            />
-            <KpiTile
-              label="4. Model Fit (R²) [In-Sample Diagnostic]"
-              value={`R² = ${formatNum(modelR2, 2)}`}
-              valueStyle={{ color: modelR2 >= 0.90 ? 'var(--success)' : modelR2 >= 0.80 ? 'var(--primary)' : 'var(--warning)' }}
-              delta={`${(modelR2 * 100).toFixed(1)}% variance explained`}
-              deltaTone={modelR2 >= 0.85 ? 'up' : 'flat'}
-              sub="In-sample fit diagnostic across 104 trailing weeks (not out-of-sample accuracy)"
-            />
-            <KpiTile
-              label="5. Residual Error (RMSE) [Model Diagnostic]"
-              value={`${formatNum(rmse, 2)} ${uom}/wk`}
-              valueStyle={{ color: rmseRatio <= 0.12 ? 'var(--success)' : 'var(--warning)' }}
-              delta={`${formatNum(rmseRatio * 100, 1)}% of weekly mean`}
-              deltaTone={rmseRatio <= 0.12 ? 'up' : 'down'}
-              sub={`Model residual error magnitude relative to ${formatNum(avgWeekly, 1)} ${uom}/wk baseline`}
-            />
-            <KpiTile
-              label="6. Demand Dispersion (CV) [Derived Metric]"
-              value={`CV ${(demandCV * 100).toFixed(1)}%`}
-              valueStyle={{ color: demandCV <= 0.15 ? 'var(--success)' : 'var(--warning)' }}
-              delta={`Std Dev: ±${formatNum(sigmaDaily, 2)} ${uom}/d (±${formatNum(sigmaWeekly, 1)}/wk)`}
-              deltaTone={demandCV <= 0.15 ? 'up' : 'down'}
-              sub={`Historical coefficient of variation driving Z=1.65 planning band expansion`}
-            />
-          </motion.div>
-        )}
-
-        {persona === 'analyst' && (
-          <motion.div
-            key="analyst-kpi"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="grid-3 mb-3.5"
-          >
-            <KpiTile
-              label="1. Baseline Daily Demand [Operational Run-Rate]"
-              value={`${formatNum(baseDailyDemand, 2)} ${uom}/day`}
-              delta={`${formatNum(avgWeekly, 1)} ${uom}/wk`}
-              deltaTone="flat"
-              sub={`Baseline production withdrawal rate across ${meta.downstream.split('(')[0].trim()}`}
-            />
-            <KpiTile
-              label="2. 84-Day Forecast Total [Daily Time Series]"
-              value={`${formatNum(cumulativeHorizonDemand, 0)} ${uom}`}
-              valueStyle={{ color: 'var(--ink)' }}
-              delta={`Next-Day: ${formatNum(day1Forecast, 2)} ${uom}/d · Avg: ${formatNum(avgDailyForecast, 2)} ${uom}/d`}
-              deltaTone={trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat'}
-              sub={`Sum of 84 daily points · Day 84: ${formatNum(day84Forecast, 2)} ${uom}/d (${trendPerWeek > 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk)`}
-            />
-            <KpiTile
-              label="3. On-Hand Coverage (Days of Supply)"
-              value={`${formatNum(daysOfSupply, 1)} Days`}
-              valueStyle={{ color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }}
-              delta={
-                daysOfSupply < leadTimeDays
-                  ? `LEAN: ${formatNum(leadTimeDays - daysOfSupply, 1)}d below lead time`
-                  : `Covered: +${formatNum(daysOfSupply - leadTimeDays, 1)}d buffer`
-              }
-              deltaTone={daysOfSupply < leadTimeDays ? 'down' : 'up'}
-              sub={`Supplier lead time from ${meta.supplier.split('(')[0].trim()} is ${leadTimeDays} days`}
-            />
-            <KpiTile
-              label="4. Expected Lead-Time Demand"
-              value={`${formatNum(leadTimeDemand, 1)} ${uom}`}
-              delta={`${leadTimeDays} days of consumption`}
-              deltaTone="flat"
-              sub={`Required baseline volume to support operations during ${leadTimeDays}-day replenishment cycle`}
-            />
-            <KpiTile
-              label="5. Planning Reorder Point (ROP)"
-              value={`${formatNum(reorderPoint, 1)} ${uom}`}
-              delta={`Includes ${formatNum(safetyStock, 1)} ${uom} safety stock`}
-              deltaTone="flat"
-              sub={`Trigger threshold: ${formatNum(leadTimeDemand, 1)} ${uom} LT demand + ${formatNum(safetyStock, 1)} ${uom} safety buffer`}
-            />
-            <KpiTile
-              label="6. Replenishment Action Status"
-              value={belowReorderPoint ? 'Replenishment Trigger Active' : 'Coverage Protected'}
-              valueStyle={{ color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }}
-              delta={
-                belowReorderPoint
-                  ? `Coverage Gap: -${formatNum(ropGap, 1)} ${uom}`
-                  : `Protective Buffer: +${formatNum(ropBuffer, 1)} ${uom}`
-              }
-              deltaTone={belowReorderPoint ? 'down' : 'up'}
-              sub={
-                belowReorderPoint
-                  ? `On-hand stock (${formatNum(onHandQty, 0)} ${uom}) is below Planning ROP (${formatNum(reorderPoint, 1)} ${uom})`
-                  : `On-hand stock (${formatNum(onHandQty, 0)} ${uom}) exceeds Planning ROP (${formatNum(reorderPoint, 1)} ${uom})`
-              }
-            />
-          </motion.div>
-        )}
-
-        {persona === 'exec' && (
-          <motion.div
-            key="exec-kpi"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="grid-3 mb-3.5"
-          >
-            <KpiTile
-              label="1. Annual Consumption Run-Rate [Spend]"
-              value={formatCurrency(annualConsumptionValue)}
-              delta={`${formatNum(demand, 0)} ${uom}/yr`}
-              deltaTone="flat"
-              sub={`Physical unit cost: ${formatCurrency(unitCost)}/${uom} · Class ${abcClass} Material`}
-            />
-            <KpiTile
-              label="2. Physical Inventory Carrying Capital"
-              value={formatCurrency(onHandValue)}
-              delta={`${formatNum(onHandQty, 0)} ${uom} on-hand`}
-              deltaTone="flat"
-              sub={`Currently turning at ${formatNum(annualTurns, 2)} turns/year`}
-            />
-            <KpiTile
-              label="3. 12-Week Horizon Spend (84 Days) [Demand Outlook]"
-              value={formatCurrency(cumulativeHorizonValue)}
-              valueStyle={{ color: 'var(--ink)' }}
-              delta={`${formatNum(cumulativeHorizonDemand, 0)} ${uom} total across 84 days`}
-              deltaTone={trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat'}
-              sub={`Next-Day: ${formatNum(day1Forecast, 2)} ${uom}/d · Avg: ${formatNum(avgDailyForecast, 2)} ${uom}/d (${trendPerWeek >= 0.003 ? 'Expansion' : trendPerWeek <= -0.003 ? 'Contraction' : 'Stable'})`}
-            />
-            <KpiTile
-              label="4. Inventory Coverage Duration"
-              value={`${formatNum(daysOfSupply, 1)} Days`}
-              valueStyle={{ color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }}
-              delta={
-                daysOfSupply < leadTimeDays
-                  ? `Exposure: ${formatNum(leadTimeDays - daysOfSupply, 1)}d below lead time`
-                  : `Protected: +${formatNum(daysOfSupply - leadTimeDays, 1)}d beyond lead time`
-              }
-              deltaTone={daysOfSupply < leadTimeDays ? 'down' : 'up'}
-              sub={`Supplier replenishment lead time: ${leadTimeDays} days`}
-            />
-            <KpiTile
-              label="5. Protective Safety Buffer Capital"
-              value={formatCurrency(safetyStockValue)}
-              delta={`${formatNum(safetyStock, 1)} ${uom} planning buffer`}
-              deltaTone="flat"
-              sub="Working capital allocated to protect against demand and lead-time variability"
-            />
-            <KpiTile
-              label="6. Executive Supply Signal"
-              value={belowReorderPoint ? 'Replenishment Action Indicated' : 'Supply Continuity Stable'}
-              valueStyle={{ color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }}
-              delta={
-                belowReorderPoint
-                  ? `Exposure: -${formatCurrency(ropGap * unitCost)} gap`
-                  : `Buffer: +${formatCurrency(ropBuffer * unitCost)} above ROP`
-              }
-              deltaTone={belowReorderPoint ? 'down' : 'up'}
-              sub={
-                belowReorderPoint
-                  ? `Supply exposure identified across ${meta.downstream.split('(')[0].trim()}`
-                  : `Operating inventory provides adequate buffer across ${meta.downstream.split('(')[0].trim()}`
-              }
-            />
-          </motion.div>
-        )}
+        <motion.div
+          key={persona}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="grid-4 mb-3.5"
+        >
+          {lens.kpis.map((tile) => (
+            <KpiTile key={tile.label} {...tile} />
+          ))}
+        </motion.div>
       </AnimatePresence>
 
       {/* ==================================================================== */}
-      {/* F. PERSONA-SPECIFIC DEEP-DIVE TABLES & DIAGNOSTICS                   */}
+      {/* F. PERSONA-SPECIFIC DEEP-DIVE                                        */}
       {/* ==================================================================== */}
-      {persona === 'ds' && (
-        <div className="flex flex-col gap-3.5 mb-4">
-          <div className="card">
-            <div className="card__head mb-2.5">
-              <div>
-                <Badge tone={Math.abs(trendPerWeek) >= 0.003 ? 'accent' : 'neutral'}>Trajectory Intelligence</Badge>
-                <h2 className="card__title mt-2">
-                  Forecast Trajectory & Demand Movement
-                </h2>
-                <p className="card__sub">
-                  Modeled demand progression across the 12-week forward planning horizon
-                </p>
-              </div>
-            </div>
-
-            <div className="border border-border rounded-lg overflow-hidden">
-              <Table>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Baseline Daily Demand (d_0)</TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-ink ">{formatNum(baseDailyDemand, 2)} {uom}/day</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Baseline Weekly Demand (W_0)</TableCell>
-                    <TableCell className="text-right font-mono text-ink ">{formatNum(avgWeekly, 1)} {uom}/wk</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Estimated Linear Daily Slope (β_d)</TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-primary ">
-                      {trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day ({trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk)
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Trend Classification</TableCell>
-                    <TableCell className="text-right font-medium text-ink ">
-                      {trendPerWeek >= 0.003
-                        ? 'Ramping Demand Signal'
-                        : trendPerWeek <= -0.003
-                        ? 'Declining Demand Signal'
-                        : 'Steady-State Consumption'}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Next-Day Expected Demand (Day 1)</TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-ink ">{formatNum(day1Forecast, 2)} {uom}/day</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Mid-Horizon Expected Demand (Day 42 / Wk 6)</TableCell>
-                    <TableCell className="text-right font-mono text-ink ">{formatNum(dailyForecastSeries[41].dailyMean, 2)} {uom}/day ({formatNum(dailyForecastSeries[41].dailyMean * 7, 1)} {uom}/wk)</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Horizon Endpoint Demand (Day 84 / Wk 12)</TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-ink ">{formatNum(day84Forecast, 2)} {uom}/day ({formatNum(week12ProjectedMean, 1)} {uom}/wk)</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Average Daily Forecast across 84 Days</TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-primary ">{formatNum(avgDailyForecast, 2)} {uom}/day</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Cumulative 84-Day Forecast Sum</TableCell>
-                    <TableCell className="text-right font-mono font-bold text-ink ">{formatNum(cumulativeHorizonDemand, 1)} {uom} ({formatCurrency(cumulativeHorizonValue)})</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-
-            <p className="text-xs text-subtle mt-2.5">
-              <strong>Trend Modeling Note:</strong> Trend is evaluated as a pure linear daily slope (trendPerDay = {trendPerDay >= 0 ? '+' : ''}{formatNum(trendPerDay, 5)}/day, trendPerWeek = {trendPerWeek >= 0 ? '+' : ''}{formatNum(trendPerWeek, 4)}/wk), representing an estimated average linear slope across historical observations rather than an exponential or compounding process. Day 84 rate ({formatNum(day84Forecast, 2)} {uom}/d × 7 = {formatNum(week12ProjectedMean, 1)} {uom}/wk) exactly reconciles with the Week-12 endpoint.
-            </p>
-          </div>
-
-          <div className="card">
-            <div className="card__head mb-2.5">
-              <div>
-                <Badge tone="accent">Model Diagnostics</Badge>
-                <h2 className="card__title mt-2">
-                  Forecast Reliability & Diagnostic Fit
-                </h2>
-                <p className="card__sub">
-                  Specification parameters and goodness-of-fit metrics from historical model training
-                </p>
-              </div>
-            </div>
-
-            <div className="border border-border rounded-lg overflow-hidden">
-              <Table>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Model Architecture</TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-ink ">Ridge Regression (alpha = 1.0)</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Autoregressive Feature Set</TableCell>
-                    <TableCell className="text-right font-mono text-ink ">Lag-1, Lag-7, Lag-30 Demand History</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Feature Normalization</TableCell>
-                    <TableCell className="text-right font-mono text-ink ">Standard Normal Variate (SNV)</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Training History Window</TableCell>
-                    <TableCell className="text-right font-mono text-ink ">104 Weeks (2 Years Trailing)</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Model Fit (R²)</TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-success-tx ">
-                      {formatNum(modelR2, 2)} ({(modelR2 * 100).toFixed(1)}% variance explained)
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Model Residual Error (RMSE)</TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-ink ">
-                      {formatNum(rmse, 2)} {uom}/wk ({(rmseRatio * 100).toFixed(1)}% of mean)
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Historical Demand CV</TableCell>
-                    <TableCell className="text-right font-mono text-ink ">{(demandCV * 100).toFixed(1)}% (Std Dev: ±{formatNum(sigmaWeekly, 1)} {uom}/wk)</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-body-c ">Demand Standard Deviation (σ)</TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-ink ">Daily σ_d = ±{formatNum(sigmaDaily, 2)} {uom}/day</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-
-            <p className="text-xs text-subtle mt-2.5">
-              <strong>Technical Definitions & Methodology:</strong> R² = {formatNum(modelR2, 2)} is an in-sample model fit diagnostic measuring historical variance explained across the 104-week training window (not future forecast accuracy). RMSE = {formatNum(rmse, 2)} {uom}/wk measures in-sample residual error magnitude. CV = {(demandCV * 100).toFixed(1)}% measures demand variability relative to average demand. Standard deviation (σ_d = ±{formatNum(sigmaDaily, 2)} {uom}/day) is the demand variability measure used in planning calculations.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {persona === 'analyst' && (
-        <div className="card mb-4">
-          <div className="card__head">
-            <div>
-              <h2 className="card__title">Operational Replenishment & Inventory Coverage Chain</h2>
-              <p className="card__sub">
-                Translates baseline demand consumption and supplier lead time into planning replenishment requirements, contextualized by the forward forecast trajectory for <strong>{selectedMaterial.id}</strong>.
-              </p>
-            </div>
-            <Badge tone={belowReorderPoint ? 'risk' : 'success'}>
-              {belowReorderPoint ? 'Replenishment Trigger Active' : 'Inventory Position Stable'}
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-3.5">
-            <div className="p-3 bg-bg rounded-md border border-border ">
-              <div className="text-xs font-bold uppercase text-subtle mb-1">1. Current Inventory</div>
-              <div className="text-base font-bold text-ink font-mono mb-0.5">{formatNum(onHandQty, 0)} {uom}</div>
-              <div className="text-xs text-body-c font-mono">{formatCurrency(onHandValue)}</div>
-              <div className="text-xs text-subtle mt-1 font-mono">{formatNum(daysOfSupply, 1)} days supply</div>
-            </div>
-
-            <div className="p-3 bg-bg rounded-md border border-border ">
-              <div className="text-xs font-bold uppercase text-subtle mb-1">2. Baseline Consumption</div>
-              <div className="text-base font-bold text-ink font-mono mb-0.5">{formatNum(avgDaily, 2)} {uom}/d</div>
-              <div className="text-xs text-body-c font-mono">{formatNum(avgWeekly, 1)} {uom}/wk</div>
-              <div className="text-xs text-subtle mt-1 font-mono">CV = {(demandCV * 100).toFixed(1)}%</div>
-            </div>
-
-            <div className="p-3 bg-bg rounded-md border border-border ">
-              <div className="text-xs font-bold uppercase text-subtle mb-1">3. Lead-Time Demand</div>
-              <div className="text-base font-bold text-ink font-mono mb-0.5">{formatNum(leadTimeDemand, 1)} {uom}</div>
-              <div className="text-xs text-body-c ">{leadTimeDays}d lead time</div>
-              <div className="text-xs text-subtle mt-1 font-mono">{formatNum(avgDaily, 2)}/d × {leadTimeDays}d</div>
-            </div>
-
-            <div className="p-3 bg-bg rounded-md border border-border ">
-              <div className="text-xs font-bold uppercase text-subtle mb-1">4. Safety Stock</div>
-              <div className="text-base font-bold text-primary font-mono mb-0.5">{formatNum(safetyStock, 1)} {uom}</div>
-              <div className="text-xs text-body-c font-mono">{formatCurrency(safetyStockValue)}</div>
-              <div className="text-xs text-subtle mt-1 font-mono">Z=1.65 · σ_d · √L</div>
-            </div>
-
-            <div className={`p-3 rounded-md border ${belowReorderPoint ? 'bg-[color-mix(in_srgb,var(--error-bg)_70%,transparent)] border-error ' : 'bg-[color-mix(in_srgb,var(--success-bg)_70%,transparent)] border-success '}`}>
-              <div className={`text-xs font-bold uppercase mb-1 ${belowReorderPoint ? 'text-error-tx' : 'text-success-tx'}`}>5. Reorder Point (ROP)</div>
-              <div className={`text-base font-bold font-mono mb-0.5 ${belowReorderPoint ? 'text-error-tx ' : 'text-success-tx '}`}>{formatNum(reorderPoint, 1)} {uom}</div>
-              <div className="text-xs font-semibold text-ink font-mono">
-                {belowReorderPoint ? `Gap: -${formatNum(ropGap, 1)} ${uom}` : `Buffer: +${formatNum(ropBuffer, 1)} ${uom}`}
-              </div>
-              <div className="text-xs text-subtle mt-1">Lead Demand + SS</div>
-            </div>
-          </div>
-
-          <div className={`p-3.5 rounded-md text-xs leading-relaxed border ${belowReorderPoint ? 'bg-[color-mix(in_srgb,var(--error-bg)_80%,transparent)] border-error ' : 'bg-[color-mix(in_srgb,var(--success-bg)_80%,transparent)] border-success '}`}>
-            <strong className="text-ink ">
-              {belowReorderPoint ? 'Planning Replenishment Trigger: ' : 'Coverage Evaluation: '}
-            </strong>
-            <span className="text-body-c ">
-              {belowReorderPoint
-                ? `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatNum(daysOfSupply, 1)} days of supply) sits ${formatNum(ropGap, 1)} ${uom} (${formatCurrency(ropGap * unitCost)}) below the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) relative to the ${leadTimeDays}-day supplier lead time.`
-                : `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatNum(daysOfSupply, 1)} days of supply) buffers the ${leadTimeDays}-day supplier lead time, exceeding Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) by +${formatNum(ropBuffer, 1)} ${uom} (+${formatCurrency(ropBuffer * unitCost)}).`}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {persona === 'exec' && (
+      {persona === 'finance' ? (
         <div className="flex flex-col gap-3.5 mb-4">
           <div className="card">
             <div className="card__head mb-2.5">
@@ -1425,6 +1122,8 @@ export default function RawMaterialRequirements() {
             </div>
           </div>
         </div>
+      ) : (
+        renderOperationalGrid(lens.deepDive)
       )}
 
       <ModelValidation modelR2={modelR2} rmse={rmse} avgWeekly={avgWeekly} />
@@ -1433,125 +1132,23 @@ export default function RawMaterialRequirements() {
       {/* G. PERSONA-SPECIFIC STRATEGIC INTELLIGENCE LENSES                    */}
       {/* ==================================================================== */}
       <div className="mb-4">
-        {persona === 'ds' && (
-          <Insight label="Data Scientist Lens · Model Specification, Generalization & Diagnostics">
-            The multivariate demand trajectory for <span className="metric">{selectedMaterial.id}</span> is generated by an autoregressive Ridge regression model (<span className="metric">alpha = 1.0</span>) fitted over a <span className="metric">104-week</span> training window with Standard Normal Variate (SNV) normalization. The model incorporates lag-1, lag-7, and lag-30 feature vectors. Model explanatory fit achieves <span className="metric">R² = {formatNum(modelR2, 2)}</span> with in-sample residual <span className="metric">RMSE = {formatNum(rmse, 2)} {uom}/wk</span> ({(rmseRatio * 100).toFixed(2)}% of weekly mean). R² is an in-sample fit diagnostic measuring historical variance explained by the fitted model, and is not a guaranteed out-of-sample forecast accuracy measure. The 95% service planning envelope expands with forecast horizon via <span className="metric">± Z · d_0 · CV · sqrt(t/7)</span> (Z = 1.65).
-          </Insight>
-        )}
-
-        {persona === 'analyst' && (
-          <Insight label="Plant Operations Lens · Replenishment Execution & Scenario Governance">
-            For <span className="metric">{selectedMaterial.id}</span> ({name}), baseline demand velocity is <span className="metric">{formatNum(baseDailyDemand, 2)} {uom}/day</span> ({formatNum(avgWeekly, 1)} {uom}/wk) with a modeled trend of <span className="metric">{trendPerDay > 0 ? '+' : ''}{formatNum(trendMagnitudeDailyPct, 4)}%/day</span> ({trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk), generating a cumulative 84-day horizon demand of <span className="metric">{formatNum(cumulativeHorizonDemand, 0)} {uom}</span> (averaging {formatNum(avgDailyForecast, 2)} {uom}/day). Planning Reorder Point is <span className="metric">{formatNum(reorderPoint, 1)} {uom}</span> ({formatNum(leadTimeDemand, 1)} {uom} lead-time demand + {formatNum(safetyStock, 1)} {uom} planning safety stock). Current physical stock of <span className="metric">{formatNum(onHandQty, 0)} {uom}</span> provides <span className="metric">{formatNum(daysOfSupply, 1)} days</span> of supply. {belowReorderPoint ? `Inventory is currently below the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) with an exposure gap of ${formatNum(ropGap, 1)} ${uom}. Recommended action: Evaluate replenishment against the planning reorder point and coverage gap; final order quantity should be determined using EOQ/MOQ, open purchase orders, supplier constraints, and downstream demand in Optimization.` : `Inventory remains above the Planning Reorder Point (${formatNum(reorderPoint, 1)} ${uom}) by a buffer of +${formatNum(ropBuffer, 1)} ${uom}, indicating no immediate replenishment trigger under current assumptions.`} Recommended action: Test sensitivity to lead-time extensions (+15d) and demand surges (+20%) in What-If Simulation.
-          </Insight>
-        )}
-
-        {persona === 'exec' && (
-          <Insight label="Finance Lens · Working Capital Velocity & Revenue Protection">
-            Forward demand intelligence for <span className="metric">{selectedMaterial.id}</span> indicates an annual consumption run-rate of <span className="metric">{formatCurrency(annualConsumptionValue)}/yr</span> ({formatNum(demand, 0)} {uom}/yr at {formatCurrency(unitCost)}/{uom}). Forward 84-day (12-week) cumulative demand outlook totals <span className="metric">{formatCurrency(cumulativeHorizonValue)}</span> ({formatNum(cumulativeHorizonDemand, 0)} {uom}) across the daily time series. Physical on-hand inventory carries <span className="metric">{formatCurrency(onHandValue)}</span> in working capital. Sizing the 95% service planning buffer at <span className="metric">{formatNum(safetyStock, 1)} {uom}</span> allocates <span className="metric">{formatCurrency(safetyStockValue)}</span> in protective cycle capital to buffer supplier lead times ({leadTimeDays} days). {belowReorderPoint ? `Stock position presents replenishment exposure across ${meta.downstream}, warranting purchase authorization in Inventory Agent to avert potential operational interruption.` : `Current inventory is above the planning reorder point, indicating no immediate replenishment trigger under current operating assumptions, supporting standard inventory turnover.`}
-          </Insight>
-        )}
+        <Insight label={lens.insightLabel}>
+          {lens.insightBody}
+        </Insight>
       </div>
 
       {/* ==================================================================== */}
       {/* H. PERSONA-SPECIFIC WHY DISCLOSURE                                   */}
       {/* ==================================================================== */}
       <div className="card mb-4">
-        <h2 className="card__title mb-3">
-          {persona === 'ds'
-            ? `Model Behavior & Statistical Driver Breakdown for ${selectedMaterial.id}`
-            : persona === 'analyst'
-            ? `Why ${selectedMaterial.id} ${belowReorderPoint ? `triggers an operational replenishment gap of ${formatNum(ropGap, 1)} ${uom}` : `maintains a protective buffer of ${formatNum(ropBuffer, 1)} ${uom} above ROP`}`
-            : `Executive Rationale: Working Capital & Supply Continuity Assessment for ${selectedMaterial.id}`}
-        </h2>
-
-        {persona === 'ds' && (
-          <WhyDisclosure
-            defaultOpen
-            summary="Autoregressive feature structure, residual behavior, and uncertainty formulation"
-            drivers={[
-              `Baseline consumption velocity across 104-week training window is ${formatNum(avgWeekly, 1)} ${uom}/wk (${formatNum(avgDaily, 2)} ${uom}/day).`,
-              `Ridge regression (alpha = 1.0) over lag-1, lag-7, and lag-30 features with SNV normalization fits a linear weekly slope beta = ${trendPerWeek >= 0 ? '+' : ''}${formatNum(trendPerWeek, 4)}.`,
-              `Model fit achieves R² = ${formatNum(modelR2, 2)} in-sample with residual error RMSE = ${formatNum(rmse, 2)} ${uom}/wk (${(rmseRatio * 100).toFixed(1)}% of weekly mean).`,
-              `Planning band expands via Z = 1.65 standard normal service factor and demand CV = ${(demandCV * 100).toFixed(1)}% expanding over time (sigma * sqrt(h)).`,
-            ]}
-            meaning={[
-              `Planning Reorder Point is formulated as ROP = LT Demand (${formatNum(leadTimeDemand, 1)} ${uom}) + Planning Safety Stock (${formatNum(safetyStock, 1)} ${uom}) = ${formatNum(reorderPoint, 1)} ${uom}.`,
-              belowReorderPoint
-                ? `Physical stock of ${formatNum(onHandQty, 0)} ${uom} sits ${formatNum(ropGap, 1)} ${uom} below the ROP boundary relative to the ${leadTimeDays}-day lead time.`
-                : `Physical stock of ${formatNum(onHandQty, 0)} ${uom} exceeds the ROP boundary by +${formatNum(ropBuffer, 1)} ${uom}.`,
-              `R² indicates in-sample explanatory power and should not be confused with out-of-sample forecast accuracy.`,
-            ]}
-            action={[
-              `Pass daily forecast series (84 days, cumulative ${formatNum(cumulativeHorizonDemand, 0)} ${uom}, avg ${formatNum(avgDailyForecast, 2)} ${uom}/day) and variance parameters to What-If simulation engine.`,
-              `Evaluate sensitivity to higher regularization penalties or extended lag horizons if residual autocorrelation appears in production telemetry.`,
-              `Proceed to Optimization Plan to evaluate constrained multi-echelon order schedules.`,
-            ]}
-          />
-        )}
-
-        {persona === 'analyst' && (
-          <WhyDisclosure
-            defaultOpen
-            summary="Operational replenishment drivers, coverage duration, and recommended next steps"
-            drivers={[
-              `Physical consumption velocity is ${formatNum(avgDaily, 2)} ${uom}/day (${formatNum(avgWeekly, 1)} ${uom}/wk) across catalog baseline.`,
-              `Estimated trend of ${trendPerDay > 0 ? '+' : ''}${formatNum(trendMagnitudeDailyPct, 4)}%/day (${trendPerWeek > 0 ? '+' : ''}{formatNum(trendMagnitudePct, 2)}%/wk) projects 84-day (12-week) cumulative consumption at ${formatNum(cumulativeHorizonDemand, 0)} ${uom} across daily series.`,
-              `Supplier lead time is ${leadTimeDays} days (${leadTimeWeeks.toFixed(1)} wks), generating ${formatNum(leadTimeDemand, 1)} ${uom} lead-time demand.`,
-              `Planning safety stock is sized at ${formatNum(safetyStock, 1)} ${uom} (${formatCurrency(safetyStockValue)}) using a Z = 1.65 service factor and demand CV of ${(demandCV * 100).toFixed(1)}%.`,
-            ]}
-            meaning={[
-              `Planning Reorder Point is ${formatNum(reorderPoint, 1)} ${uom} (${formatNum(leadTimeDemand, 1)} ${uom} LT demand + ${formatNum(safetyStock, 1)} ${uom} safety stock).`,
-              belowReorderPoint
-                ? `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatCurrency(onHandValue)}) provides ${formatNum(daysOfSupply, 1)} days of supply — falling below the ${leadTimeDays}-day lead time by ${formatNum(ropGap, 1)} ${uom} (${formatCurrency(ropGap * unitCost)}).`
-                : `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatCurrency(onHandValue)}) provides ${formatNum(daysOfSupply, 1)} days of supply — buffering the ${leadTimeDays}-day lead time by +${formatNum(ropBuffer, 1)} ${uom}.`,
-            ]}
-            action={
-              belowReorderPoint
-                ? [
-                    `Evaluate replenishment against the planning coverage gap of ${formatNum(ropGap, 1)} ${uom} (${formatCurrency(ropGap * unitCost)}); final order size should consider EOQ lot sizing, supplier MOQs, open supply, and downstream demand.`,
-                    `Transition to What-If Simulation to stress-test demand volatility (+20%) and lead-time extensions (+15d).`,
-                    `Proceed to Optimization Plan to solve constrained lot sizing and delivery schedules.`,
-                  ]
-                : [
-                    `Maintain standard replenishment review cadence for ${selectedMaterial.id}; no immediate purchase order trigger under current operating assumptions.`,
-                    `Stress-test supply resilience and lead-time latency scenarios in What-If Simulation.`,
-                    `Review multi-echelon order schedules and holding cost trade-offs in Optimization Plan.`,
-                  ]
-            }
-          />
-        )}
-
-        {persona === 'exec' && (
-          <WhyDisclosure
-            defaultOpen
-            summary="Strategic demand outlook, working-capital valuation, and executive governance priorities"
-            drivers={[
-              `Annual consumption run-rate is ${formatCurrency(annualConsumptionValue)}/yr across ${meta.downstream.split('(')[0].trim()}.`,
-              `Physical on-hand inventory carries ${formatCurrency(onHandValue)} in operating working capital at ${plant}.`,
-              `Protective safety stock buffer represents ${formatCurrency(safetyStockValue)} (${formatNum(safetyStock, 1)} ${uom}) to protect against demand and supply volatility.`,
-              `Supplier replenishment lead time is ${leadTimeDays} days with ${meta.supplier.split('(')[0].trim()}.`,
-            ]}
-            meaning={[
-              `Current inventory covers ${formatNum(daysOfSupply, 1)} days of supply against the ${leadTimeDays}-day supplier lead time.`,
-              belowReorderPoint
-                ? `Replenishment exposure of ${formatCurrency(ropGap * unitCost)} exists, creating operational vulnerability if replenishment is delayed.`
-                : `Operating stock safely buffers supplier lead time, indicating no immediate replenishment trigger under current operating assumptions.`,
-            ]}
-            action={
-              belowReorderPoint
-                ? [
-                    `Authorize expedited replenishment purchase order in Inventory Agent to protect downstream assembly schedules.`,
-                    `Review supplier performance and capacity constraints in Optimization Plan.`,
-                    `Verify working-capital availability for upcoming replenishment cycles.`,
-                  ]
-                : [
-                    `Maintain active turnover monitoring across Class ${abcClass} catalog materials.`,
-                    `Review multi-echelon working capital allocation in Optimization Plan.`,
-                    `Evaluate quarterly vendor scorecard for ${meta.supplier.split('(')[0].trim()}.`,
-                  ]
-            }
-          />
-        )}
+        <h2 className="card__title mb-3">{lens.whyHeading}</h2>
+        <WhyDisclosure
+          defaultOpen
+          summary={lens.whySummary}
+          drivers={lens.whyDrivers}
+          meaning={lens.whyMeaning}
+          action={lens.whyAction}
+        />
       </div>
 
       {/* ==================================================================== */}
@@ -1562,11 +1159,7 @@ export default function RawMaterialRequirements() {
           <div>
             <h2 className="card__title">Analytical Workflow & Downstream Handoff</h2>
             <p className="card__sub">
-              {persona === 'ds'
-                ? 'Use multivariate forecast outputs, trend slopes, and uncertainty assumptions as scenario inputs in What-If and Optimization.'
-                : persona === 'analyst'
-                ? 'Stress-test demand surges and lead-time delays in What-If before committing replenishment orders in Optimization.'
-                : 'Use forecast, scenario, and optimization intelligence to govern working capital and protect supply continuity in Inventory Agent.'}
+              {lens.handoffBody}
             </p>
           </div>
           <Badge tone="accent">Forward Handoff Package</Badge>

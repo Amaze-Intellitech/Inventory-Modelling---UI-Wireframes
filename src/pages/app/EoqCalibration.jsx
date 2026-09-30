@@ -46,7 +46,7 @@ const MATERIAL_METADATA = {
 
 export default function EoqCalibration() {
   const navigate = useNavigate();
-  const { legacyPersona: persona, selectedMaterial } = usePlatform();
+  const { persona, selectedMaterial } = usePlatform();
   const shouldReduceMotion = useReducedMotion();
 
   const materialId = selectedMaterial?.id || 'MAT-1082';
@@ -412,18 +412,28 @@ export default function EoqCalibration() {
         transition={{ duration: 0.2 }}
         className="mb-6"
       >
-        {persona === 'ds' && (
-          <Insight label="Data Scientist Lens · Mathematical Formulation & Sensitivity Intelligence">
-            The calibrated lot size <span className="font-mono font-bold text-ink">{formatNum(qStar, 0)} {uom}</span> minimizes the convex total-cost objective function <span className="font-mono font-bold text-ink">TC(Q) = (D/Q)·S + (Q/2)·H</span>, achieving exact first-order optimality where <span className="font-mono font-bold text-ink">∂TC/∂Q = -DS/Q² + H/2 = 0</span>. Parameter sensitivity demonstrates square-root elasticity: <span className="font-mono font-bold text-ink">∂ ln Q* / ∂ ln D = 0.50</span>.
+        {persona === 'supervisor' && (
+          <Insight label="Plant Supervisor Lens · Cover After Right-Sizing the Batch">
+            Moving {selectedMaterial.id}'s lot size from <span className="font-mono font-bold text-ink">{formatNum(currentBatchQty, 0)} {uom}</span> to <span className="font-mono font-bold text-ink">{formatNum(qStar, 0)} {uom}</span> still leaves <span className="font-mono font-bold text-ink">{formatNum(recDaysOfSupply, 1)} days</span> of supply against the <span className="font-mono font-bold text-ink">{leadTimeDays}-day</span> lead time from {meta.supplier} — production isn't put at more risk by smaller, more frequent batches.
           </Insight>
         )}
-        {persona === 'analyst' && (
-          <Insight label="Plant Operations Lens · Lot-Sizing Governance & Replenishment Execution">
-            Current ERP lot sizing of <span className="font-mono font-bold text-ink">{formatNum(currentBatchQty, 0)} {uom}</span> incurs <span className="font-mono font-bold text-ink">{formatCurrency(currentHoldCost)}/yr</span> in annual holding costs. Calibrating lot sizing to <span className="font-mono font-bold text-ink">{formatNum(qStar, 0)} {uom}</span> rightsizes replenishment to <span className="font-mono font-bold text-ink">{formatNum(recDaysOfSupply, 1)} days</span> of supply, capturing <span className="font-mono font-bold text-success">{formatCurrency(netAnnualSavings)}/yr</span> in net savings.
+        {persona === 'warehouse' && (
+          <Insight label="Warehouse Manager Lens · Less Cycle Stock to Store">
+            Average cycle stock drops from <span className="font-mono font-bold text-ink">{formatNum(currentCycleStockQty, 0)} {uom}</span> to <span className="font-mono font-bold text-ink">{formatNum(recCycleStockQty, 0)} {uom}</span> once EOQ is applied, freeing shelf and staging space. Batches arrive more often (<span className="font-mono font-bold text-ink">{formatNum(recOrderFreq, 1)} orders/yr</span> vs {formatNum(currentOrderFreq, 1)} today) but in smaller quantities each time.
           </Insight>
         )}
-        {persona === 'exec' && (
-          <Insight label="Finance Lens · Working Capital Velocity & Risk-Balanced Governance">
+        {persona === 'planner' && (
+          <Insight label="Materials Planner Lens · Matching Order Cadence to the Plan">
+            {selectedMaterial.id} would move from ordering every ~<span className="font-mono font-bold text-ink">{formatNum(currentOrderIntervalDays, 0)} days</span> to every ~<span className="font-mono font-bold text-ink">{formatNum(recOrderIntervalDays, 0)} days</span>. Check that cadence still lines up with the production plan's build schedule before it goes into the ERP lot-size field.
+          </Insight>
+        )}
+        {persona === 'procurement' && (
+          <Insight label="Procurement Officer Lens · Lot-Sizing Governance & Replenishment Execution">
+            Current ERP lot sizing of <span className="font-mono font-bold text-ink">{formatNum(currentBatchQty, 0)} {uom}</span> costs <span className="font-mono font-bold text-ink">{formatCurrency(currentHoldCost)}/yr</span> in holding alone. Recalibrating to <span className="font-mono font-bold text-ink">{formatNum(qStar, 0)} {uom}</span> lifts order frequency to <span className="font-mono font-bold text-ink">{formatNum(recOrderFreq, 1)} orders/yr</span> with {meta.supplier} — confirm the new size against their MOQ and packaging increments before updating the material master.
+          </Insight>
+        )}
+        {persona === 'finance' && (
+          <Insight label="Finance Controller Lens · Working Capital Velocity & Risk-Balanced Governance">
             For <span className="font-mono font-bold text-ink">{selectedMaterial.id}</span>, this modeled EOQ policy reduces relevant annual ordering and carrying cost by <span className="font-mono font-bold text-success">{formatCurrency(netAnnualSavings)}/yr</span> ({formatNum(netSavingsPercent, 1)}% policy cost reduction) and releases an estimated <span className="font-mono font-bold text-success">{formatCurrency(workingCapitalReleased)}</span> in average cycle-stock capital.
           </Insight>
         )}

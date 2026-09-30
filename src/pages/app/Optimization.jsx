@@ -60,7 +60,7 @@ const formatCurrency = (v, decimals = 2) =>
 
 export default function Optimization() {
   const navigate = useNavigate();
-  const { legacyPersona: persona, selectedMaterial } = usePlatform();
+  const { persona, selectedMaterial } = usePlatform();
 
   // Horizon selection: '12w' (Authoritative Multivariate Forecast) vs '26w' (Extended Modeled Outlook)
   const [selectedHorizon, setSelectedHorizon] = useState('26w');
@@ -107,7 +107,6 @@ export default function Optimization() {
   const demandCV = forecastInput?.demandCV || 0.12;       // CV
   const trendPerWeek = forecastInput?.trendPerWeek || 0;   // linear weekly slope from Multivariate
   const modelR2 = forecastInput?.modelR2 ?? 0.85;          // in-sample R2
-  const rmseRatio = forecastInput?.rmseRatio || 0.09;
 
   // 3. Mathematical Base Derivations for Active Material
   const holdingCostPerUnit = HOLDING_RATE * unitCost;
@@ -471,6 +470,76 @@ export default function Optimization() {
     );
   }
 
+  // 7. Persona-specific optimization lens: one shared card shell, five content configs
+  const PERSONA_OPT_LENS = {
+    supervisor: {
+      title: 'Coverage After Optimizing',
+      subtitle: `Whether ${activeId} keeps up with the lines it feeds once this policy is applied`,
+      badgeText: currentCoverageDays < leadTimeDays ? '● Coverage Below Lead Time' : '● Coverage Protected',
+      badgeTone: currentCoverageDays < leadTimeDays ? 'risk' : 'success',
+      borderClass: 'border-primary',
+      tiles: [
+        { label: 'Coverage vs Lead Time', value: `${formatNum(currentCoverageDays, 1)}d / ${leadTimeDays}d`, sub: currentCoverageDays < leadTimeDays ? 'Below lead time' : 'Covered beyond lead time' },
+        { label: 'Downstream Lines Fed', value: activeMeta.downstream, sub: 'Stops here if this material runs out' },
+        { label: 'Action Needed', value: currentCoverageDays < leadTimeDays ? 'Order now' : 'None — protected', sub: currentCoverageDays < leadTimeDays ? `${formatNum(currentOrderQty, 0)} ${uom} to restore buffer` : 'Coverage holds beyond lead time' },
+        { label: 'Days to Next Breach', value: firstCoverageBreach ? `${firstCoverageBreach.dayIndex} days` : 'None projected', sub: firstCoverageBreach ? `On ${firstCoverageBreach.date}` : 'Within modeled horizon' },
+      ],
+    },
+    warehouse: {
+      title: 'Stock This Policy Implies Holding',
+      subtitle: `Physical footprint and batch-size change for ${activeId} under the recommended policy`,
+      badgeText: currentExcessQty > 0 ? '● Surplus Above Target' : '● At or Below Target',
+      badgeTone: currentExcessQty > 0 ? 'watch' : 'success',
+      borderClass: 'border-info',
+      tiles: [
+        { label: 'Surplus Above Target Buffer', value: `${formatNum(currentExcessQty, 0)} ${uom}`, sub: formatCurrency(currentExcessValue) },
+        { label: 'Cycle-Stock Size Change', value: `${formatNum(currentBatchQty, 0)} → ${formatNum(qStar, 0)} ${uom}`, sub: `${formatNum(recOrderFreq, 1)} orders/yr once recalibrated` },
+        { label: 'On-Hand Value', value: formatCurrency(currentOnHandValue), sub: `${formatNum(currentOnHand, 0)} ${uom} on-hand` },
+        { label: 'Storage Note', value: currentExcessQty > 0 ? 'Defer next PO' : 'Recalibrate lot size', sub: currentExcessQty > 0 ? 'Until stock nears ROP' : `Target ${formatNum(qStar, 0)} ${uom} batches` },
+      ],
+    },
+    planner: {
+      title: 'Cover Against the Plan',
+      subtitle: `Demand trend and reorder position for ${activeId} against the production plan`,
+      badgeText: `Trend ${(trendPerWeek * 100).toFixed(2)}%/wk`,
+      badgeTone: 'accent',
+      borderClass: 'border-success',
+      tiles: [
+        { label: 'Baseline Daily Demand', value: `${formatNum(baseDailyDemand, 2)} ${uom}/d`, sub: `${(trendPerWeek * 100).toFixed(2)}%/wk trend` },
+        { label: 'Reorder Point vs On-Hand', value: `${formatNum(reorderPoint, 0)} ${uom}`, sub: currentOnHand < reorderPoint ? `On-hand is ${formatNum(reorderPoint - currentOnHand, 0)} ${uom} below` : `${formatNum(currentOnHand - reorderPoint, 0)} ${uom} of buffer` },
+        { label: 'Demand Volatility (CV)', value: `${(demandCV * 100).toFixed(1)}%`, sub: demandCV <= 0.15 ? 'Stable' : 'Elevated — check plan alignment' },
+        { label: 'Review Cadence', value: abcReviewCadence, sub: `Class ${abcClass} governance` },
+      ],
+    },
+    procurement: {
+      title: 'Reorder Position & Lot Size',
+      subtitle: `What to order and when for ${activeId}, and what recalibrating the lot size is worth`,
+      badgeText: currentOnHand < reorderPoint ? '● ROP Trigger Active' : '● Above ROP',
+      badgeTone: currentOnHand < reorderPoint ? 'risk' : 'success',
+      borderClass: 'border-warning',
+      tiles: [
+        { label: 'ROP Trigger Status', value: currentOnHand < reorderPoint ? 'Triggered' : 'Not yet', sub: `ROP at ${formatNum(reorderPoint, 0)} ${uom}` },
+        { label: 'Lot Recalibration Savings', value: `${formatCurrency(netAnnualPolicySavings)}/yr`, sub: `${formatNum(currentBatchQty, 0)} → ${formatNum(qStar, 0)} ${uom}` },
+        { label: 'Supplier & Lead Time', value: activeMeta.supplier.split('(')[0].trim(), sub: `${leadTimeDays}-day lead time` },
+        { label: 'Order Quantity Needed', value: `${formatNum(currentOrderQty, 0)} ${uom}`, sub: currentOrderQty > 0 ? formatCurrency(currentOrderValue) : 'None needed yet' },
+      ],
+    },
+    finance: {
+      title: '6-Month Capital Opportunity',
+      subtitle: `Working capital position and release opportunity for ${activeId} under this policy`,
+      badgeText: `Modeled Opportunity: ${formatCurrency(modeledCapitalReleaseOpportunity)}`,
+      badgeTone: 'accent',
+      borderClass: 'border-ink',
+      tiles: [
+        { label: 'Current Capital Position', value: formatCurrency(currentOnHandValue), sub: `${formatNum(currentOnHand, 0)} ${uom} on-hand (${formatNum(currentCoverageDays, 1)}d)` },
+        { label: 'Target Buffer Capital', value: formatCurrency(targetPositionValue), sub: 'Maintains 95% service level' },
+        { label: 'Capital Release Opportunity', value: formatCurrency(modeledCapitalReleaseOpportunity), sub: currentOnHandValue > 0 ? `${((modeledCapitalReleaseOpportunity / currentOnHandValue) * 100).toFixed(1)}% unlocked` : '' },
+        { label: 'Annual Carrying-Cost Savings', value: `${formatCurrency(annualCarryingCostSavings)}/yr`, sub: 'Direct P&L carrying expense reduction' },
+      ],
+    },
+  };
+  const activeOptLens = PERSONA_OPT_LENS[persona] || PERSONA_OPT_LENS.supervisor;
+
   // Chart Coordinate Engines
   const W1 = 920, H1 = 280, ML1 = 76, MR1 = 30, MT1 = 26, MB1 = 48;
   const maxStock1 = Math.max(...optimizationTimeline.map((p) => Math.max(p.projectedOnHand, p.targetPosition, p.reorderPoint)), 100);
@@ -667,182 +736,39 @@ export default function Optimization() {
         </div>
       </div>
 
-      {/* 3. PERSONA-SPECIFIC INTELLIGENCE LENSES */}
+      {/* 3. PERSONA-SPECIFIC INTELLIGENCE LENS */}
       <AnimatePresence mode="wait">
-        {persona === 'ds' && (
-          <motion.div
-            key="ds-opt"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="card mb-4 border-l-4 border-primary"
-          >
-            <div className="card__head mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h2 className="card__title text-base font-bold text-ink m-0">
-                    Optimization Model Intelligence (Data Scientist Lens)
-                  </h2>
-                  <Badge tone="accent">Statistical Model & Parameter Derivations</Badge>
-                </div>
-                <p className="card__sub text-xs text-subtle m-0">
-                  Rigorous mathematical breakdown of demand variability, lead-time convolution, safety stock sizing, and EOQ cost equilibrium
-                </p>
-              </div>
-              <span className="badge badge-success font-bold text-xs">
-                Forecast Fit: R² = {modelR2.toFixed(2)} ({optimizationConfidence.toFixed(1)}% Confidence)
-              </span>
+        <motion.div
+          key={persona}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          className={`card mb-4 border-l-4 ${activeOptLens.borderClass}`}
+        >
+          <div className="card__head mb-3">
+            <div>
+              <h2 className="card__title text-base font-bold text-ink m-0">
+                {activeOptLens.title}
+              </h2>
+              <p className="card__sub text-xs text-subtle m-0">
+                {activeOptLens.subtitle}
+              </p>
             </div>
+            <span className={`badge badge-${activeOptLens.badgeTone} font-bold text-xs`}>
+              {activeOptLens.badgeText}
+            </span>
+          </div>
 
-            <div className="grid-4 mb-3.5">
-              <div className="bg-bg p-2.5 rounded-md border border-border ">
-                <span className="text-xs text-subtle uppercase block font-semibold">1. Baseline Daily Demand</span>
-                <strong className="num text-sm text-ink block">{formatNum(baseDailyDemand, 2)} {uom}/d</strong>
-                <span className="text-xs text-subtle font-mono">{formatNum(annualDemand, 0)} {uom}/yr · Slope: {(trendPerWeek * 100).toFixed(2)}%/wk</span>
+          <div className="grid-4">
+            {activeOptLens.tiles.map((tile) => (
+              <div key={tile.label} className="bg-bg p-2.5 rounded-md border border-border">
+                <span className="text-xs text-subtle uppercase block font-semibold">{tile.label}</span>
+                <strong className="num text-sm text-ink block">{tile.value}</strong>
+                <span className="text-xs text-subtle font-mono">{tile.sub}</span>
               </div>
-              <div className="bg-bg p-2.5 rounded-md border border-border ">
-                <span className="text-xs text-subtle uppercase block font-semibold">2. Demand Volatility (CV)</span>
-                <strong className="num text-sm text-ink block">CV = {(demandCV * 100).toFixed(1)}%</strong>
-                <span className="text-xs text-subtle font-mono">σ_D = {formatNum(sigmaD, 2)} {uom}/d · RMSE: {rmseRatio.toFixed(2)}</span>
-              </div>
-              <div className="bg-bg p-2.5 rounded-md border border-border ">
-                <span className="text-xs text-subtle uppercase block font-semibold">3. Holding Cost Rate (H)</span>
-                <strong className="num text-sm text-ink block">{formatCurrency(holdingCostPerUnit)}/{uom}/yr</strong>
-                <span className="text-xs text-subtle font-mono">i = {(HOLDING_RATE * 100).toFixed(2)}%/yr · S = ${ORDERING_COST}/order</span>
-              </div>
-              <div className="bg-bg p-2.5 rounded-md border border-border ">
-                <span className="text-xs text-subtle uppercase block font-semibold">4. EOQ Variance vs ERP</span>
-                <strong className="num text-sm text-primary block">
-                  {formatNum(((qStar - currentBatchQty) / currentBatchQty) * 100, 1)}%
-                </strong>
-                <span className="text-xs text-subtle font-mono">Q* = {formatNum(qStar, 0)} vs Q_curr = {formatNum(currentBatchQty, 0)} {uom}</span>
-              </div>
-            </div>
-
-            <div className="p-3 bg-[color-mix(in_srgb,var(--bg)_80%,transparent)] border border-border rounded-md mb-3 text-xs leading-relaxed text-body-c ">
-              <strong>Horizon Boundary & Model Assumptions:</strong> Days 1–84 represent the authoritative Multivariate autoregressive forecast (R² = {modelR2.toFixed(2)}); Days 85–182 represent a modeled optimization extension continuing the linear trend without in-sample validation. Parameter elasticity demonstrates ∂ ln Q* / ∂ ln D = 0.50, indicating square-root dampening of demand shocks.
-            </div>
-          </motion.div>
-        )}
-
-        {persona === 'analyst' && (
-          <motion.div
-            key="analyst-opt"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="card mb-4 border-l-4 border-success"
-          >
-            <div className="card__head mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h2 className="card__title text-base font-bold text-ink m-0">
-                    Operational Optimization Control (Plant Operations Lens)
-                  </h2>
-                  <Badge tone="success">Tactical Runway, Replenishment & Action Matrix</Badge>
-                </div>
-                <p className="card__sub text-xs text-subtle m-0">
-                  Operational lead-time exposure, baseline breach timeline, lot-size recalibration triggers, and prioritized task matrix
-                </p>
-              </div>
-              <span className={`badge ${currentCoverageDays < leadTimeDays ? 'badge-risk' : 'badge-success'} font-bold text-xs`}>
-                {currentCoverageDays < leadTimeDays ? '● Replenishment Action Required' : '● Operational Coverage Protected'}
-              </span>
-            </div>
-
-            <div className="grid-3 mb-3">
-              <div className="bg-[color-mix(in_srgb,var(--error-bg)_70%,transparent)] border border-error rounded-md p-3">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-bold text-error-tx">1. ACT NOW</span>
-                  <Badge tone="risk">Urgent</Badge>
-                </div>
-                <div className="text-xs text-ink leading-relaxed">
-                  {currentCoverageDays < leadTimeDays ? (
-                    <>Class {abcClass} Priority: On-hand coverage (<strong>{formatNum(currentCoverageDays, 1)}d</strong>) is below supplier lead time (<strong>{leadTimeDays}d</strong>). Authorize replenishment order for <strong>{formatNum(currentOrderQty, 0)} {uom}</strong> immediately.</>
-                  ) : firstCoverageBreach ? (
-                    <>Baseline inventory will cross below lead-time coverage on <strong>{firstCoverageBreach.date}</strong> (in {firstCoverageBreach.dayIndex} days). Queue replenishment before Day {Math.max(1, firstCoverageBreach.dayIndex - leadTimeDays)}.</>
-                  ) : (
-                    <>On-hand stock is safely buffered. No immediate stockout emergency on this Class {abcClass} SKU.</>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-[color-mix(in_srgb,var(--info-bg)_70%,transparent)] border border-border rounded-md p-3">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-bold text-primary">2. OPTIMIZE</span>
-                  <Badge tone="accent">Lot Sizing</Badge>
-                </div>
-                <div className="text-xs text-ink leading-relaxed">
-                  {currentOptimizationGap > 0 ? (
-                    <>Surplus inventory of <strong>+{formatNum(currentExcessQty, 0)} {uom}</strong> ({formatCurrency(currentExcessValue)}) above target buffer. Defer PO releases until stock reaches ROP ({formatNum(reorderPoint, 0)} {uom}).</>
-                  ) : (
-                    <>Class {abcClass} Lot Sizing: Recalibrate ERP batch size from {formatNum(currentBatchQty, 0)} to <strong>{formatNum(qStar, 0)} {uom}</strong> to capture {formatCurrency(netAnnualPolicySavings)}/yr in net policy savings.</>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-[color-mix(in_srgb,var(--warning-bg)_70%,transparent)] border border-warning rounded-md p-3">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-bold text-warning-tx">3. MONITOR</span>
-                  <Badge tone="watch">Tracking</Badge>
-                </div>
-                <div className="text-xs text-ink leading-relaxed">
-                  Class {abcClass} Governance: Review cadence ({abcReviewCadence}) with {activeMeta.supplier}. Demand CV of <strong>{(demandCV * 100).toFixed(1)}%</strong> indicates moderate volatility against the {leadTimeDays}-day lead-time SLA.
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {persona === 'exec' && (
-          <motion.div
-            key="exec-opt"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="card mb-4 border-l-4 border-ink "
-          >
-            <div className="card__head mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h2 className="card__title text-base font-bold text-ink m-0">
-                    Optimization Executive Summary & 6-Month Opportunity
-                  </h2>
-                  <Badge tone="accent">EBITDA & Working Capital Governance</Badge>
-                </div>
-                <p className="card__sub text-xs text-subtle m-0">
-                  High-level enterprise working capital release, annual carrying cost savings, and service level assurance
-                </p>
-              </div>
-              <span className="badge badge-accent font-bold text-xs">
-                Modeled Opportunity: {formatCurrency(modeledCapitalReleaseOpportunity)} Released
-              </span>
-            </div>
-
-            <div className="grid-4 mb-3">
-              <div className="bg-bg p-3 rounded-md border border-border ">
-                <span className="text-xs text-subtle uppercase block font-semibold">1. Current Capital Position</span>
-                <strong className="num text-base text-ink block">{formatCurrency(currentOnHandValue)}</strong>
-                <span className="text-xs text-subtle font-mono">{formatNum(currentOnHand, 0)} {uom} on-hand ({formatNum(currentCoverageDays, 1)}d)</span>
-              </div>
-              <div className="bg-bg p-3 rounded-md border border-border ">
-                <span className="text-xs text-subtle uppercase block font-semibold">2. Target Buffer Capital (SS + Q*)</span>
-                <strong className="num text-base text-primary block">{formatCurrency(targetPositionValue)}</strong>
-                <span className="text-xs text-subtle font-mono">Modeled target maintains 95% service level</span>
-              </div>
-              <div className="bg-bg p-3 rounded-md border border-border ">
-                <span className="text-xs text-subtle uppercase block font-semibold">3. Capital Release Opportunity</span>
-                <strong className="num text-base text-success-tx block">{formatCurrency(modeledCapitalReleaseOpportunity)}</strong>
-                <span className="text-xs text-subtle font-mono">{currentOnHandValue > 0 ? ((modeledCapitalReleaseOpportunity / currentOnHandValue) * 100).toFixed(1) : 0}% unlocked</span>
-              </div>
-              <div className="bg-bg p-3 rounded-md border border-border ">
-                <span className="text-xs text-subtle uppercase block font-semibold">4. Annual Carrying Cost Savings</span>
-                <strong className="num text-base text-success-tx block">{formatCurrency(annualCarryingCostSavings)}/yr</strong>
-                <span className="text-xs text-subtle font-mono">Direct P&L carrying expense reduction</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
+            ))}
+          </div>
+        </motion.div>
       </AnimatePresence>
 
       {/* 4. PRIMARY TIME-SERIES CHARTS (Projected Inventory Position) */}

@@ -308,16 +308,96 @@ function DemandVsOnTimeScatterChart() {
 
 // `mode` fixes the view to one pipeline stage: 'uni' (Stage 1) or 'bi' (Stage 2). Without it both tabs show.
 export default function Descriptive({ mode }) {
-  const { legacyPersona: persona, selectedMaterial } = usePlatform();
+  const { persona, selectedMaterial } = usePlatform();
   const [tab, setTab] = useState(mode || 'uni');
   const [selectedVarId, setSelectedVarId] = useState('weekly_consumption');
   const [selectedRelId, setSelectedRelId] = useState('lt_vs_stockout');
 
   const subtitleText = {
-    ds: 'Statistical evidence, stationarity tests, and distributional diagnostics on the raw demand signal before downstream model fitting.',
-    analyst: 'Trend velocity, operational volatility, and outlier investigations to baseline SKU consumption behavior before classification.',
-    exec: 'Executive business signals, revenue throughput exposure, and capacity risk across core catalog materials.',
+    supervisor: 'Whether the raw consumption trend threatens line continuity — surges, breaches, and how close to capacity this material is running.',
+    warehouse: 'How the raw stock level has moved on its own — buildup, drawdown, and volatility — before any driver is considered.',
+    planner: "Trend velocity and volatility on the raw signal, to size how much this material's demand pattern will need from the plan.",
+    procurement: 'Trend, volatility and outlier investigation on the raw signal, to baseline supplier and cost behavior before classification.',
+    finance: 'Executive business signals, revenue throughput exposure, and capacity risk across core catalog materials.',
   }[persona] || 'Trend, seasonality and relationship analysis on the raw signal — run before any classification or lot-sizing.';
+
+  const PERSONA_UNI_LENS = {
+    supervisor: {
+      kpis: [
+        { label: 'Current Consumption Velocity', value: '1,620.00 EA/wk', delta: '+26.17% vs 104-wk baseline', deltaTone: 'up', sub: 'Baseline 1,284.00 EA/wk' },
+        { label: 'Flagged Operational Events', value: '2 Breach Weeks', delta: '1 extreme surge · 1 cap breach', deltaTone: 'down', sub: 'Each breach risks a line-stoppage window' },
+        { label: 'Plant Capacity Utilization', value: '81.00% of Limit', delta: '19.00% Headroom Remaining', deltaTone: 'down', sub: 'Current 1,620 EA/wk approaching 2,000 EA line cap' },
+        { label: 'Demand Expansion Trajectory', value: '+30.82 EA/wk', delta: 'Sustained ramp, 9 of last 12 weeks', deltaTone: 'up', sub: '+2.40% of baseline/wk' },
+      ],
+      vizTitle: 'Consumption Trend & Capacity Breach Watch',
+      vizSub: 'Two operational breaches flagged — whether either one threatens downstream line continuity',
+    },
+    warehouse: {
+      kpis: [
+        { label: 'Consumption Velocity', value: '1,620.00 EA/wk', delta: '+26.17% vs 104-wk baseline', deltaTone: 'up', sub: 'Faster draw-down of on-hand stock' },
+        { label: 'Demand Volatility', value: 'Moderate (CV 24.30%)', sub: 'Std dev ±312.00 EA (±$24.54K/wk value spread)' },
+        { label: 'Flagged Operational Events', value: '2 Breach Weeks', delta: '1 extreme surge · 1 cap breach', deltaTone: 'down', sub: 'Each surge draws stock down faster than planned' },
+        { label: 'Demand Expansion Trajectory', value: '+30.82 EA/wk', delta: '+2.40% of baseline/wk', deltaTone: 'up', sub: 'Steady upward drift in what leaves the shelf' },
+      ],
+      vizTitle: 'Weekly Consumption Velocity — What Leaves the Shelf',
+      vizSub: 'Two distinct events pulled stock down faster than the steady trend',
+    },
+    planner: {
+      kpis: [
+        { label: 'Demand Expansion Trajectory', value: '+30.82 EA/wk', delta: 'Sustained ramp, 9 of last 12 weeks', deltaTone: 'up', sub: '+2.40% of baseline/wk linear velocity' },
+        { label: 'Current Consumption Velocity', value: '1,620.00 EA/wk', delta: '+26.17% vs 104-wk baseline', deltaTone: 'up', sub: 'Baseline 1,284.00 EA/wk' },
+        { label: 'Demand Volatility', value: 'Moderate (CV 24.30%)', sub: 'Std dev ±312.00 EA — check plan buffer sizing' },
+        { label: 'Flagged Operational Events', value: '2 Breach Weeks', delta: 'Investigation required', deltaTone: 'down', sub: 'Confirm neither breach repeats in the next plan cycle' },
+      ],
+      vizTitle: 'Trend Velocity Against the Production Plan',
+      vizSub: 'A sustained ramp the plan should account for, plus two one-off events to exclude from the baseline',
+    },
+    procurement: {
+      kpis: [
+        { label: 'Demand Volatility', value: 'Moderate (CV 24.30%)', sub: 'Std dev ±312.00 EA (±$24.54K/wk) — feeds lead-time buffer sizing' },
+        { label: 'Current Consumption Velocity', value: '1,620.00 EA/wk', delta: '+26.17% vs 104-wk baseline', deltaTone: 'up', sub: 'Higher draw rate strains supplier replenishment cadence' },
+        { label: 'Flagged Operational Events', value: '2 Breach Weeks', delta: '1 extreme surge · 1 cap breach', deltaTone: 'down', sub: 'Check whether either surge required an expedite' },
+        { label: 'Demand Expansion Trajectory', value: '+30.82 EA/wk', delta: '+2.40% of baseline/wk', deltaTone: 'up', sub: 'Reorder cadence may need to tighten if this holds' },
+      ],
+      vizTitle: 'Consumption Trend Behind Reorder Cadence',
+      vizSub: 'Rising baseline demand and two surge events worth checking against supplier lead time',
+    },
+    finance: {
+      kpis: [
+        { label: 'Demand Health & Momentum', value: 'EXPANDING (+26.17%)', delta: 'Positive Market Momentum', deltaTone: 'up', sub: 'Current 1,620 EA/wk vs 1,284 EA historical baseline' },
+        { label: 'Annual Throughput Value', value: '$5.25M / Year', sub: 'Weekly throughput $100.99K/wk ($78.65/EA unit cost)' },
+        { label: 'Demand Volatility Exposure', value: '±$24.54K / Week', sub: 'Moderate variance (CV 24.30%) requires active buffer sizing' },
+        { label: 'Plant Capacity Utilization', value: '81.00% of Limit', delta: '19.00% Headroom Remaining', deltaTone: 'down', sub: 'Current 1,620 EA/wk approaching 2,000 EA line cap' },
+      ],
+      vizTitle: 'Consumption Demand Trajectory & Plant Operating Envelope',
+      vizSub: 'Strong expansion trajectory with capacity ceiling alert at Plant 1 assembly line ($157.30K/wk threshold)',
+    },
+  };
+  const uniLens = PERSONA_UNI_LENS[persona] || PERSONA_UNI_LENS.supervisor;
+
+  const PERSONA_BI_LENS = {
+    supervisor: {
+      headline: <>Longer supplier lead times go with more stock-outs (<span className="metric">r = 0.74</span>) — the strongest single risk to line continuity. Three drivers clear the bar for the Multivariate model; price barely matters for this must-buy material.</>,
+      relationship: <>A <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> links supplier lead time to stockout frequency across 142 Class A materials — the clearest early-warning signal for a line-stoppage risk in this dataset.</>,
+    },
+    warehouse: {
+      headline: <>Finished-goods demand is the strongest single link to stock movement, ahead of price. Longer lead times also go with more stock-outs (<span className="metric">r = 0.74</span>), so physical buffer sizing should track supplier reliability more than unit cost.</>,
+      relationship: <>A <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> links supplier lead time to stockout frequency — the longer the lead time, the more buffer stock this material needs on the shelf.</>,
+    },
+    planner: {
+      headline: <>Three drivers clear the bar for the Multivariate model: lead time, order quantity, and demand volatility. Price barely moves the needle for this must-buy material — plan around timing and volume, not cost.</>,
+      relationship: <>A <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> links supplier lead time to stockout frequency — factor lead-time variability into the plan, not just the average.</>,
+    },
+    procurement: {
+      headline: <>Longer supplier lead times go with more stock-outs (<span className="metric">r = 0.74</span>) — the clearest signal in this dataset. Order quantity vs unit cost (r = -0.68) is the next most actionable relationship for sourcing decisions.</>,
+      relationship: <>A <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> links supplier lead time to stockout frequency across 142 Class A materials — single-sourced, long-lead-time materials are the ones to qualify a second vendor for first.</>,
+    },
+    finance: {
+      headline: <>Longer supplier lead times go with more stock-outs (<span className="metric">r = 0.74</span>), and finished-goods demand is the strongest single link to stock. Three drivers clear the bar for the Multivariate model; price barely matters for this must-buy material.</>,
+      relationship: <>A <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> links supplier lead time to stockout frequency across 142 Class A materials — the working-capital exposure behind this link is quantified in RMLC Lifecycle.</>,
+    },
+  };
+  const biLens = PERSONA_BI_LENS[persona] || PERSONA_BI_LENS.supervisor;
 
   return (
     <motion.section 
@@ -428,110 +508,17 @@ export default function Descriptive({ mode }) {
             <div>
               {/* PRIMARY PERSONA KPIs */}
               <AnimatePresence mode="wait">
-                {persona === 'ds' && (
-                  <motion.div
-                    key="ds-kpi"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="grid-4 mb-4"
-                  >
-                    <KpiTile
-                      label="Mean & Central Tendency"
-                      value="1,284.00 EA"
-                      sub="Median 1,190.00 EA · IQR 360.00 EA (P25: 1,120 · P75: 1,480)"
-                    />
-                    <KpiTile
-                      label="Normalized Trend Slope (OLS β₁)"
-                      value="+2.40%/wk"
-                      delta="+30.82 EA/wk (t=4.82, p < 0.001)"
-                      deltaTone="up"
-                      sub="R² = 0.84 · Statistically significant linear ramp"
-                    />
-                    <KpiTile
-                      label="Variance & Distribution (σ)"
-                      value="312.00 EA"
-                      sub="CV = 24.30% · Skewness = +1.18 · Kurtosis = 4.22"
-                    />
-                    <KpiTile
-                      label="Seasonality & Spectral"
-                      value="0.31 Strength"
-                      sub="Quarterly cycle (T=13 wks) · ACF(1) = 0.68"
-                    />
-                  </motion.div>
-                )}
-
-                {persona === 'analyst' && (
-                  <motion.div
-                    key="analyst-kpi"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="grid-4 mb-4"
-                  >
-                    <KpiTile
-                      label="Current Consumption Velocity"
-                      value="1,620.00 EA/wk"
-                      delta="+26.17% vs 104-wk baseline"
-                      deltaTone="up"
-                      sub="Baseline 1,284.00 EA/wk (+$26.43K/wk volume)"
-                    />
-                    <KpiTile
-                      label="Demand Expansion Trajectory"
-                      value="+30.82 EA/wk"
-                      delta="Sustained ramp, 9 of last 12 weeks"
-                      deltaTone="up"
-                      sub="+2.40% of baseline/wk linear velocity"
-                    />
-                    <KpiTile
-                      label="Demand Volatility"
-                      value="Moderate (CV 24.30%)"
-                      sub="Std dev ±312.00 EA (±$24.54K/wk value spread)"
-                    />
-                    <KpiTile
-                      label="Flagged Operational Events"
-                      value="2 Breach Weeks"
-                      delta="1 extreme surge · 1 cap breach"
-                      deltaTone="down"
-                      sub="Investigation required before lot-size calibration"
-                    />
-                  </motion.div>
-                )}
-
-                {persona === 'exec' && (
-                  <motion.div
-                    key="exec-kpi"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="grid-4 mb-4"
-                  >
-                    <KpiTile
-                      label="Demand Health & Momentum"
-                      value="EXPANDING (+26.17%)"
-                      delta="Positive Market Momentum"
-                      deltaTone="up"
-                      sub="Current 1,620 EA/wk vs 1,284 EA historical baseline"
-                    />
-                    <KpiTile
-                      label="Annual Throughput Value"
-                      value="$5.25M / Year"
-                      sub="Weekly throughput $100.99K/wk ($78.65/EA unit cost)"
-                    />
-                    <KpiTile
-                      label="Demand Volatility Exposure"
-                      value="±$24.54K / Week"
-                      sub="Moderate variance (CV 24.30%) requires active buffer sizing"
-                    />
-                    <KpiTile
-                      label="Plant Capacity Utilization"
-                      value="81.00% of Limit"
-                      delta="19.00% Headroom Remaining"
-                      deltaTone="down"
-                      sub="Current 1,620 EA/wk approaching 2,000 EA line cap"
-                    />
-                  </motion.div>
-                )}
+                <motion.div
+                  key={persona}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="grid-4 mb-4"
+                >
+                  {uniLens.kpis.map((tile) => (
+                    <KpiTile key={tile.label} {...tile} />
+                  ))}
+                </motion.div>
               </AnimatePresence>
 
               {/* MAIN VISUALIZATION CARD */}
@@ -539,18 +526,10 @@ export default function Descriptive({ mode }) {
                 <div className="card__head mb-3">
                   <div>
                     <h2 className="card__title text-base font-bold text-ink m-0">
-                      {persona === 'ds'
-                        ? '104-Week Demand Series Decomposition & Anomaly Identification'
-                        : persona === 'analyst'
-                        ? 'Weekly Consumption Velocity with Flagged Operational Breaches'
-                        : 'Consumption Demand Trajectory & Plant Operating Envelope'}
+                      {uniLens.vizTitle}
                     </h2>
                     <p className="card__sub text-xs text-subtle mt-0.5">
-                      {persona === 'ds'
-                        ? 'Raw time-series exhibiting OLS linear drift (+30.82 EA/wk, +2.40%/wk of baseline) with distinct statistical anomaly (>3σ)'
-                        : persona === 'analyst'
-                        ? 'Two distinct operational outliers surfaced: statistical demand shock vs plant policy capacity breach'
-                        : 'Strong expansion trajectory with capacity ceiling alert at Plant 1 assembly line ($157.30K/wk threshold)'}
+                      {uniLens.vizSub}
                     </p>
                   </div>
                 </div>
@@ -675,9 +654,7 @@ export default function Descriptive({ mode }) {
       {tab === 'bi' && (
         <div>
           <Insight label="Driver relationships">
-            Longer supplier lead times go with more stock-outs (<span className="metric">r = 0.74</span>), and finished-goods
-            demand is the strongest single link to stock. Three drivers clear the bar for the Multivariate model; price
-            barely matters for this must-buy material.
+            {biLens.headline}
           </Insight>
           <DriverHeatmap />
           <div className="mb-4" />
@@ -775,7 +752,7 @@ export default function Descriptive({ mode }) {
                 <div className="card">
                   <h2 className="card__title text-base font-bold text-ink mb-3">Relationship Intelligence</h2>
                   <Insight label="Correlation vs Causation Standard">
-                    Statistical analysis establishes a <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> between supplier lead time and stockout frequency across 142 Class A materials. While this empirical relationship is highly significant, correlation does not prove direct isolated causality — delivery transit variance (σ_LT), right-skewed shipping tails, and single-sourcing are key contributing operational drivers.
+                    {biLens.relationship} While this empirical relationship is highly significant, correlation does not prove direct isolated causality — delivery transit variance (σ_LT), right-skewed shipping tails, and single-sourcing are key contributing operational drivers.
                   </Insight>
 
                   <WhyDisclosure

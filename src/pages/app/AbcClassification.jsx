@@ -264,7 +264,7 @@ const ENTERPRISE_PHYSICAL_ON_HAND_VALUE = 13710000.0;
 
 export default function AbcClassification() {
   const navigate = useNavigate();
-  const { legacyPersona: persona, selectedMaterial } = usePlatform();
+  const { persona, selectedMaterial } = usePlatform();
   const shouldReduceMotion = useReducedMotion();
 
   const matKey = selectedMaterial?.id || 'MAT-1082';
@@ -274,6 +274,13 @@ export default function AbcClassification() {
     val.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   const formatCurrency = (val, decimals = 2) =>
     `$${val.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+
+  const trackedMaterials = Object.values(MATERIAL_INTELLIGENCE);
+  const criticalMaterials = trackedMaterials.filter((m) => m.criticality.startsWith('Critical'));
+  const classAMaterials = trackedMaterials.filter((m) => m.abcClass === 'A');
+  const classACVMin = Math.min(...classAMaterials.map((m) => m.demandCV));
+  const classACVMax = Math.max(...classAMaterials.map((m) => m.demandCV));
+  const constrainedSourceCount = trackedMaterials.filter((m) => /Sole|Allocated|Dual/.test(m.supplier)).length;
 
   const enterpriseValueShare = (mat.annualConsumptionValue / ENTERPRISE_TOTAL_CONSUMPTION_VALUE) * 100;
   const physicalStockShare = (mat.onHandValue / ENTERPRISE_PHYSICAL_ON_HAND_VALUE) * 100;
@@ -349,13 +356,19 @@ export default function AbcClassification() {
               Empirical distribution: Class A boundary at 78.30% ($34.28M), Class B at 93.60% ($40.99M), and Class C tail at 100.00% ($43.86M).
             </p>
           </div>
-          {persona === 'ds' && (
-            <Badge tone="neutral" className="self-start sm:self-auto">Gini Index 0.81 · Empirical Cutoffs (Log-Value)</Badge>
+          {persona === 'supervisor' && (
+            <Badge tone="accent" className="self-start sm:self-auto">{criticalMaterials.length} of {trackedMaterials.length} tracked materials are Critical</Badge>
           )}
-          {persona === 'analyst' && (
-            <Badge tone="accent" className="self-start sm:self-auto">142 Class A SKUs in Priority Queue</Badge>
+          {persona === 'warehouse' && (
+            <Badge tone="neutral" className="self-start sm:self-auto">980 Class C SKUs, 6.40% of value</Badge>
           )}
-          {persona === 'exec' && (
+          {persona === 'planner' && (
+            <Badge tone="neutral" className="self-start sm:self-auto">CV spread {formatNum(classACVMin)}–{formatNum(classACVMax)} inside Class A</Badge>
+          )}
+          {persona === 'procurement' && (
+            <Badge tone="accent" className="self-start sm:self-auto">{constrainedSourceCount} of {trackedMaterials.length} tracked materials sole/allocated/dual-sourced</Badge>
+          )}
+          {persona === 'finance' && (
             <Badge tone="neutral" className="self-start sm:self-auto">78.30% Value Concentrated in 10.00% of SKUs</Badge>
           )}
         </div>
@@ -371,18 +384,28 @@ export default function AbcClassification() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {persona === 'ds' && (
-            <Insight label="Data Scientist Lens · Methodological & Distribution Intelligence">
-              The catalog exhibits a steep Pareto concentration (Gini coefficient <span className="font-mono font-bold text-ink">0.81</span>), where 10.00% of materials drive 78.30% of annual consumption value. Supplementary analytical clustering (e.g. k-means on log-consumption) and multi-dimensional risk overlays (demand CV, lead-time latency, downstream product fan-out) enrich the operational profile without distorting the primary economic ranking basis: <span className="font-mono font-bold text-ink">Annual Consumption Value = Annual Demand × Unit Cost</span>.
+          {persona === 'supervisor' && (
+            <Insight label="Plant Supervisor Lens · Class A Materials at Stockout Risk">
+              2 of the 4 tracked Class A materials — <span className="font-mono font-bold text-ink">MAT-1082</span> and <span className="font-mono font-bold text-ink">MAT-4120</span> — are flagged Critical: a stockout on either stops a downstream line. MAT-1082 feeds 14 finished-good lines on a 60-day sole-source lead time; MAT-4120 feeds 19 controller SKUs on a 60-day allocated-supply lead time. Both get the weekly Class A review cadence, but line-stoppage risk — not just $ value — is what should set the review priority.
             </Insight>
           )}
-          {persona === 'analyst' && (
-            <Insight label="Plant Operations Lens · Control Policy & Review Priority">
-              The top 142 Class A materials ($34.28M annual consumption value) require strict weekly inventory surveillance and tightest lot-size governance. Review cadences and cycle-count accuracy targets scale by segment: <span className="font-mono font-bold text-ink">Class A (99.00% accuracy, weekly)</span> → <span className="font-mono font-bold text-ink">Class B (95.00% accuracy, monthly)</span> → <span className="font-mono font-bold text-ink">Class C (90.00% accuracy, quarterly)</span>. High-consumption Class A items transition directly into algorithmic EOQ calibration.
+          {persona === 'warehouse' && (
+            <Insight label="Warehouse Manager Lens · Where Physical Stock Sits Across Classes">
+              Class C holds 980 SKUs (69.00% of the catalog) for just 6.40% of value ($2.87M) — a lot of shelf space and pick locations for little economic weight. High-Temp Sealant Paste (MAT-5501) is a Class C consumable with shelf-life sensitivity, so it's a candidate for the quarterly two-bin review rather than active tracking. Class A's 142 SKUs, by contrast, carry $34.28M of value in a tight physical footprint.
             </Insight>
           )}
-          {persona === 'exec' && (
-            <Insight label="Finance Lens · Economic Concentration & Risk Governance">
+          {persona === 'planner' && (
+            <Insight label="Materials Planner Lens · Demand Stability Inside Class A">
+              Demand stability varies widely inside Class A: MAT-1082 has a steady CV of {formatNum(0.12)}, but MAT-4120 runs at CV {formatNum(0.28)} — elevated volatility on the same 60-day lead time. Materials in Class A with unstable demand need closer alignment to the production plan than their tier alone suggests.
+            </Insight>
+          )}
+          {persona === 'procurement' && (
+            <Insight label="Procurement Officer Lens · Sourcing Risk Concentrated in Class A">
+              {constrainedSourceCount} of the {trackedMaterials.length} tracked materials come from a Sole, Allocated or limited-vendor source: MAT-1082 (Sole Source), MAT-4120 (Allocated Supply), MAT-2041 (Dual Sourced). Only MAT-5501 has a genuine multi-vendor fallback. Because Class A materials get the tightest governance, any delay on a sole or allocated source there has no buffer to absorb it.
+            </Insight>
+          )}
+          {persona === 'finance' && (
+            <Insight label="Finance Controller Lens · Economic Concentration & Risk Governance">
               78.30% of annual raw-material consumption value is concentrated in 10.00% of SKUs (142 materials out of 1,420 catalog SKUs totaling <span className="font-mono font-bold text-ink">$34.28M</span>). This high economic concentration justifies dedicated executive supplier governance, disciplined review cadences, and prioritized working-capital control to protect enterprise manufacturing throughput across all plants.
             </Insight>
           )}
@@ -509,10 +532,14 @@ export default function AbcClassification() {
             `Operational risk dimensions: ${mat.leadTimeDays}-day supplier lead time from ${mat.supplier} combined with demand CV of ${formatNum(mat.demandCV)} and ${mat.criticality.toLowerCase()}.`,
           ]}
           meaning={[
-            persona === 'ds'
-              ? 'Pareto consumption value establishes the mathematical ABC tier; product fan-out and demand variability represent supplementary risk dimensions that elevate replenishment sensitivity.'
-              : persona === 'analyst'
-              ? `A stockout on ${mat.id} cascades across ${mat.downstreamProductsCount} downstream production lines simultaneously, magnifying line-stoppage costs beyond the component unit purchase price.`
+            persona === 'supervisor'
+              ? `A stockout on ${mat.id} cascades across ${mat.downstreamProductsCount} downstream production lines simultaneously — line continuity, not just $ value, is why it gets the weekly Class ${mat.abcClass} review cadence.`
+              : persona === 'warehouse'
+              ? `${mat.id}'s classification sets how much physical review and shelf discipline it gets: Class ${mat.abcClass} means ${mat.abcClass === 'A' ? 'weekly cycle counts and tight shelf discipline' : 'the lighter, largely automated two-bin rhythm'}.`
+              : persona === 'planner'
+              ? `${mat.id}'s demand CV of ${formatNum(mat.demandCV)} combined with a ${mat.leadTimeDays}-day lead time is what should size its planning buffer — its $-value tier alone understates that risk.`
+              : persona === 'procurement'
+              ? `${mat.supplier} supplies ${mat.id} — that sourcing constraint, not just consumption value, is why Class ${mat.abcClass} materials like this one get the tightest governance and least room to absorb a delay.`
               : `Material ${mat.id} accounts for ${formatCurrency(mat.annualConsumptionValue)} of annual raw-material consumption value (${mat.abcClass === 'A' ? 'within the $34.28M Class A portfolio' : 'within the enterprise raw-material portfolio'}), directly feeding key downstream product lines where supplier latency and availability require executive governance.`,
             'Downstream product demand streams act as derived demand drivers—they explain aggregate consumption volume while the raw material remains the single inventory/procurement object.',
           ]}

@@ -52,9 +52,11 @@ const MATERIAL_LIFECYCLE_PROFILES = {
       { dimension: 'Shelf Life & Degradation', observed: 'Stable / Non-Perishable', benchmark: 'Alert trigger: < 30 Days shelf life', signal: 'Precision hydraulic component with zero chemical shelf life', tag: 'Source Data' },
       { dimension: 'Downstream Production Fan-Out', observed: '14 Active Finished Goods', benchmark: 'Single-line vulnerability if = 1', signal: 'Broad downstream demand across multiple lines', tag: 'Source Data' },
     ],
-    dsLens: 'Classification: Active Circulation. Deterministic rule-based classification derived from stable physical consumption (13.15 EA/day) and verified inventory coverage (70.8 days of supply), which sits within the configured 60–90 day policy target. Zero stagnation flags detected across trailing consumption records. Probabilistic transition modeling is not applied in this view.',
-    analystLens: 'Replenishment status: Healthy turnover. On-hand stock (930 EA / $558,000.00) is turning at 5.16 turns/year. Supplier lead time of 60 days is adequately protected without surplus accumulation. Recommended action: Keep standing EDI replenishment orders synchronized with downstream MPS schedules.',
-    execLens: 'Working Capital Assessment: $558,000.00 in active operating inventory representing 4.07% of enterprise physical stock ($13.71M). Zero capital is trapped in stagnant or at-risk aging bands. Annual carrying-cost estimate is $33,480.00/yr (using a 6.00% annual planning rate) to support $2.88M in annual production throughput.',
+    supervisorLens: 'Line-stoppage check: MAT-1082 has 70.8 days of cover against its 60-day lead time — comfortably ahead of the 14 downstream lines it feeds. No action needed to protect production.',
+    warehouseLens: 'Healthy turnover. On-hand stock (930 EA / $558,000.00) is turning at 5.16 turns/year with zero stagnant lots — keep it in the standard weekly cycle-count rotation; no transfer or liquidation action required.',
+    plannerLens: '930 EA (70.8 days) sits inside the 60–90 day policy band tied to the current plan. If downstream heavy-equipment build rates drop more than 30.00% without a matching PO adjustment, this material could drift toward Accumulation.',
+    procurementLens: 'Standing EDI orders with HydraTech Dynamics GmbH (248 EA every ~19 days) are matched to consumption — no expedite or PO change needed while coverage holds above the 60-day lead time.',
+    financeLens: 'Working Capital Assessment: $558,000.00 in active operating inventory representing 4.07% of enterprise physical stock ($13.71M). Zero capital is trapped in stagnant or at-risk aging bands. Annual carrying-cost estimate is $33,480.00/yr (using a 6.00% annual planning rate) to support $2.88M in annual production throughput.',
     whySummary: 'Why MAT-1082 is categorized in Active Circulation with zero lifecycle risk',
     whyDrivers: [
       'Physical annual demand of 4,800 EA/yr drives a consistent daily velocity of 13.15 EA/day across 14 finished equipment lines.',
@@ -105,9 +107,11 @@ const MATERIAL_LIFECYCLE_PROFILES = {
       { dimension: 'Shelf Life & Degradation', observed: 'Stable (JEDEC MSL-3 rated)', benchmark: 'Alert trigger: < 30 Days shelf life', signal: 'Standard semiconductor shelf life > 24 months', tag: 'Source Data' },
       { dimension: 'Downstream Production Fan-Out', observed: '19 Active Controller Lines', benchmark: 'Single-line vulnerability if = 1', signal: 'Line-stoppage exposure across 19 finished lines', tag: 'Source Data' },
     ],
-    dsLens: 'Classification: Active Circulation (Lean Depletion). Rule-based classification based on rapid turnover (26.09 turns/yr) and active daily consumption (65.75 EA/day). Current coverage is 14.0 days versus a 60-day supplier lead time, creating a 46-day replenishment exposure gap under the assumption of sustained consumption velocity. Stochastic stockout modeling is not applied.',
-    analystLens: 'Replenishment status: Expedited procurement required. Stock is not aging; it is turning rapidly (26.09 turns/year) relative to the 60-day supplier lead time from SiliconFoundry International. Action: Expedite open PO of 3,000 EA immediately and coordinate with Plant 3 production scheduler.',
-    execLens: 'Working Capital & Revenue Protection: On-hand carrying value is $72,358.00 (0.53% of catalog), presenting $0.00 in obsolescence exposure. However, stockout exposure threatens $1.82M in finished controller module deliveries across 19 vehicle lines.',
+    supervisorLens: 'MAT-4120 has only 14.0 days of cover against a 60-day lead time from SiliconFoundry — a 46-day gap. It feeds 19 downstream controller SKUs; this is the most urgent lifecycle flag on the page.',
+    warehouseLens: "Stock isn't aging — it's moving too fast to keep up. No physical stagnation to manage here; this is a procurement timing issue, not a warehouse one.",
+    plannerLens: "Consumption is running at 65.75 EA/day, turning stock 26.09 turns/yr — this isn't an ageing problem, it's a plan/replenishment mismatch. Confirm the Plant 3 build schedule before committing to the expedite quantity.",
+    procurementLens: "Expedite the open PO of 3,000 EA now — the 60-day allocated-supply lead time can't absorb the current 14-day gap. Coordinate delivery directly with the Plant 3 scheduler.",
+    financeLens: 'Working Capital & Revenue Protection: On-hand carrying value is $72,358.00 (0.53% of catalog), presenting $0.00 in obsolescence exposure. However, stockout exposure threatens $1.82M in finished controller module deliveries across 19 vehicle lines.',
     whySummary: 'Why MAT-4120 is in Active Circulation but requires urgent stockout intervention',
     whyDrivers: [
       'High consumption velocity of 65.75 EA/day (24,000 EA/yr across 19 controller lines).',
@@ -158,9 +162,11 @@ const MATERIAL_LIFECYCLE_PROFILES = {
       { dimension: 'Shelf Life & Degradation', observed: 'Electrochemical capacity degradation risk', benchmark: 'Cycle testing recommended after 180d idle', signal: 'Cell voltage fade risk if uncycled', tag: 'Source Data' },
       { dimension: 'Downstream Line Availability', observed: 'Plant 1 assembly line has open demand', benchmark: 'Inter-plant transfer feasibility', signal: 'Plant 1 battery module build can absorb 18,500 EA', tag: 'Derived Metric' },
     ],
-    dsLens: 'Classification: At Risk (Lot-level Stagnation). Rule-based classification triggered by inactivity threshold: Lot L-2241 has recorded 0 consumption events in 95 days, crossing the 90-day policy alert rule. Material-level aggregate consumption remains active (1,150.68 EA/day across 8 lines), confirming that risk is isolated to the stagnant sub-lot rather than general catalog obsolescence.',
-    analystLens: 'Operational diagnosis: Sub-batch stagnation. Total stock at Plant 2 is 142,000 EA (123.4 days of supply). While bulk stock moves, Lot L-2241 (18,500 EA / $95,090.00) was isolated following cell-matching specification updates. Action: Initiate inter-plant stock transfer of 18,500 EA to Plant 1 assembly within the 85-day prevention window.',
-    execLens: 'Working Capital & Risk Exposure: Total on-hand carrying value is $729,880.00. $95,090.00 (13.03%) is concentrated in an aging sub-lot at risk of potential write-down. Executing the inter-plant transfer creates an opportunity to preserve up to $95,090.00 in working capital by matching stock to active Plant 1 demand before degradation.',
+    supervisorLens: 'Bulk supply for MAT-2041 is healthy — 142,000 EA covers 123.4 days across all 8 battery-pack lines. Only one isolated sub-lot (L-2241, 18,500 EA) is stagnant; it does not threaten production, but should be cleared before it ages further.',
+    warehouseLens: 'Operational diagnosis: Sub-batch stagnation. Total stock at Plant 2 is 142,000 EA (123.4 days of supply). While bulk stock moves, Lot L-2241 (18,500 EA / $95,090.00) was isolated following cell-matching specification updates. Action: Initiate inter-plant stock transfer of 18,500 EA to Plant 1 assembly within the 85-day prevention window.',
+    plannerLens: 'Lot L-2241 went stagnant after a cell-matching specification change bypassed it during a line reconfiguration — a plan/spec change, not a demand drop. Confirm future spec changes route existing lots back into consumption instead of stranding them.',
+    procurementLens: 'No new PO is needed against MAT-2041 while Lot L-2241 (18,500 EA) is pending transfer into Plant 1 assembly — redirecting existing stock covers that demand instead.',
+    financeLens: 'Working Capital & Risk Exposure: Total on-hand carrying value is $729,880.00. $95,090.00 (13.03%) is concentrated in an aging sub-lot at risk of potential write-down. Executing the inter-plant transfer creates an opportunity to preserve up to $95,090.00 in working capital by matching stock to active Plant 1 demand before degradation.',
     whySummary: 'Why MAT-2041 is classified At Risk and how $95,090.00 can be safeguarded',
     whyDrivers: [
       'Plant 2 total inventory of 142,000 EA ($729,880.00) represents 123.4 days of supply against annual demand of 420,000 EA/yr.',
@@ -211,9 +217,11 @@ const MATERIAL_LIFECYCLE_PROFILES = {
       { dimension: 'Plant 2 Consumption Velocity', observed: '78.00 KG/day (Heavy engine assembly)', benchmark: 'Can absorb 1,400 KG in ~18 days', signal: 'RECOVERY PATH: High-throughput consumption available', tag: 'Derived Metric' },
       { dimension: 'Salvage Recovery Opportunity', observed: 'Up to $57,600.00 potential recovery', benchmark: 'Zero salvage if discarded post-expiry', signal: 'Capital preservation opportunity if transferred within 7 days', tag: 'Derived Metric' },
     ],
-    dsLens: 'Classification: Liquidation (Shelf-Life Threshold Breach). Classification is rule-based under the policy rule: remaining shelf life < 30 days and stagnation duration = 165 days. Based on deterministic rate comparison, Plant 2 consumption (78.00 KG/day) could absorb the 1,400 KG batch in approximately 18 operating days, within the 28-day remaining shelf-life window. Probabilistic hazard modeling is not applied.',
-    analystLens: 'Operational diagnosis: Liquidation triage. 1,400 KG ($57,600.00) of sealant paste has been idle at Plant 1 for 165 days following a joint design update. Estimated usable shelf life is approximately 28 days. Action: Issue inter-plant shipping request to transfer 1,400 KG to Plant 2 Engine Hub, which consumes ~78 KG/day and is estimated to absorb the lot in ~18 operating days, subject to transfer lead times and quality verification.',
-    execLens: 'Working Capital Recovery: $57,600.00 total on-hand carrying value sits in liquidation stage with an estimated 28-day expiration horizon. Inter-plant transfer represents the primary mitigation to potentially recover up to $57,600.00 in exposed inventory value and mitigate potential chemical disposal costs, subject to operational feasibility.',
+    supervisorLens: "This is an isolated Plant 1 batch, not a line-stoppage risk — Plant 1's active sealant supply is unaffected. The only urgency is clearing this specific lot before it expires.",
+    warehouseLens: 'Operational diagnosis: Liquidation triage. 1,400 KG ($57,600.00) of sealant paste has been idle at Plant 1 for 165 days following a joint design update. Estimated usable shelf life is approximately 28 days. Action: Issue inter-plant shipping request to transfer 1,400 KG to Plant 2 Engine Hub, which consumes ~78 KG/day and is estimated to absorb the lot in ~18 operating days, subject to transfer lead times and quality verification.',
+    plannerLens: 'This batch went idle after a joint design update cut local Plant 1 consumption to zero — a design/plan change, not a demand swing. Flag future design changes so affected lots get redirected before they age out.',
+    procurementLens: "Don't place a new sealant order for Plant 1 while this transfer is pending — Plant 2's ~78 KG/day consumption should absorb the 1,400 KG lot within the shelf-life window.",
+    financeLens: 'Working Capital Recovery: $57,600.00 total on-hand carrying value sits in liquidation stage with an estimated 28-day expiration horizon. Inter-plant transfer represents the primary mitigation to potentially recover up to $57,600.00 in exposed inventory value and mitigate potential chemical disposal costs, subject to operational feasibility.',
     whySummary: 'Why MAT-5501 is in Liquidation and how $57,600.00 salvage value can be targeted',
     whyDrivers: [
       'Plant 1 inventory of 1,400 KG ($57,600.00 carrying value at $41.14/KG) has sat idle for 165 days.',
@@ -295,7 +303,7 @@ const PORTFOLIO_INTERVENTION_QUEUE = [
 
 export default function RmlcLifecycle() {
   const navigate = useNavigate();
-  const { legacyPersona: persona, selectedMaterial } = usePlatform();
+  const { persona, selectedMaterial } = usePlatform();
   const shouldReduceMotion = useReducedMotion();
 
   const materialId = selectedMaterial?.id || 'MAT-1082';
@@ -347,9 +355,11 @@ export default function RmlcLifecycle() {
       { dimension: 'Days of Supply (DOS)', observed: `${daysOfSupply.toFixed(1)} Days`, benchmark: 'Policy Target: 60–90 Days', signal: 'Catalog turnover rate', tag: 'Derived Metric' },
       { dimension: 'On-Hand Inventory Value', observed: `$${onHandValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, benchmark: 'Carrying stock', signal: 'Active physical value', tag: 'Source Data' },
     ],
-    dsLens: `Rule-based lifecycle classification derived from point-process velocity (${dailyDemand.toFixed(2)} ${uom}/day) and Days of Supply (DOS = ${daysOfSupply.toFixed(1)}d).`,
-    analystLens: `Replenishment governance: ${daysOfSupply.toFixed(1)} days of supply on-hand with annual turnover rate of ${annualTurns.toFixed(2)} turns/yr.`,
-    execLens: `Working Capital Assessment: $${onHandValue.toLocaleString(undefined, { minimumFractionDigits: 2 })} on-hand inventory value.`,
+    supervisorLens: `Coverage is ${daysOfSupply.toFixed(1)} days against a ${forecastInput.leadTimeDays || 30}-day lead time — ${daysOfSupply > (forecastInput.leadTimeDays || 30) ? 'production has a buffer' : 'this is tight enough to watch closely'}.`,
+    warehouseLens: `On-hand stock of ${onHandQty.toLocaleString()} ${uom} is turning at ${annualTurns.toFixed(2)} turns/yr with no flagged stagnant lots.`,
+    plannerLens: `Demand of ${dailyDemand.toFixed(2)} ${uom}/day gives ${daysOfSupply.toFixed(1)} days of cover — check this against the confirmed production plan.`,
+    procurementLens: `Replenishment governance: ${daysOfSupply.toFixed(1)} days of supply on-hand with annual turnover rate of ${annualTurns.toFixed(2)} turns/yr.`,
+    financeLens: `Working Capital Assessment: $${onHandValue.toLocaleString(undefined, { minimumFractionDigits: 2 })} on-hand inventory value.`,
     whySummary: `Why ${materialId} is evaluated at ${daysOfSupply.toFixed(1)} days of supply`,
     whyDrivers: [
       `Annual demand of ${demand.toLocaleString()} ${uom}/yr with daily velocity of ${dailyDemand.toFixed(2)} ${uom}/day.`,
@@ -666,19 +676,29 @@ export default function RmlcLifecycle() {
         transition={{ duration: 0.2 }}
         className="mb-6"
       >
-        {persona === 'ds' && (
-          <Insight label="Data Scientist Lens · Lifecycle Classification Mechanics & Analytical Signals">
-            {profile.dsLens}
+        {persona === 'supervisor' && (
+          <Insight label="Plant Supervisor Lens · Line-Stoppage Relevance">
+            {profile.supervisorLens}
           </Insight>
         )}
-        {persona === 'analyst' && (
-          <Insight label="Plant Operations Lens · Procurement Interventions & Inventory Governance">
-            {profile.analystLens}
+        {persona === 'warehouse' && (
+          <Insight label="Warehouse Manager Lens · Physical Stock & Transfer Execution">
+            {profile.warehouseLens}
           </Insight>
         )}
-        {persona === 'exec' && (
-          <Insight label="Finance Lens · Working Capital Exposure & Obsolescence Risk Governance">
-            {profile.execLens}
+        {persona === 'planner' && (
+          <Insight label="Materials Planner Lens · Plan & Replenishment Alignment">
+            {profile.plannerLens}
+          </Insight>
+        )}
+        {persona === 'procurement' && (
+          <Insight label="Procurement Officer Lens · Sourcing & PO Cadence">
+            {profile.procurementLens}
+          </Insight>
+        )}
+        {persona === 'finance' && (
+          <Insight label="Finance Controller Lens · Working Capital Exposure & Obsolescence Risk Governance">
+            {profile.financeLens}
           </Insight>
         )}
       </motion.div>
