@@ -16,6 +16,7 @@ import Overview from './pages/app/Overview';
 import DataFoundation from './pages/app/DataFoundation';
 import Univariate from './pages/app/Univariate';
 import Bivariate from './pages/app/Bivariate';
+import Descriptive from './pages/app/Descriptive';
 import Liquidation from './pages/app/Liquidation';
 import Prevention from './pages/app/Prevention';
 import AbcClassification from './pages/app/AbcClassification';
@@ -47,17 +48,16 @@ export default function App() {
             <Route path="/app" element={<AppLayout />}>
               <Route index element={<Overview />} />
               <Route path="data-foundation" element={<DataFoundation />} />
+              <Route path="descriptive" element={<Descriptive />} />
               <Route path="univariate" element={<Univariate />} />
               <Route path="bivariate" element={<Bivariate />} />
-              <Route path="liquidation" element={<Liquidation />} />
-              <Route path="prevention" element={<Prevention />} />
-              {/* legacy path from before the Univariate / Bivariate split */}
-              <Route path="descriptive" element={<Navigate to="/app/univariate" replace />} />
               <Route path="abc" element={<AbcClassification />} />
               <Route path="eoq" element={<EoqCalibration />} />
               <Route path="rmlc" element={<RmlcLifecycle />} />
               <Route path="raw-materials" element={<RawMaterialRequirements />} />
               <Route path="what-if" element={<WhatIf />} />
+              <Route path="liquidation" element={<Liquidation />} />
+              <Route path="prevention" element={<Prevention />} />
               <Route path="optimization" element={<Optimization />} />
               <Route path="decisions" element={<DecisionIntelligence />} />
             </Route>

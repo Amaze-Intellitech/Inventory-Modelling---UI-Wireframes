@@ -283,6 +283,7 @@ export function EoqCurveChart({
   orderingCost = 230,
   holdingCostPerUnit = 36,
   uom = 'EA',
+  currencySymbol = '₹',
 } = {}) {
   const W = 900, H = 290, ML = 72, MR = 30, MT = 24, MB = 40;
   const D = demand, S = orderingCost, Hc = holdingCostPerUnit;
@@ -317,8 +318,8 @@ export function EoqCurveChart({
         { label: 'Economic order quantity (Q*)', kind: 'diamond', color: 'var(--ink)' },
       ]}
       table={{
-        columns: [`Order quantity (${uom})`, 'Ordering cost ($/yr)', 'Holding cost ($/yr)', 'Total cost ($/yr)'],
-        rows: pts.filter((_, i) => i % 3 === 0).map((p) => [fmt2(p.q), `$${fmt2(p.ordering)}`, `$${fmt2(p.holding)}`, `$${fmt2(p.total)}`]),
+        columns: [`Order quantity (${uom})`, `Ordering cost (${currencySymbol}/yr)`, `Holding cost (${currencySymbol}/yr)`, `Total cost (${currencySymbol}/yr)`],
+        rows: pts.filter((_, i) => i % 3 === 0).map((p) => [fmt2(p.q), `${currencySymbol}${fmt2(p.ordering)}`, `${currencySymbol}${fmt2(p.holding)}`, `${currencySymbol}${fmt2(p.total)}`]),
       }}
     >
       <svg className="chart-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="EOQ total cost curve with ordering and holding cost components">
@@ -327,7 +328,7 @@ export function EoqCurveChart({
           return (
             <g key={f}>
               <line x1={ML} x2={W - MR} y1={y(v)} y2={y(v)} stroke="var(--border)" />
-              <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">${fmt2(v)}</text>
+              <text x={8} y={y(v) + 4} fontSize={12} fill="var(--subtle)">{currencySymbol}{fmt2(v)}</text>
             </g>
           );
         })}

@@ -48,36 +48,14 @@ export function Card({ children, style, className }) {
     </div>
   );
 }
-
-// Description behind an ⓘ button, so headings stay on one line and the content below starts higher.
-export function InfoTip({ label = 'More information', children, className }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          className={cn(
-            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-subtle transition-colors hover:bg-muted-fill hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary data-[state=open]:text-primary',
-            className
-          )}
-        >
-          <Info size={15} aria-hidden="true" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent>{children}</PopoverContent>
-    </Popover>
-  );
-}
-
 export function CardHead({ title, sub, right, className }) {
   return (
-    <div className={cn('card__head flex items-start justify-between gap-4 mb-3.5', className)}>
-      <div className="flex items-center gap-1.5 min-w-0">
-        <h2 className="card__title text-base font-semibold text-ink m-0 font-sans">{title}</h2>
-        {sub && <InfoTip label={`About ${typeof title === 'string' ? title : 'this section'}`}>{sub}</InfoTip>}
+    <div className={cn('card__head flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 mb-3.5', className)}>
+      <div>
+        <h2 className="card__title font-heading text-base font-bold tracking-tight text-ink m-0 mb-1">{title}</h2>
+        {sub && <p className="card__sub text-[13px] text-body-c m-0">{sub}</p>}
       </div>
-      {right && <div className="shrink-0">{right}</div>}
+      {right && <div className="shrink-0 self-start sm:self-auto">{right}</div>}
     </div>
   );
 }
@@ -103,7 +81,7 @@ export function KpiTile({ label, value, sub, delta, deltaTone, onClick, valueSty
   return (
     <motion.div
       className={cn(
-        'kpi bg-surface border border-border rounded-md p-3.5 sm:p-4 transition-all duration-150 relative overflow-hidden shadow-subtle',
+        'kpi bg-surface border border-border rounded-md p-3 sm:p-4 transition-all duration-150 relative overflow-hidden shadow-subtle',
         isClickable && 'cursor-pointer hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
         className
       )}
@@ -114,17 +92,17 @@ export function KpiTile({ label, value, sub, delta, deltaTone, onClick, valueSty
       whileHover={isClickable && !shouldReduceMotion ? { y: -2 } : {}}
       whileTap={isClickable && !shouldReduceMotion ? { scale: 0.99 } : {}}
     >
-      <span className="kpi__label text-xs text-subtle block mb-1.5 font-medium tracking-wide">
+      <span className="kpi__label text-xs text-subtle block mb-1 font-medium tracking-wide">
         {label}
       </span>
       <span
-        className="kpi__value text-2xl font-semibold text-ink block font-sans tabular-nums leading-tight tracking-tight"
+        className="kpi__value text-xl sm:text-2xl font-bold text-ink block tabular-nums leading-tight tracking-tight"
         style={valueStyle}
       >
         {value}
       </span>
       {delta && (
-        <span className={cn('kpi__delta text-xs mt-1.5 flex items-center gap-1 font-medium', deltaColorClass)}>
+        <span className={cn('kpi__delta text-xs mt-1.5 flex items-center gap-1 font-medium flex-wrap', deltaColorClass)}>
           {delta}
         </span>
       )}
@@ -134,43 +112,11 @@ export function KpiTile({ label, value, sub, delta, deltaTone, onClick, valueSty
 }
 
 // AI insight — the one treatment reserved for AI-generated commentary. Violet always pairs with the word "AI".
-// Collapsed by default: the body is clamped to two lines and a "Show more" toggle appears only when the text
-// actually overflows, so short insights display in full. Pass `defaultOpen` for a result the page is built around.
-export function Insight({ label, children, className, defaultOpen = false }) {
-  const mentionsAi = typeof label === 'string' && /(AI|Agent)/.test(label);
-  const [open, setOpen] = useState(defaultOpen);
-  const [overflows, setOverflows] = useState(false);
-  const bodyRef = useRef(null);
-
-  // Does the text need more than two lines? Compare its natural height with two line-heights.
-  useLayoutEffect(() => {
-    const el = bodyRef.current;
-    if (!el) return undefined;
-    let live = true;
-    const measure = () => {
-      if (!live) return;
-      const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
-      setOverflows(el.scrollHeight > lineHeight * 2 + 1);
-    };
-    measure();
-    // web fonts load lazily and can change how the text wraps without changing the element's size
-    const fonts = document.fonts;
-    fonts?.addEventListener?.('loadingdone', measure);
-    fonts?.ready?.then(measure);
-    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
-    ro?.observe(el);
-    return () => {
-      live = false;
-      fonts?.removeEventListener?.('loadingdone', measure);
-      ro?.disconnect();
-    };
-  }, [children]);
-
-  const canToggle = overflows;
-
+export function Insight({ label, children, className }) {
+  const mentionsAi = typeof label === 'string' && / (AI|Agent) /.test(label);
   return (
-    <div className={cn('insight rounded-md px-3.5 py-2.5 mb-3 border border-border border-l-[3px] border-l-ai bg-ai-bg', className)}>
-      <div className="insight__label text-xs font-semibold text-ai-tx uppercase tracking-[0.08em] mb-1 flex items-center gap-1.5">
+    <div className={cn('insight rounded-md p-3 sm:p-3.5 mb-3 border border-border border-l-[3px] border-l-ai bg-ai-bg', className)}>
+      <div className="insight__label text-xs font-semibold text-ai-tx uppercase tracking-[0.08em] mb-1.5 flex items-center gap-1.5">
         <Sparkles size={12} aria-hidden="true" />
         <span className="min-w-0 truncate">{mentionsAi ? label : label ? `AI insight · ${label}` : 'AI insight'}</span>
         {canToggle && (
@@ -261,7 +207,7 @@ export function DrillDown({ title = 'Drill into detail', hint, children, default
       <Accordion key={open ? 'open' : 'closed'} type="single" collapsible defaultValue={open ? 'detail' : undefined} className="w-full">
         <AccordionItem value="detail" className="border-none">
           <AccordionTrigger className="px-4 py-2.5 text-[13px] font-semibold text-ink hover:no-underline">
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-2 flex-wrap">
               {title}
               {hint && <span className="text-xs font-normal text-subtle">{hint}</span>}
             </span>
@@ -284,7 +230,7 @@ export function SectionTitle({ children, className }) {
 // `onStepClick(stepNumber)` makes the steps already completed clickable, so the user can go back to change them.
 export function Stepper({ steps, current, className, onStepClick }) {
   return (
-    <div className={cn('stepper flex items-center mb-7 w-full', className)}>
+    <div className={cn('stepper flex items-center mb-5 sm:mb-7 w-full', className)}>
       {steps.map((label, i) => {
         const stepNum = i + 1;
         const isDone = stepNum < current;
@@ -292,7 +238,11 @@ export function Stepper({ steps, current, className, onStepClick }) {
         return (
           <React.Fragment key={label}>
             <div
-              className={cn('stepper__item flex items-center gap-2 flex-1', isDone && 'done', isCurrent && 'current')}
+              className={cn(
+                'stepper__item flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0',
+                isDone && 'done',
+                isCurrent && 'current'
+              )}
               {...(isDone && onStepClick
                 ? { role: 'button', tabIndex: 0, 'aria-label': `Go back to ${label}`, onClick: () => onStepClick(stepNum),
                     onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStepClick(stepNum); } } }
@@ -300,7 +250,7 @@ export function Stepper({ steps, current, className, onStepClick }) {
             >
               <span
                 className={cn(
-                  'stepper__num w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors',
+                  'stepper__num w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold shrink-0 transition-colors',
                   isDone && 'bg-success border border-success text-white',
                   isCurrent && 'bg-primary-solid border border-primary text-white shadow-sm',
                   !isDone && !isCurrent && 'bg-muted-fill border border-border-strong text-subtle'
@@ -310,15 +260,16 @@ export function Stepper({ steps, current, className, onStepClick }) {
               </span>
               <span
                 className={cn(
-                  'stepper__label text-xs font-semibold whitespace-nowrap',
-                  isCurrent ? 'text-ink font-bold' : isDone ? 'text-ink' : 'text-subtle'
+                  'stepper__label text-[11px] sm:text-xs font-semibold truncate',
+                  isCurrent ? 'text-ink font-bold' : isDone ? 'text-ink' : 'text-subtle',
+                  !isCurrent && 'hidden md:inline'
                 )}
               >
                 {label}
               </span>
             </div>
             {i < steps.length - 1 && (
-              <div className="stepper__line flex-1 h-[2px] bg-border mx-2.5 relative overflow-hidden">
+              <div className="stepper__line flex-1 h-[2px] bg-border mx-1.5 sm:mx-2.5 relative overflow-hidden shrink-0">
                 <div
                   className="h-full bg-success transition-all duration-300"
                   style={{ width: isDone ? '100%' : '0%' }}
@@ -337,7 +288,7 @@ export function Chip({ active, onClick, children, className }) {
     <button
       type="button"
       className={cn(
-        'chip border border-border-strong bg-surface rounded-full px-3.5 py-1.5 text-[13px] font-medium text-ink cursor-pointer transition-all duration-150 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+        'chip border border-border-strong bg-surface rounded-full px-3 sm:px-3.5 py-1 sm:py-1.5 text-xs sm:text-[13px] font-medium text-ink cursor-pointer transition-all duration-150 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface touch-manipulation',
         active && 'bg-deep text-white border-deep hover:bg-primary-solid hover:border-primary hover:text-white shadow-sm',
         className
       )}
@@ -351,16 +302,17 @@ export function Chip({ active, onClick, children, className }) {
 // Title + actions on one row. The description sits behind an ⓘ next to the title (a string or any JSX).
 export function ViewHead({ title, subtitle, actions, className }) {
   return (
-    <div className={cn('view-head flex items-center justify-between gap-6 mb-3', className)}>
-      <div className="flex min-w-0 items-center gap-1.5">
-        <h1 className="font-display text-2xl font-bold text-ink m-0 tracking-[-0.025em] leading-[1.15]">{title}</h1>
-        {subtitle && (
-          <InfoTip label={`About ${typeof title === 'string' ? title : 'this page'}`} className="mt-0.5">
-            {subtitle}
-          </InfoTip>
+    <div className={cn('view-head flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-6 mb-5', className)}>
+      <div className="max-w-3xl">
+        <h1 className="font-heading text-xl sm:text-2xl font-bold text-ink m-0 mb-1 sm:mb-1.5 tracking-tight leading-[1.15]">{title}</h1>
+        {typeof subtitle === 'string' ? (
+          <p className="text-xs sm:text-sm text-body-c m-0 leading-normal">{subtitle}</p>
+        ) : (
+          subtitle
         )}
       </div>
-      {actions && <div className="view-actions flex gap-2 shrink-0">{actions}</div>}
+      {actions && <div className="view-actions flex gap-2 flex-wrap sm:shrink-0 w-full sm:w-auto">{actions}</div>}
     </div>
   );
 }
+

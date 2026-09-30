@@ -13,7 +13,7 @@ const H_RATIO = [0.667, 0.694, 0.722, 0.722, 0.778, 0.833, 0.806, 0.861, 0.917, 
 const fmt = (v, d = 0) => v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 const pct = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v * 100).toFixed(1)}%`;
 
-export default function EoqTimeSeries({ demand, orderingCost, holdingCostPerUnit, uom = 'EA', material }) {
+export default function EoqTimeSeries({ demand, orderingCost, holdingCostPerUnit, uom = 'EA', material, currencySymbol = '₹' }) {
   const series = YEARS.map((year, i) => {
     const D = demand * D_RATIO[i];
     const S = orderingCost * S_RATIO[i];
@@ -39,8 +39,8 @@ export default function EoqTimeSeries({ demand, orderingCost, holdingCostPerUnit
 
   const drivers = [
     { label: 'Demand', value: fDemand, why: `Annual demand grew from ${fmt(first.D)} to ${fmt(last.D)} ${uom}, so larger orders now make sense.` },
-    { label: 'Ordering cost', value: fOrdering, why: `Each order now costs $${fmt(last.S)} to place, up from $${fmt(first.S)}.` },
-    { label: 'Carrying cost', value: fHolding, why: `Holding a unit costs $${fmt(last.H, 2)} a year, up from $${fmt(first.H, 2)}, which pushes towards smaller orders.` },
+    { label: 'Ordering cost', value: fOrdering, why: `Each order now costs ${currencySymbol}${fmt(last.S)} to place, up from ${currencySymbol}${fmt(first.S)}.` },
+    { label: 'Carrying cost', value: fHolding, why: `Holding a unit costs ${currencySymbol}${fmt(last.H, 2)} a year, up from ${currencySymbol}${fmt(first.H, 2)}, which pushes towards smaller orders.` },
   ];
 
   return (
@@ -63,8 +63,8 @@ export default function EoqTimeSeries({ demand, orderingCost, holdingCostPerUnit
             { label: `EOQ (${uom} per order)`, kind: 'line', color: 'var(--s1)' },
           ]}
           table={{
-            columns: ['Year', `Demand (${uom}/yr)`, 'Ordering cost ($)', 'Carrying cost ($/unit/yr)', `EOQ (${uom})`],
-            rows: series.map((s) => [String(s.year), fmt(s.D), fmt(s.S), fmt(s.H, 2), fmt(s.q, 1)]),
+            columns: ['Year', `Demand (${uom}/yr)`, `Ordering cost (${currencySymbol})`, `Carrying cost (${currencySymbol}/unit/yr)`, `EOQ (${uom})`],
+            rows: series.map((s) => [String(s.year), fmt(s.D), `${currencySymbol}${fmt(s.S)}`, `${currencySymbol}${fmt(s.H, 2)}`, fmt(s.q, 1)]),
           }}
         >
           <svg className="chart-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="EOQ by year">

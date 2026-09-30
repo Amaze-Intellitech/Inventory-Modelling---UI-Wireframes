@@ -1,7 +1,7 @@
 import React from 'react';
 import Descriptive from './Descriptive';
 
-// Pipeline Stage 1 — stock analysed on its own, before any driver is introduced.
+// Univariate Section inside Descriptive Analytics
 export default function Univariate() {
-  return <Descriptive mode="uni" />;
+  return <Descriptive defaultSection="univariate" />;
 }
