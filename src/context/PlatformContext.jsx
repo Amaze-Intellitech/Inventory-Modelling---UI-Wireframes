@@ -104,6 +104,13 @@ export function PlatformProvider({ children }) {
     }
   }
 
+  // The persona tabs also move the plant scope: plant-floor roles see their own plant, procurement and finance see all plants.
+  function choosePersona(key) {
+    setPersona(key);
+    const ctx = Object.values(ROLE_CONTEXT).find((c) => c.persona === key);
+    if (ctx) setScope(ctx.scope);
+  }
+
   function resolveFocus(id, status) {
     setResolvedFocus((prev) => ({ ...prev, [id]: status }));
   }
@@ -127,7 +134,7 @@ export function PlatformProvider({ children }) {
     scope,
     setScope,
     persona,
-    setPersona,
+    setPersona: choosePersona,
     // for stage pages not yet rewritten for the plant personas (see LEGACY_LENS)
     legacyPersona: LEGACY_LENS[persona] ?? 'analyst',
     department,
