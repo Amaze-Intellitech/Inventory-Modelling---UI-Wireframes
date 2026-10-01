@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ViewHead, KpiTile, WhyDisclosure, Badge, Insight } from '../../components/CommonUI';
+import { ViewHead, KpiTile, WhyDisclosure, Badge } from '../../components/CommonUI';
+import PersonaTop from '../../components/PersonaTop';
 import { usePlatform } from '../../context/PlatformContext';
 import ModelValidation, { MultivariateHeadline } from '../../components/ModelValidation';
 import { EOQ_INPUTS, FORECAST_INPUTS } from '../../data/mockData';
@@ -56,6 +57,8 @@ function DailyForecastChart({
   demandCV,
   leadTimeDays,
   uom = 'EA',
+  inspector,
+  marker,
 }) {
   const [hoveredPoint, setHoveredPoint] = React.useState(null);
 
@@ -168,18 +171,16 @@ function DailyForecastChart({
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-3.5 text-xs text-body-c font-mono">
-          <div>
-            <span className="text-subtle mr-1 font-sans">Daily Forecast:</span>
-            <strong className="text-primary font-semibold">{activePoint.dailyMean.toFixed(2)} {uom}/day</strong>
-          </div>
-          <div>
-            <span className="text-subtle mr-1 font-sans">Planning Envelope (Z=1.65):</span>
-            <span className="font-semibold text-ink ">{activePoint.lowerBand.toFixed(2)} – {activePoint.upperBand.toFixed(2)} {uom}/d</span>
-          </div>
-          <div>
-            <span className="text-subtle mr-1 font-sans">Cumulative Total:</span>
-            <strong className="text-ink ">{activePoint.cumulativeDemand.toFixed(1)} {uom}</strong>
-          </div>
+          {(inspector ? inspector(activePoint) : [
+            { label: 'Daily Forecast', value: `${activePoint.dailyMean.toFixed(2)} ${uom}/day`, strong: 'text-primary' },
+            { label: 'Planning Envelope (Z=1.65)', value: `${activePoint.lowerBand.toFixed(2)} – ${activePoint.upperBand.toFixed(2)} ${uom}/d` },
+            { label: 'Cumulative Total', value: `${activePoint.cumulativeDemand.toFixed(1)} ${uom}`, strong: 'text-ink' },
+          ]).map((f) => (
+            <div key={f.label}>
+              <span className="text-subtle mr-1 font-sans">{f.label}:</span>
+              <strong className={`${f.strong || 'text-ink'} font-semibold`}>{f.value}</strong>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -302,6 +303,17 @@ function DailyForecastChart({
             <rect x={xLeadTime - 56} y={MT + 4} width={112} height={18} rx={3} fill="#FEF3C7" stroke="var(--warning)" strokeWidth={1} />
             <text x={xLeadTime} y={MT + 16} fontSize={12} fill="#92400E" fontWeight={700} textAnchor="middle">
               ▲ Lead Time (+{leadTimeDays}d)
+            </text>
+          </g>
+        )}
+
+        {/* Persona decision marker (stock-out day, safety-stock breach, reorder point, order-by day) */}
+        {marker && marker.day >= 1 && marker.day <= horizonDays && (
+          <g>
+            <line x1={x(marker.day)} x2={x(marker.day)} y1={MT} y2={H - MB} stroke="var(--error)" strokeWidth={1.5} strokeDasharray="2 3" />
+            <rect x={Math.min(Math.max(x(marker.day) - marker.label.length * 3.9, ML), W - MR - marker.label.length * 7.8)} y={MT + 28} width={marker.label.length * 7.8} height={18} rx={3} fill="var(--error-bg)" stroke="var(--error)" strokeWidth={1} />
+            <text x={Math.min(Math.max(x(marker.day), ML + marker.label.length * 3.9), W - MR - marker.label.length * 3.9)} y={MT + 41} fontSize={12} fill="var(--error)" fontWeight={700} textAnchor="middle">
+              {marker.label}
             </text>
           </g>
         )}
@@ -750,7 +762,123 @@ export default function RawMaterialRequirements() {
       handoffBody: 'Use forecast, scenario, and optimization intelligence to govern working capital and protect supply continuity in Inventory Agent.',
     },
   };
+  // The four forecast tiles above the chart: same 84-day series, read in each persona's own terms.
+  const ltIdx = Math.min(forecastHorizonDays, Math.max(1, Math.round(leadTimeDays))) - 1;
+  const ltPoint = dailyForecastSeries[ltIdx];
+  const peakDaily = Math.max(...dailyForecastSeries.map((d) => d.dailyMean));
+  const trendTone = trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat';
+  const forecastTilesByPersona = {
+    supervisor: [
+      { label: '1. Next-Day Line Draw', value: `${formatNum(day1Forecast, 2)} ${uom}/day`, delta: 'Day 1 · Sep 9, 2026', deltaTone: 'flat', sub: 'What the lines consume tomorrow' },
+      { label: '2. Peak Daily Draw', value: `${formatNum(peakDaily, 2)} ${uom}/day`, delta: `Within the next 84 days`, deltaTone: trendTone, sub: 'Highest daily consumption the lines will ask for' },
+      { label: `3. Consumed Before Resupply`, value: `${formatNum(ltPoint.cumulativeDemand, 0)} ${uom}`, valueStyle: { color: ltPoint.cumulativeDemand > onHandQty ? 'var(--error)' : 'var(--success)' }, delta: ltPoint.cumulativeDemand > onHandQty ? `${formatNum(ltPoint.cumulativeDemand - onHandQty, 0)} ${uom} more than on-hand` : `On-hand covers it by ${formatNum(onHandQty - ltPoint.cumulativeDemand, 0)} ${uom}`, deltaTone: ltPoint.cumulativeDemand > onHandQty ? 'down' : 'up', sub: `Forecast demand over the ${leadTimeDays}-day lead time` },
+      { label: '4. Week 12 Draw Rate', value: `${formatNum(day84Forecast, 2)} ${uom}/day`, delta: `${formatNum(week12ProjectedMean, 1)} ${uom}/wk equivalent`, deltaTone: trendPerWeek >= 0 ? 'up' : 'down', sub: 'Day 84 · Dec 1, 2026' },
+    ],
+    warehouse: [
+      { label: '1. Average Daily Outflow', value: `${formatNum(avgDailyForecast, 2)} ${uom}/day`, delta: `${formatNum(avgDailyForecast * 7, 1)} ${uom}/wk`, deltaTone: 'flat', sub: 'Mean issues from stores across the 84 days' },
+      { label: '2. Week 12 Weekly Outflow', value: `${formatNum(week12ProjectedMean, 1)} ${uom}/wk`, delta: `${trendPerWeek >= 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk trend`, deltaTone: trendTone, sub: 'How much leaves the shelves in the final week' },
+      { label: '3. 12-Week Volume Out', value: `${formatNum(cumulativeHorizonDemand, 0)} ${uom}`, delta: `${formatNum(cumulativeHorizonDemand / Math.max(onHandQty, 1), 2)}× current on-hand`, deltaTone: 'flat', sub: 'Total forecast issues over 12 weeks' },
+      { label: '4. On-Hand After 12 Weeks if Nothing Arrives', value: `${formatNum(Math.max(onHandQty - cumulativeHorizonDemand, 0), 0)} ${uom}`, valueStyle: { color: onHandQty < cumulativeHorizonDemand ? 'var(--error)' : 'var(--ink)' }, delta: onHandQty < cumulativeHorizonDemand ? 'Runs out inside the horizon' : 'Still on shelf', deltaTone: onHandQty < cumulativeHorizonDemand ? 'down' : 'up', sub: 'Space this material still occupies at the end' },
+    ],
+    planner: [
+      { label: '1. Next-Day Forecast', value: `${formatNum(day1Forecast, 2)} ${uom}/day`, delta: 'Day 1 · Sep 9, 2026', deltaTone: 'up', sub: `Day 1 actual forecast rate (+${formatNum(trendMagnitudeDailyPct, 4)}%/d)` },
+      { label: '2. Average Daily Forecast', value: `${formatNum(avgDailyForecast, 2)} ${uom}/day`, delta: 'Arithmetic mean of all 84 points', deltaTone: 'flat', sub: 'Mean daily demand across the forecast horizon' },
+      { label: '3. Week 12 Endpoint', value: `${formatNum(day84Forecast, 2)} ${uom}/day`, delta: `${formatNum(week12ProjectedMean, 1)} ${uom}/wk equivalent`, deltaTone: trendPerWeek >= 0 ? 'up' : 'down', sub: 'Day 84 forecast rate at Dec 1, 2026 (Week 12)' },
+      { label: '4. 12-Week Forecast Total', value: `${formatNum(cumulativeHorizonDemand, 0)} ${uom}`, valueStyle: { color: 'var(--accent, var(--primary))' }, delta: `${formatNum(cumulativeHorizonDemand / avgWeekly, 1)} weeks of baseline demand`, deltaTone: 'up', sub: 'Exact cumulative demand summed across all 84 days' },
+    ],
+    procurement: [
+      { label: `1. Demand Inside the ${leadTimeDays}-Day Lead Time`, value: `${formatNum(ltPoint.cumulativeDemand, 0)} ${uom}`, delta: formatCurrency(ltPoint.cumulativeDemand * unitCost), deltaTone: 'flat', sub: 'Forecast consumption before an order placed today arrives' },
+      { label: '2. Upper Bound at Lead-Time End', value: `${formatNum(ltPoint.upperBand, 2)} ${uom}/day`, delta: `Z = 1.65 envelope`, deltaTone: 'flat', sub: `Daily rate could reach this by day ${leadTimeDays}` },
+      { label: '3. Next-Day Forecast', value: `${formatNum(day1Forecast, 2)} ${uom}/day`, delta: 'Day 1 · Sep 9, 2026', deltaTone: 'flat', sub: 'Current run-rate to order against' },
+      { label: '4. 12-Week Order Volume', value: `${formatNum(cumulativeHorizonDemand, 0)} ${uom}`, delta: `${formatNum(Math.max(cumulativeHorizonDemand - onHandQty, 0), 0)} ${uom} beyond on-hand`, deltaTone: cumulativeHorizonDemand > onHandQty ? 'down' : 'up', sub: 'Total to source across the horizon' },
+    ],
+    finance: [
+      { label: '1. Spend Rate Today', value: `${formatCurrency(day1Forecast * unitCost)}/day`, delta: 'Day 1 · Sep 9, 2026', deltaTone: 'flat', sub: `At ${formatCurrency(unitCost)}/${uom}` },
+      { label: '2. Average Daily Spend', value: `${formatCurrency(avgDailyForecast * unitCost)}/day`, delta: 'Mean of all 84 days', deltaTone: 'flat', sub: 'Consumption value moving through stock' },
+      { label: '3. Week 12 Weekly Spend', value: formatCurrency(week12ProjectedMean * unitCost, 0), delta: `${trendPerWeek >= 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk trend`, deltaTone: trendTone, sub: 'Final-week consumption value' },
+      { label: '4. Spend Upside at Week 12', value: formatCurrency(dailyForecastSeries[forecastHorizonDays - 1].upperBand * 7 * unitCost, 0), delta: 'Upper planning envelope (Z = 1.65)', deltaTone: 'flat', sub: 'Worst-case weekly spend if demand runs high' },
+    ],
+  };
+  const forecastTiles = forecastTilesByPersona[persona] || forecastTilesByPersona.planner;
+  // Daily forecast chart and schedule: same 84-day series, with each persona's decision point marked and read in its own units.
+  const crossDay = (threshold) => dailyForecastSeries.find((d) => d.cumulativeDemand >= threshold)?.day ?? null;
+  const stockoutDay = crossDay(onHandQty);
+  const safetyDay = crossDay(onHandQty - safetyStock);
+  const ropDay = crossDay(onHandQty - reorderPoint);
+  const orderByDay = stockoutDay ? stockoutDay - leadTimeDays : null;
+  const left = (p) => onHandQty - p.cumulativeDemand;
+  const cur0 = (v) => formatCurrency(v, 0);
+  const CHART_COPY = {
+    supervisor: { title: 'Daily Line Draw — Next 84 Days', sub: `Forecast daily consumption for ${selectedMaterial.id} against on-hand stock; the marker shows when cover runs out if no order arrives.`, marker: stockoutDay ? { day: stockoutDay, label: `✕ Cover runs out · Day ${stockoutDay}` } : null },
+    warehouse: { title: 'Daily Outflow & Shelf Stock — Next 84 Days', sub: `Forecast issues from stores for ${selectedMaterial.id}; the marker shows when stock falls below the safety-stock floor.`, marker: belowReorderPoint && safetyDay === null ? null : safetyDay ? { day: safetyDay, label: `▼ Below safety stock · Day ${safetyDay}` } : null },
+    planner: { title: 'Daily Demand vs Plan — Next 84 Days', sub: `Day-by-day multivariate demand for ${selectedMaterial.id}; the marker shows when on-hand stock reaches the reorder point.`, marker: belowReorderPoint ? { day: 1, label: '● Already below reorder point' } : ropDay ? { day: ropDay, label: `▼ Reorder point · Day ${ropDay}` } : null },
+    procurement: { title: 'Daily Demand & Order-By Date — Next 84 Days', sub: `Forecast demand for ${selectedMaterial.id}; the marker is the latest day to place an order and still beat the ${leadTimeDays}-day lead time.`, marker: stockoutDay ? (orderByDay >= 1 ? { day: orderByDay, label: `✎ Order by · Day ${orderByDay}` } : { day: 1, label: '✎ Order now' }) : null },
+    finance: { title: 'Daily Spend Outlook — Next 84 Days', sub: `Forecast consumption value for ${selectedMaterial.id} at ${formatCurrency(unitCost)}/${uom}; the shaded envelope is the high/low spend range.`, marker: null },
+  };
+  const chartCopy = CHART_COPY[persona] || CHART_COPY.planner;
+  const INSPECTORS = {
+    supervisor: (p) => [
+      { label: 'Daily Draw', value: `${p.dailyMean.toFixed(2)} ${uom}/day`, strong: 'text-primary' },
+      { label: 'Drawn So Far', value: `${p.cumulativeDemand.toFixed(1)} ${uom}` },
+      { label: 'Stock Left (no resupply)', value: left(p) >= 0 ? `${left(p).toFixed(1)} ${uom}` : `Short by ${Math.abs(left(p)).toFixed(1)} ${uom}`, strong: left(p) >= 0 ? 'text-success' : 'text-error' },
+    ],
+    warehouse: (p) => [
+      { label: 'Daily Outflow', value: `${p.dailyMean.toFixed(2)} ${uom}/day`, strong: 'text-primary' },
+      { label: 'Shelf Stock Left', value: `${Math.max(left(p), 0).toFixed(1)} ${uom}` },
+      { label: 'vs Safety Stock', value: `${left(p) - safetyStock >= 0 ? '+' : '−'}${Math.abs(left(p) - safetyStock).toFixed(1)} ${uom}`, strong: left(p) - safetyStock >= 0 ? 'text-success' : 'text-error' },
+    ],
+    planner: (p) => [
+      { label: 'Daily Forecast', value: `${p.dailyMean.toFixed(2)} ${uom}/day`, strong: 'text-primary' },
+      { label: 'Planning Envelope (Z=1.65)', value: `${p.lowerBand.toFixed(2)} – ${p.upperBand.toFixed(2)} ${uom}/d` },
+      { label: 'On-Hand vs Reorder Point', value: `${left(p) - reorderPoint >= 0 ? '+' : '−'}${Math.abs(left(p) - reorderPoint).toFixed(1)} ${uom}`, strong: left(p) - reorderPoint >= 0 ? 'text-success' : 'text-error' },
+    ],
+    procurement: (p) => [
+      { label: 'Daily Forecast', value: `${p.dailyMean.toFixed(2)} ${uom}/day`, strong: 'text-primary' },
+      { label: 'Cumulative Demand', value: `${p.cumulativeDemand.toFixed(1)} ${uom}` },
+      { label: 'Still to Source', value: `${Math.max(p.cumulativeDemand - onHandQty, 0).toFixed(1)} ${uom}`, strong: p.cumulativeDemand > onHandQty ? 'text-error' : 'text-success' },
+    ],
+    finance: (p) => [
+      { label: 'Daily Spend', value: `${formatCurrency(p.dailyMean * unitCost)}/day`, strong: 'text-primary' },
+      { label: 'Spend Range (Z=1.65)', value: `${cur0(p.lowerBand * unitCost)} – ${cur0(p.upperBand * unitCost)}/d` },
+      { label: 'Cumulative Spend', value: cur0(p.cumulativeDemand * unitCost) },
+    ],
+  };
+  const stockStatus = (p) => (left(p) >= 0 ? 'Covered' : 'Short');
+  const SCHEDULE_COLS = {
+    supervisor: [
+      { head: `Daily Draw (${uom}/d)`, cell: (p) => formatNum(p.dailyMean, 2), foot: `Avg: ${formatNum(avgDailyForecast, 2)}`, strong: true },
+      { head: `Drawn So Far (${uom})`, cell: (p) => formatNum(p.cumulativeDemand, 1), foot: `${formatNum(cumulativeHorizonDemand, 1)} ${uom}` },
+      { head: `Stock Left, No Resupply (${uom})`, cell: (p) => formatNum(Math.max(left(p), 0), 1), foot: '' },
+      { head: 'Cover', cell: stockStatus, foot: stockoutDay ? `Runs out Day ${stockoutDay}` : 'Covered', tone: (p) => (left(p) >= 0 ? 'text-success' : 'text-error') },
+    ],
+    warehouse: [
+      { head: `Daily Outflow (${uom}/d)`, cell: (p) => formatNum(p.dailyMean, 2), foot: `Avg: ${formatNum(avgDailyForecast, 2)}`, strong: true },
+      { head: `Outflow So Far (${uom})`, cell: (p) => formatNum(p.cumulativeDemand, 1), foot: `${formatNum(cumulativeHorizonDemand, 1)} ${uom}` },
+      { head: `Shelf Stock Left (${uom})`, cell: (p) => formatNum(Math.max(left(p), 0), 1), foot: '' },
+      { head: `vs Safety Stock (${uom})`, cell: (p) => `${left(p) - safetyStock >= 0 ? '+' : '−'}${formatNum(Math.abs(left(p) - safetyStock), 1)}`, foot: safetyDay ? `Below floor Day ${safetyDay}` : 'Above floor', tone: (p) => (left(p) - safetyStock >= 0 ? 'text-success' : 'text-error') },
+    ],
+    planner: [
+      { head: `Daily Forecast (${uom}/d)`, cell: (p) => formatNum(p.dailyMean, 2), foot: `Avg: ${formatNum(avgDailyForecast, 2)}`, strong: true },
+      { head: `Envelope Lower (${uom}/d)`, cell: (p) => formatNum(p.lowerBand, 2), foot: '', muted: true },
+      { head: `Envelope Upper (${uom}/d)`, cell: (p) => formatNum(p.upperBand, 2), foot: '', muted: true },
+      { head: `On-Hand vs ROP (${uom})`, cell: (p) => `${left(p) - reorderPoint >= 0 ? '+' : '−'}${formatNum(Math.abs(left(p) - reorderPoint), 1)}`, foot: belowReorderPoint ? 'Below ROP now' : ropDay ? `ROP Day ${ropDay}` : 'Above ROP', tone: (p) => (left(p) - reorderPoint >= 0 ? 'text-success' : 'text-error') },
+    ],
+    procurement: [
+      { head: `Daily Forecast (${uom}/d)`, cell: (p) => formatNum(p.dailyMean, 2), foot: `Avg: ${formatNum(avgDailyForecast, 2)}`, strong: true },
+      { head: `Cumulative Demand (${uom})`, cell: (p) => formatNum(p.cumulativeDemand, 1), foot: `${formatNum(cumulativeHorizonDemand, 1)} ${uom}` },
+      { head: `Still to Source (${uom})`, cell: (p) => formatNum(Math.max(p.cumulativeDemand - onHandQty, 0), 1), foot: `${formatNum(Math.max(cumulativeHorizonDemand - onHandQty, 0), 1)} ${uom}`, tone: (p) => (p.cumulativeDemand > onHandQty ? 'text-error' : 'text-body-c') },
+      { head: 'Order Window', cell: (p) => (orderByDay === null ? 'Not needed' : p.day < orderByDay ? 'Open' : p.day === orderByDay ? 'Order by today' : 'Late'), foot: orderByDay === null ? 'No order in horizon' : orderByDay >= 1 ? `Order by Day ${orderByDay}` : 'Order now', tone: (p) => (orderByDay !== null && p.day > orderByDay ? 'text-error' : 'text-body-c') },
+    ],
+    finance: [
+      { head: 'Daily Spend ($/d)', cell: (p) => formatNum(p.dailyMean * unitCost, 2), foot: `Avg: ${formatNum(avgDailyForecast * unitCost, 2)}`, strong: true },
+      { head: 'Spend Low ($/d)', cell: (p) => formatNum(p.lowerBand * unitCost, 2), foot: '', muted: true },
+      { head: 'Spend High ($/d)', cell: (p) => formatNum(p.upperBand * unitCost, 2), foot: '', muted: true },
+      { head: 'Cumulative Spend ($)', cell: (p) => formatNum(p.cumulativeDemand * unitCost, 0), foot: formatCurrency(cumulativeHorizonValue, 0), strong: true },
+    ],
+  };
+  const scheduleCols = SCHEDULE_COLS[persona] || SCHEDULE_COLS.planner;
   const lens = PERSONA_LENS[persona] || PERSONA_LENS.supervisor;
+  const personaTop = { [persona]: { label: lens.insightLabel, headline: lens.insightBody, kpis: lens.kpis } };
 
   return (
     <motion.section 
@@ -779,7 +907,9 @@ export default function RawMaterialRequirements() {
         }
       />
 
-      <MultivariateHeadline material={`${selectedMaterial.id} · ${name}`} />
+      <PersonaTop persona={persona} config={personaTop} />
+
+      <MultivariateHeadline material={`${selectedMaterial.id} · ${name}`} persona={persona} />
 
       {/* ==================================================================== */}
       {/* B. SHARED SELECTED RAW MATERIAL CONTEXT BLOCK                       */}
@@ -847,37 +977,20 @@ export default function RawMaterialRequirements() {
       {/* ==================================================================== */}
       {/* C. 84-DAY MULTIVARIATE FORECAST PRIMARY KPIS                        */}
       {/* ==================================================================== */}
-      <div className="grid-4" style={{ marginBottom: 14 }}>
-        <KpiTile
-          label="1. Next-Day Forecast"
-          value={`${formatNum(day1Forecast, 2)} ${uom}/day`}
-          delta="Day 1 · Sep 9, 2026"
-          deltaTone="up"
-          sub={`Day 1 actual forecast rate (+${formatNum(trendMagnitudeDailyPct, 4)}%/d)`}
-        />
-        <KpiTile
-          label="2. Average Daily Forecast"
-          value={`${formatNum(avgDailyForecast, 2)} ${uom}/day`}
-          delta="Arithmetic mean of all 84 points"
-          deltaTone="flat"
-          sub={`Mean daily demand across full 84-day forecast horizon`}
-        />
-        <KpiTile
-          label="3. Week 12 Endpoint"
-          value={`${formatNum(day84Forecast, 2)} ${uom}/day`}
-          delta={`${formatNum(week12ProjectedMean, 1)} ${uom}/wk equivalent`}
-          deltaTone={trendPerWeek >= 0 ? 'up' : 'down'}
-          sub={`Day 84 forecast rate at Dec 1, 2026 (Week 12)`}
-        />
-        <KpiTile
-          label="4. 12-Week Forecast Total"
-          value={`${formatNum(cumulativeHorizonDemand, 0)} ${uom}`}
-          valueStyle={{ color: 'var(--accent, var(--primary))' }}
-          delta={`SUM(all 84 daily points) · ${formatCurrency(cumulativeHorizonValue)}`}
-          deltaTone="up"
-          sub={`Exact cumulative demand summed across all 84 future days`}
-        />
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={persona}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="grid-4"
+          style={{ marginBottom: 14 }}
+        >
+          {forecastTiles.map((tile) => (
+            <KpiTile key={tile.label} {...tile} />
+          ))}
+        </motion.div>
+      </AnimatePresence>
 
       {/* ==================================================================== */}
       {/* D. DEDICATED VISIBLE DAILY FORECAST GRAPH SECTION (NEXT 84 DAYS)     */}
@@ -890,7 +1003,7 @@ export default function RawMaterialRequirements() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5 mb-1">
               <h2 className="card__title text-lg font-bold text-ink m-0">
-                Daily Forecast — Next 84 Days
+                {chartCopy.title}
               </h2>
               <Badge tone="accent">84-Day Time Series</Badge>
               <button
@@ -908,7 +1021,7 @@ export default function RawMaterialRequirements() {
               </button>
             </div>
             <p className="card__sub text-xs text-subtle m-0">
-              Day-by-day multivariate demand forecast for the selected raw material
+              {chartCopy.sub}
             </p>
           </div>
           <div className="chart-legend mt-0 gap-3.5 flex-wrap shrink-0 text-xs">
@@ -916,6 +1029,7 @@ export default function RawMaterialRequirements() {
             <span><span className="legend-dot" style={{ background: 'var(--primary)', height: 4, width: 14, borderRadius: 2 }} />Daily Forecast Trajectory (84 Days)</span>
             <span><span className="legend-dot" style={{ background: 'var(--border)', border: '1px dashed var(--primary)' }} />Planning Envelope (Z=1.65)</span>
             <span><span className="legend-dot" style={{ background: 'var(--warning)' }} />▲ Supplier Lead-Time Arrival (+{leadTimeDays}d)</span>
+            {chartCopy.marker && <span><span className="legend-dot" style={{ background: 'var(--error)' }} />{chartCopy.marker.label.split(' ·')[0]}</span>}
           </div>
         </div>
 
@@ -928,6 +1042,8 @@ export default function RawMaterialRequirements() {
             demandCV={demandCV}
             leadTimeDays={leadTimeDays}
             uom={uom}
+            inspector={INSPECTORS[persona]}
+            marker={chartCopy.marker}
           />
         </div>
 
@@ -987,10 +1103,9 @@ export default function RawMaterialRequirements() {
                     <TableHead className="whitespace-nowrap">Day of Week</TableHead>
                     <TableHead className="whitespace-nowrap">Calendar Date</TableHead>
                     <TableHead className="whitespace-nowrap">Week #</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">Daily Forecast ({uom}/d)</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">Envelope Lower ({uom}/d)</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">Envelope Upper ({uom}/d)</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">Cumulative Total ({uom})</TableHead>
+                    {scheduleCols.map((c) => (
+                      <TableHead key={c.head} className="text-right whitespace-nowrap">{c.head}</TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1018,32 +1133,23 @@ export default function RawMaterialRequirements() {
                       <TableCell className="whitespace-nowrap text-subtle text-xs">{p.dayOfWeek}</TableCell>
                       <TableCell className="whitespace-nowrap text-xs font-mono">{p.date}, 2026</TableCell>
                       <TableCell className="whitespace-nowrap text-xs font-mono">Wk {p.weekNum}</TableCell>
-                      <TableCell className={`text-right font-mono font-semibold text-xs ${p.day === 1 ? 'text-primary ' : p.day === 84 ? 'text-primary ' : 'text-ink '}`}>
-                        {formatNum(p.dailyMean, 2)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-subtle text-xs">
-                        {formatNum(p.lowerBand, 2)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-subtle text-xs">
-                        {formatNum(p.upperBand, 2)}
-                      </TableCell>
-                      <TableCell className={`text-right font-mono text-xs ${p.day % 7 === 0 || p.day === 84 ? 'font-bold text-ink ' : 'text-body-c '}`}>
-                        {formatNum(p.cumulativeDemand, 1)}
-                      </TableCell>
+                      {scheduleCols.map((c) => (
+                        <TableCell
+                          key={c.head}
+                          className={`text-right font-mono text-xs ${c.tone ? c.tone(p) : c.muted ? 'text-subtle' : c.strong ? 'font-semibold text-ink' : 'text-body-c'} ${p.day % 7 === 0 || p.day === 84 ? 'font-bold' : ''}`}
+                        >
+                          {c.cell(p)}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   ))}
                 </TableBody>
                 <TableFooter>
                   <TableRow className="bg-[color-mix(in_srgb,var(--muted-fill)_80%,transparent)] border-t-2 border-border-strong font-semibold text-xs">
                     <TableCell colSpan={4}>84-Day Totals (Verification)</TableCell>
-                    <TableCell className="text-right text-primary font-mono">
-                      Avg: {formatNum(avgDailyForecast, 2)}
-                    </TableCell>
-                    <TableCell />
-                    <TableCell />
-                    <TableCell className="text-right text-primary font-mono">
-                      {formatNum(cumulativeHorizonDemand, 1)} {uom}
-                    </TableCell>
+                    {scheduleCols.map((c) => (
+                      <TableCell key={c.head} className="text-right text-primary font-mono">{c.foot}</TableCell>
+                    ))}
                   </TableRow>
                 </TableFooter>
               </Table>
@@ -1058,20 +1164,6 @@ export default function RawMaterialRequirements() {
       {/* ==================================================================== */}
       {/* E. PERSONA-SPECIFIC SUMMARY KPIS & DIAGNOSTIC INTELLIGENCE          */}
       {/* ==================================================================== */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={persona}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="grid-4 mb-3.5"
-        >
-          {lens.kpis.map((tile) => (
-            <KpiTile key={tile.label} {...tile} />
-          ))}
-        </motion.div>
-      </AnimatePresence>
-
       {/* ==================================================================== */}
       {/* F. PERSONA-SPECIFIC DEEP-DIVE                                        */}
       {/* ==================================================================== */}
@@ -1126,17 +1218,11 @@ export default function RawMaterialRequirements() {
         renderOperationalGrid(lens.deepDive)
       )}
 
-      <ModelValidation modelR2={modelR2} rmse={rmse} avgWeekly={avgWeekly} />
+      <ModelValidation modelR2={modelR2} rmse={rmse} avgWeekly={avgWeekly} persona={persona} />
 
       {/* ==================================================================== */}
       {/* G. PERSONA-SPECIFIC STRATEGIC INTELLIGENCE LENSES                    */}
       {/* ==================================================================== */}
-      <div className="mb-4">
-        <Insight label={lens.insightLabel}>
-          {lens.insightBody}
-        </Insight>
-      </div>
-
       {/* ==================================================================== */}
       {/* H. PERSONA-SPECIFIC WHY DISCLOSURE                                   */}
       {/* ==================================================================== */}

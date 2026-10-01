@@ -6,6 +6,7 @@ import { ViewHead, KpiTile, Insight, Chip, WhyDisclosure, Badge } from '../../co
 import { Button } from '@/components/ui/button';
 import { usePlatform } from '../../context/PlatformContext';
 import { Slider } from '@/components/ui/slider';
+import PersonaTop from '../../components/PersonaTop';
 
 const LEVERS = [
   { key: 'demand', label: 'Finished-goods demand', min: -30, max: 40, ends: ['-30%', '+40%'], fmt: (v) => `${v > 0 ? '+' : ''}${v.toFixed(2)}%` },
@@ -15,16 +16,80 @@ const LEVERS = [
   { key: 'cap', label: 'Supplier capacity', min: -40, max: 20, ends: ['-40%', '+20%'], fmt: (v) => `${v > 0 ? '+' : ''}${v.toFixed(2)}%` },
 ];
 
-const PRESETS = [
-  { label: 'Baseline', demand: 0, lead: 0, hold: 0 },
-  { label: 'Demand +20.00%', demand: 20, lead: 0, hold: 0 },
-  { label: 'Lead Time +15.00 days', demand: 0, lead: 15, hold: 0 },
-  { label: 'Holding Cost +15.00%', demand: 0, lead: 0, hold: 15 },
-  { label: 'Supplier Disruption', demand: -15, lead: 10, hold: 0 },
-];
+const PERSONA_PRESETS = {
+  supervisor: [
+    { label: 'Baseline' },
+    { label: 'Demand +20.00%', demand: 20 },
+    { label: 'Lead Time +15.00 days', lead: 15 },
+    { label: 'Supplier Capacity −30%', cap: -30 },
+    { label: 'Supplier Disruption', lead: 10, cap: -25 },
+  ],
+  warehouse: [
+    { label: 'Baseline' },
+    { label: 'Demand −20.00% (slow-down)', demand: -20 },
+    { label: 'Demand +20.00%', demand: 20 },
+    { label: 'Lead Time +15.00 days (bunched deliveries)', lead: 15 },
+    { label: 'Holding Cost +15.00%', hold: 15 },
+  ],
+  planner: [
+    { label: 'Baseline' },
+    { label: 'Demand +20.00%', demand: 20 },
+    { label: 'Demand −15.00%', demand: -15 },
+    { label: 'Plan Shift: demand +10%, lead +10 days', demand: 10, lead: 10 },
+    { label: 'Supplier Capacity −20%', cap: -20 },
+  ],
+  procurement: [
+    { label: 'Baseline' },
+    { label: 'Lead Time +15.00 days', lead: 15 },
+    { label: 'Material Price +15.00%', price: 15 },
+    { label: 'Supplier Capacity −30%', cap: -30 },
+    { label: 'Supplier Disruption', lead: 10, cap: -25 },
+  ],
+  finance: [
+    { label: 'Baseline' },
+    { label: 'Holding Cost +15.00%', hold: 15 },
+    { label: 'Material Price +15.00%', price: 15 },
+    { label: 'Demand −20.00% (downturn)', demand: -20 },
+    { label: 'Downturn + Costly Capital', demand: -10, hold: 15 },
+  ],
+};
+
+// Levers the persona controls or watches come first and are tagged.
+const LEVER_FOCUS = {
+  supervisor: ['lead', 'cap', 'demand'],
+  warehouse: ['demand', 'hold', 'lead'],
+  planner: ['demand', 'lead', 'cap'],
+  procurement: ['lead', 'price', 'cap'],
+  finance: ['hold', 'price', 'demand'],
+};
+
+// Order of the portfolio response tiles and of the impact-chart rows, per persona. The first entries are the persona's headline measures.
+const RESPONSE_ORDER = {
+  supervisor: ['stockout', 'service', 'safety', 'lead', 'demand', 'eoq', 'value', 'wc'],
+  warehouse: ['value', 'safety', 'eoq', 'demand', 'wc', 'lead', 'service', 'stockout'],
+  planner: ['demand', 'safety', 'eoq', 'lead', 'service', 'stockout', 'value', 'wc'],
+  procurement: ['lead', 'eoq', 'stockout', 'safety', 'demand', 'value', 'wc', 'service'],
+  finance: ['wc', 'value', 'service', 'eoq', 'safety', 'stockout', 'demand', 'lead'],
+};
+const CHART_FOCUS = {
+  supervisor: ['stockout', 'service', 'safety'],
+  warehouse: ['value', 'safety', 'eoq'],
+  planner: ['safety', 'eoq', 'service'],
+  procurement: ['eoq', 'stockout', 'value'],
+  finance: ['value', 'service', 'safety'],
+};
+const RESPONSE_COPY = {
+  supervisor: { title: 'Line-continuity response', chartSub: 'Highlighted: the outcomes that decide whether the lines keep running' },
+  warehouse: { title: 'Stock and space response', chartSub: 'Highlighted: the outcomes that change what sits on the shelves' },
+  planner: { title: 'Plan response', chartSub: 'Highlighted: the outcomes the production plan has to absorb' },
+  procurement: { title: 'Order and supply response', chartSub: 'Highlighted: the outcomes that change what and when you order' },
+  finance: { title: 'Capital response', chartSub: 'Highlighted: the outcomes that move cash and service' },
+};
 
 export default function WhatIf() {
   const { persona } = usePlatform();
+  const presets = PERSONA_PRESETS[persona] || PERSONA_PRESETS.supervisor;
+  const leverFocus = LEVER_FOCUS[persona] || [];
   const navigate = useNavigate();
   // Raw lever positions, and which levers are actually moving. Levers that are not active are held at baseline.
   const ZERO = { demand: 0, lead: 0, hold: 0, price: 0, cap: 0 };
@@ -66,8 +131,9 @@ export default function WhatIf() {
   };
 
   const applyPreset = (p) => {
-    setVals({ ...ZERO, demand: p.demand, lead: p.lead, hold: p.hold });
-    const on = { demand: p.demand !== 0, lead: p.lead !== 0, hold: p.hold !== 0, price: false, cap: false };
+    const next = { ...ZERO, ...Object.fromEntries(Object.entries(p).filter(([k]) => k !== 'label')) };
+    setVals(next);
+    const on = { demand: next.demand !== 0, lead: next.lead !== 0, hold: next.hold !== 0, price: next.price !== 0, cap: next.cap !== 0 };
     const count = Object.values(on).filter(Boolean).length;
     setMode(count > 1 ? 'multi' : 'single');
     setAct(count === 0 ? { ...on, demand: true } : on);
@@ -184,6 +250,124 @@ export default function WhatIf() {
     },
   ];
 
+
+  const sgn = (v, d = 1) => `${v >= 0 ? '+' : ''}${v.toFixed(d)}`;
+  const scenarioIs = changedLevers.length === 0 ? 'At baseline' : `If ${changedLevers.join(' and ')}`;
+  const resultLine = `${scenarioIs}, projected inventory is $${out.value.toFixed(2)}M (${sgn(out.invValuePct)}%), covering ${out.icr.toFixed(0)} days and turning ${out.turnover.toFixed(1)}×.`;
+  const personaTop = {
+    supervisor: {
+      label: 'Plant Supervisor Lens · Line Continuity Under This Scenario',
+      headline: `${resultLine} Stockout risk moves to ${out.stockout.toFixed(2)}% (baseline ${BL.stockout.toFixed(2)}%) and service level to ${out.service.toFixed(1)}%. ${out.reco}`,
+      kpis: [
+        { label: 'Stockout risk', value: `${out.stockout.toFixed(2)}%`, delta: `${sgn(out.stockout - BL.stockout, 2)} pp vs baseline`, deltaTone: out.stockout - BL.stockout > 0.05 ? 'down' : out.stockout - BL.stockout < -0.05 ? 'up' : 'flat', sub: 'Chance a line waits on this material' },
+        { label: 'Service level', value: `${out.service.toFixed(1)}%`, delta: `${sgn(out.service - BL.service, 2)} pp vs baseline`, deltaTone: out.service - BL.service < -0.05 ? 'down' : out.service - BL.service > 0.05 ? 'up' : 'flat', sub: `Baseline ${BL.service.toFixed(1)}%` },
+        { label: 'Days of cover', value: `${out.icr.toFixed(0)} days`, delta: `${sgn(out.icr - 22, 0)} days vs baseline (22)`, deltaTone: out.icr - 22 < -0.5 ? 'down' : out.icr - 22 > 0.5 ? 'up' : 'flat', sub: 'Consumption held in stock' },
+        { label: 'Safety stock needed', value: `${out.safety.toFixed(0)} EA`, delta: `${sgn(out.safety - BL.safety, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Buffer to hold the service level' },
+      ],
+    },
+    warehouse: {
+      label: 'Warehouse Manager Lens · Stock to Hold Under This Scenario',
+      headline: `${resultLine} Safety stock moves to ${out.safety.toFixed(0)} EA and the EOQ lot to ${out.eoq.toFixed(0)} EA, which changes how much you store and how often loads arrive.`,
+      kpis: [
+        { label: 'Projected inventory', value: `$${out.value.toFixed(2)}M`, delta: `${sgn(out.capitalDelta, 2)}M vs baseline`, deltaTone: out.capitalDelta > 0.05 ? 'down' : out.capitalDelta < -0.05 ? 'up' : 'flat', sub: 'Value on the shelf' },
+        { label: 'Safety stock', value: `${out.safety.toFixed(0)} EA`, delta: `${sgn(out.safety - BL.safety, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Held in reserve' },
+        { label: 'EOQ lot size', value: `${out.eoq.toFixed(0)} EA`, delta: `${sgn(out.eoq - BL.eoq, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Quantity per receipt' },
+        { label: 'Days of cover', value: `${out.icr.toFixed(0)} days`, delta: `${sgn(out.icr - 22, 0)} days vs baseline (22)`, deltaTone: 'flat', sub: 'Consumption held in stock' },
+      ],
+    },
+    planner: {
+      label: 'Materials Planner Lens · Plan Response to This Scenario',
+      headline: `${resultLine} Safety stock responds non-linearly to demand variance and the lead-time lever widens the exposure window. ${out.reco}`,
+      kpis: [
+        { label: 'Safety stock', value: `${out.safety.toFixed(0)} EA`, delta: `${sgn(out.safety - BL.safety, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Re-index reorder points to this' },
+        { label: 'EOQ lot size', value: `${out.eoq.toFixed(0)} EA`, delta: `${sgn(out.eoq - BL.eoq, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Order cadence changes with it' },
+        { label: 'Stockout risk', value: `${out.stockout.toFixed(2)}%`, delta: `${sgn(out.stockout - BL.stockout, 2)} pp vs baseline`, deltaTone: out.stockout - BL.stockout > 0.05 ? 'down' : out.stockout - BL.stockout < -0.05 ? 'up' : 'flat', sub: 'If reorder points are not moved' },
+        { label: 'Turnover', value: `${out.turnover.toFixed(1)}×`, delta: `${sgn(out.turnover - 4.1)}× vs baseline (4.1×)`, deltaTone: out.turnover - 4.1 < -0.05 ? 'down' : out.turnover - 4.1 > 0.05 ? 'up' : 'flat', sub: 'Annual stock turns' },
+      ],
+    },
+    procurement: {
+      label: 'Procurement Officer Lens · Ordering Under This Scenario',
+      headline: `${resultLine} The EOQ lot moves to ${out.eoq.toFixed(0)} EA (baseline ${BL.eoq}), so order frequency and supplier load change. Check supplier capacity before changing the policy.`,
+      kpis: [
+        { label: 'EOQ lot size', value: `${out.eoq.toFixed(0)} EA`, delta: `${sgn(out.eoq - BL.eoq, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Quantity per PO' },
+        { label: 'Stockout risk', value: `${out.stockout.toFixed(2)}%`, delta: `${sgn(out.stockout - BL.stockout, 2)} pp vs baseline`, deltaTone: out.stockout - BL.stockout > 0.05 ? 'down' : out.stockout - BL.stockout < -0.05 ? 'up' : 'flat', sub: 'Exposure to lead time and capacity' },
+        { label: 'Safety stock', value: `${out.safety.toFixed(0)} EA`, delta: `${sgn(out.safety - BL.safety, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Extra to buy up front' },
+        { label: 'Projected inventory', value: `$${out.value.toFixed(2)}M`, delta: `${sgn(out.capitalDelta, 2)}M vs baseline`, deltaTone: out.capitalDelta > 0.05 ? 'down' : out.capitalDelta < -0.05 ? 'up' : 'flat', sub: 'Spend this implies' },
+      ],
+    },
+    finance: {
+      label: 'Finance Controller Lens · Capital Under This Scenario',
+      headline: `Bottom line: ${resultLine} ${out.reco}`,
+      kpis: [
+        { label: 'Projected inventory', value: `$${out.value.toFixed(2)}M`, delta: `${sgn(out.capitalDelta, 2)}M vs baseline`, deltaTone: out.capitalDelta > 0.05 ? 'down' : out.capitalDelta < -0.05 ? 'up' : 'flat', sub: `${sgn(out.invValuePct)}% vs baseline $${BL.value.toFixed(2)}M` },
+        { label: 'Turnover', value: `${out.turnover.toFixed(1)}×`, delta: `${sgn(out.turnover - 4.1)}× vs baseline (4.1×)`, deltaTone: out.turnover - 4.1 < -0.05 ? 'down' : out.turnover - 4.1 > 0.05 ? 'up' : 'flat', sub: 'Annual stock turns' },
+        { label: 'Days of cover', value: `${out.icr.toFixed(0)} days`, delta: `${sgn(out.icr - 22, 0)} days vs baseline (22)`, deltaTone: 'flat', sub: 'Cash tied up in consumption days' },
+        { label: 'Safety-stock capital', value: `${out.safety.toFixed(0)} EA`, delta: `${sgn(out.safety - BL.safety, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Buffer held against variability' },
+      ],
+    },
+  };
+
+  const respOrder = RESPONSE_ORDER[persona] || RESPONSE_ORDER.supervisor;
+  const respTiles = {
+    demand: { label: 'Demand Change (Scenario Δ)', value: `${demand > 0 ? '+' : ''}${demand.toFixed(2)}%`, sub: 'vs baseline (0.00%)', valueStyle: { color: demand > 0 ? 'var(--error)' : demand < 0 ? 'var(--success)' : 'var(--ink)' } },
+    lead: { label: 'Lead-Time Change (Scenario Δ)', value: `${lead > 0 ? '+' : ''}${lead.toFixed(0)} days`, sub: 'vs baseline (0 days)', valueStyle: { color: lead > 0 ? 'var(--error)' : lead < 0 ? 'var(--success)' : 'var(--ink)' } },
+    value: { label: 'Total Inventory Value', value: `$${out.value.toFixed(2)}M`, sub: `Baseline $42.85M · Δ ${out.capitalDelta >= 0 ? '+' : ''}$${out.capitalDelta.toFixed(2)}M (${out.invValuePct >= 0 ? '+' : ''}${out.invValuePct.toFixed(1)}%)`, valueStyle: { color: out.capitalDelta > 0.05 ? 'var(--error)' : out.capitalDelta < -0.05 ? 'var(--success)' : 'var(--ink)' } },
+    wc: { label: 'Working Capital Delta', value: `${out.capitalDelta >= 0 ? '+' : '-'}$${Math.abs(out.capitalDelta).toFixed(2)}M`, sub: 'vs baseline working capital', valueStyle: { color: out.capitalDelta > 0.05 ? 'var(--error)' : out.capitalDelta < -0.05 ? 'var(--success)' : 'var(--ink)' } },
+    safety: { label: 'Safety Stock Requirement', value: `${out.safety.toFixed(2)} EA`, sub: `$${((out.safety * 600) / 1000).toFixed(2)}K carrying value` },
+    stockout: { label: 'Stockout Risk', value: `${out.stockout.toFixed(2)}%`, sub: 'modeled portfolio stockout probability', valueStyle: { color: out.stockout > 5 ? 'var(--error)' : out.stockout < 2 ? 'var(--success)' : 'var(--ink)' } },
+    eoq: { label: 'EOQ Lot Size', value: `${out.eoq.toFixed(2)} EA`, sub: `$${((out.eoq * 600) / 1000).toFixed(2)}K batch value` },
+    service: { label: 'Service Level', value: `${out.service.toFixed(2)}%`, sub: 'modeled portfolio fill rate', valueStyle: { color: out.service < 90 ? 'var(--error)' : out.service >= 97 ? 'var(--success)' : 'var(--ink)' } },
+  };
+  const chartFocus = CHART_FOCUS[persona] || [];
+  const orderedChartRows = [...chartRows].sort((a, b) => (chartFocus.indexOf(a.key) === -1 ? 9 : chartFocus.indexOf(a.key)) - (chartFocus.indexOf(b.key) === -1 ? 9 : chartFocus.indexOf(b.key)));
+  const scenarioMoved = changedLevers.length > 0;
+  const driverLines = scenarioMoved
+    ? [
+        act.demand && demand !== 0 && `Demand ${LEVERS[0].fmt(demand)}: safety stock moves to ${out.safety.toFixed(0)} EA (baseline ${BL.safety}) to absorb the change in arrival variance`,
+        act.lead && lead !== 0 && `Lead time ${LEVERS[1].fmt(lead)}: stockout probability moves to ${out.stockout.toFixed(2)}% (baseline ${BL.stockout.toFixed(2)}%) as the exposure window changes`,
+        act.hold && hold !== 0 && `Holding cost ${LEVERS[2].fmt(hold)}: EOQ lot moves to ${out.eoq.toFixed(0)} EA (baseline ${BL.eoq}), changing how often you replenish`,
+        act.price && price !== 0 && `Material price ${LEVERS[3].fmt(price)}: projected inventory moves to $${out.value.toFixed(2)}M (${out.invValuePct >= 0 ? '+' : ''}${out.invValuePct.toFixed(1)}%)`,
+        act.cap && cap !== 0 && `Supplier capacity ${LEVERS[4].fmt(cap)}: safety stock and stockout risk shift to ${out.safety.toFixed(0)} EA and ${out.stockout.toFixed(2)}% as supply becomes less dependable`,
+      ].filter(Boolean)
+    : ['All levers are at baseline, so nothing is driving a change. Move a lever or pick a scenario above to see which drivers respond.'];
+  const COUNTERMEASURES = {
+    supervisor: {
+      label: 'Plant Supervisor Lens · Protect the Lines',
+      body: `${out.reco} Service level ${out.service.toFixed(1)}% and stockout risk ${out.stockout.toFixed(2)}% are the numbers to hold.${scenarioMoved ? ' Brief the line leads if cover falls below lead time.' : ''}`,
+      summary: 'Why line continuity responds to these levers',
+      meaning: ['Stockout risk climbs faster than safety stock follows when lead time or supplier capacity worsens', 'A lower service level means more line waits for material'],
+      action: ['Pre-position safety stock on the materials that feed the busiest lines', 'Agree an expedite route with the supplier before the lever becomes real'],
+    },
+    warehouse: {
+      label: 'Warehouse Manager Lens · Stock and Space',
+      body: `${out.reco} Projected inventory is $${out.value.toFixed(2)}M (${out.invValuePct >= 0 ? '+' : ''}${out.invValuePct.toFixed(1)}%), safety stock ${out.safety.toFixed(0)} EA and lot size ${out.eoq.toFixed(0)} EA.${scenarioMoved ? ' Check bin and dock capacity against those quantities.' : ''}`,
+      summary: 'Why stock on the shelf responds to these levers',
+      meaning: ['Safety stock and cycle stock both change, so shelf space needed changes with them', 'Smaller lots mean more receipts to book in'],
+      action: ['Check storage capacity against the new safety-stock and lot sizes', 'Schedule receipts so deliveries do not bunch at the dock'],
+    },
+    planner: {
+      label: 'Materials Planner Lens · Plan Response',
+      body: `Reading: safety stock responds non-linearly to demand variance and the lead-time lever widens the exposure window. ${out.reco}`,
+      summary: 'Why the plan has to move with these levers',
+      meaning: ['Reorder points should move whenever demand or lead time moves; stale reorder points are where stockouts come from', 'Lot size and order cadence change together'],
+      action: ['Re-index reorder points and safety stock in the plan', 'Send the simulated parameters to Optimization to see the time-phased impact'],
+    },
+    procurement: {
+      label: 'Procurement Officer Lens · Orders and Suppliers',
+      body: `${out.reco}${scenarioMoved ? ` Lot size moves to ${out.eoq.toFixed(0)} EA: check supplier capacity against the new order frequency before changing the policy.` : ''}`,
+      summary: 'Why ordering responds to these levers',
+      meaning: ['Order size and frequency move with holding cost and demand', 'Lead time and capacity decide how much safety stock you must buy up front'],
+      action: ['Validate supplier capacity and MOQ against the new order frequency', 'Qualify a secondary supplier where lead time or capacity worsens'],
+    },
+    finance: {
+      label: 'Finance Controller Lens · Capital Impact',
+      body: `Bottom line: projected inventory is $${out.value.toFixed(2)}M${scenarioMoved ? ` (${out.invValuePct >= 0 ? '+' : ''}${out.invValuePct.toFixed(1)}%)` : ''} with ${out.icr.toFixed(0)} days of cover and ${out.turnover.toFixed(1)}× turnover. ${out.reco}`,
+      summary: 'Why working capital responds to these levers',
+      meaning: ['Working-capital change compounds across cycle stock and safety buffers at once', 'Higher holding cost or price raises the cost of every day of cover'],
+      action: ['Confirm funding headroom before a policy change that raises inventory', 'Track turnover against the 4.1× baseline after the change'],
+    },
+  };
+  const countermeasure = COUNTERMEASURES[persona] || COUNTERMEASURES.supervisor;
   const allIdx = chartRows.map((r) => r.scIdx);
   const minIdx = Math.min(100, ...allIdx);
   const maxIdx = Math.max(100, ...allIdx);
@@ -227,12 +411,8 @@ export default function WhatIf() {
         }
       />
 
-      {/* KPI impact: projected inventory, coverage ratio, turnover — always paired with an AI interpretation */}
-      <Insight label="Scenario result" defaultOpen>
-        {changedLevers.length === 0
-          ? 'With every assumption at baseline, projected inventory is $42.85M, covering 22 days of consumption and turning 4.1 times a year. Move a variable to see what changes.'
-          : `If ${changedLevers.join(' and ')}, projected inventory moves to $${out.value.toFixed(2)}M (${out.invValuePct >= 0 ? '+' : ''}${out.invValuePct.toFixed(1)}%), coverage ${out.icr >= 22 ? 'rises' : 'falls'} to ${out.icr.toFixed(0)} days and turnover ${out.turnover >= 4.1 ? 'improves' : 'slows'} to ${out.turnover.toFixed(1)}×. ${out.reco}`}
-      </Insight>
+      {/* Persona headline + tiles lead the page; the three portfolio KPIs below are the shared evidence */}
+      <PersonaTop persona={persona} config={personaTop} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-6">
         <KpiTile
@@ -257,7 +437,7 @@ export default function WhatIf() {
 
       {/* Presets Row */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {PRESETS.map((p) => (
+        {presets.map((p) => (
           <Chip
             key={p.label}
             active={activePreset === p.label}
@@ -292,7 +472,7 @@ export default function WhatIf() {
             </p>
 
             <div className="space-y-3">
-              {LEVERS.map((lv) => {
+              {[...LEVERS].sort((a, b) => (leverFocus.indexOf(a.key) === -1 ? 9 : leverFocus.indexOf(a.key)) - (leverFocus.indexOf(b.key) === -1 ? 9 : leverFocus.indexOf(b.key))).map((lv) => {
                 const on = act[lv.key];
                 const v = vals[lv.key];
                 return (
@@ -307,6 +487,7 @@ export default function WhatIf() {
                           style={{ accentColor: 'var(--primary)' }}
                         />
                         {lv.label}
+                        {leverFocus.includes(lv.key) && <Badge tone="accent" shape={false}>key lever</Badge>}
                       </label>
                       <span className="num text-primary font-bold">{on ? lv.fmt(v) : 'Held at baseline'}</span>
                     </div>
@@ -328,7 +509,7 @@ export default function WhatIf() {
                 );
               })}
             </div>
-            <p className="text-xs text-subtle mt-3 mb-0">Any of the ~40 catalogued drivers can be added here once connected.</p>
+            <p className="text-xs text-subtle mt-3 mb-0">Levers you control or watch are listed first. Any of the ~40 catalogued drivers can be added here once connected.</p>
           </div>
 
           <p className="text-xs text-subtle mt-4 m-0">
@@ -339,62 +520,16 @@ export default function WhatIf() {
         {/* Portfolio Response Grid */}
         <div className="lg:col-span-7 bg-surface border border-border rounded-md p-5 shadow-subtle">
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-border">
-            <h2 className="card__title text-sm font-bold text-ink m-0">Portfolio response vs baseline</h2>
+            <h2 className="card__title text-sm font-bold text-ink m-0">{RESPONSE_COPY[persona]?.title || 'Portfolio response'} · vs baseline</h2>
             <Badge tone={out.capitalDelta > 0 ? 'watch' : 'success'}>
               {out.capitalDelta > 0 ? 'Expansion' : 'Contraction'}
             </Badge>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <KpiTile
-              label="Demand Change (Scenario Δ)"
-              value={`${demand > 0 ? '+' : ''}${demand.toFixed(2)}%`}
-              sub="vs baseline (0.00%)"
-              valueStyle={{ color: demand > 0 ? 'var(--error)' : demand < 0 ? 'var(--success)' : 'var(--ink)' }}
-            />
-            <KpiTile
-              label="Lead-Time Change (Scenario Δ)"
-              value={`${lead > 0 ? '+' : ''}${lead.toFixed(0)} days`}
-              sub="vs baseline (0 days)"
-              valueStyle={{ color: lead > 0 ? 'var(--error)' : lead < 0 ? 'var(--success)' : 'var(--ink)' }}
-            />
-
-            <KpiTile
-              label="Total Inventory Value"
-              value={`$${out.value.toFixed(2)}M`}
-              sub={`Baseline $42.85M · Δ ${out.capitalDelta >= 0 ? '+' : ''}$${out.capitalDelta.toFixed(2)}M (${out.invValuePct >= 0 ? '+' : ''}${out.invValuePct.toFixed(1)}%)`}
-              valueStyle={{ color: out.capitalDelta > 0.05 ? 'var(--error)' : out.capitalDelta < -0.05 ? 'var(--success)' : 'var(--ink)' }}
-            />
-            <KpiTile
-              label="Working Capital Delta"
-              value={`${out.capitalDelta >= 0 ? '+' : '-'}$${Math.abs(out.capitalDelta).toFixed(2)}M`}
-              sub="vs baseline working capital"
-              valueStyle={{ color: out.capitalDelta > 0.05 ? 'var(--error)' : out.capitalDelta < -0.05 ? 'var(--success)' : 'var(--ink)' }}
-            />
-
-            <KpiTile
-              label="Safety Stock Requirement"
-              value={`${out.safety.toFixed(2)} EA`}
-              sub={`$${((out.safety * 600) / 1000).toFixed(2)}K carrying value`}
-            />
-            <KpiTile
-              label="Stockout Risk"
-              value={`${out.stockout.toFixed(2)}%`}
-              sub="modeled portfolio stockout probability"
-              valueStyle={{ color: out.stockout > 5 ? 'var(--error)' : out.stockout < 2 ? 'var(--success)' : 'var(--ink)' }}
-            />
-
-            <KpiTile
-              label="EOQ Lot Size"
-              value={`${out.eoq.toFixed(2)} EA`}
-              sub={`$${((out.eoq * 600) / 1000).toFixed(2)}K batch value`}
-            />
-            <KpiTile
-              label="Service Level"
-              value={`${out.service.toFixed(2)}%`}
-              sub="modeled portfolio fill rate"
-              valueStyle={{ color: out.service < 90 ? 'var(--error)' : out.service >= 97 ? 'var(--success)' : 'var(--ink)' }}
-            />
+            {respOrder.map((id, i) => (
+              <KpiTile key={id} {...respTiles[id]} className={i < 2 ? 'ring-1 ring-primary' : undefined} />
+            ))}
           </div>
         </div>
       </div>
@@ -404,7 +539,7 @@ export default function WhatIf() {
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
           <div>
             <h2 className="card__title text-sm font-bold text-ink m-0">Scenario Impact vs Baseline</h2>
-            <p className="text-xs text-body-c mt-0.5">Modeled change in key inventory outcomes relative to baseline (100 = baseline index)</p>
+            <p className="text-xs text-body-c mt-0.5">Modeled change relative to baseline (100 = baseline index). {RESPONSE_COPY[persona]?.chartSub}</p>
           </div>
           <div className="flex gap-4 items-center text-xs text-body-c">
             <span className="flex items-center gap-1.5">
@@ -419,7 +554,7 @@ export default function WhatIf() {
         </div>
 
         <div className="space-y-3.5 pt-2">
-          {chartRows.map((row) => {
+          {orderedChartRows.map((row) => {
             const isHovered = hoveredRow === row.key;
             const deltaStr = row.delta();
             const scHigherThanBl = row.scIdx > 100;
@@ -438,6 +573,7 @@ export default function WhatIf() {
               <div
                 key={row.key}
                 className="group relative"
+                style={{ opacity: chartFocus.includes(row.key) ? 1 : 0.45 }}
                 onMouseEnter={() => setHoveredRow(row.key)}
                 onMouseLeave={() => setHoveredRow(null)}
               >
@@ -504,32 +640,18 @@ export default function WhatIf() {
         </p>
       </div>
 
-      <Insight key={persona} label="Prescribed countermeasure">
-        {persona === 'finance'
-          ? `Bottom line: projected inventory is $${out.value.toFixed(2)}M${changedLevers.length ? ` (${out.invValuePct >= 0 ? '+' : ''}${out.invValuePct.toFixed(1)}%)` : ''} with ${out.icr.toFixed(0)} days of cover. ${out.reco}`
-          : persona === 'planner'
-          ? `Reading: safety stock responds non-linearly to demand variance and the lead-time lever widens the exposure window; the driver breakdown below shows each contribution. ${out.reco}`
-          : `${out.reco}${changedLevers.length ? ' Check supplier capacity against the new order frequency before changing the policy.' : ''}`}
+      <Insight key={persona} label={countermeasure.label}>
+        {countermeasure.body}
       </Insight>
 
       <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
         <h2 className="card__title text-sm font-bold text-ink mb-1">Sensitivity driver breakdown</h2>
         <WhyDisclosure
           key={persona}
-          summary="Why portfolio working capital and stockout risk respond to these levers"
-          drivers={[
-            'Demand lever (+20.00%): drives safety stock up non-linearly to absorb higher Poisson arrival variance',
-            'Lead time lever (+15.00 days): expands the exposure window, raising stockout probability from 2.60% to 4.70%',
-            'Holding cost lever (+15.00%): depresses optimal EOQ batch sizes, increasing replenishment frequency from 8.00 to 15.00 orders/yr',
-          ]}
-          meaning={[
-            'Working capital delta compounds across cycle stock and safety buffers simultaneously',
-            'Service level degrades rapidly when lead-time variance increases without safety buffer re-indexing',
-          ]}
-          action={[
-            'Export simulated parameter constraints to Optimization Plan',
-            'Validate supplier capacity against higher order frequency before activating policy changes',
-          ]}
+          summary={countermeasure.summary}
+          drivers={driverLines}
+          meaning={countermeasure.meaning}
+          action={countermeasure.action}
         />
       </div>
     </section>

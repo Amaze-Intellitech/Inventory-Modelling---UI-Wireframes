@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, RefreshCcw, AlertTriangle, CheckCircle2, Clock, Layers } from 'lucide-react';
-import { ViewHead, Badge, WhyDisclosure, KpiTile, Insight } from '../../components/CommonUI';
+import { ViewHead, Badge, WhyDisclosure, KpiTile } from '../../components/CommonUI';
+import PersonaTop from '../../components/PersonaTop';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { usePlatform } from '../../context/PlatformContext';
 import RmlcLegs from '../../components/RmlcLegs';
-import { RMLC_STAGES, EOQ_INPUTS, FORECAST_INPUTS } from '../../data/mockData';
+import { RMLC_STAGES, RMLC_STAGES_BY_PLANT, EOQ_INPUTS, FORECAST_INPUTS } from '../../data/mockData';
 
 const TONE_BADGE = { watch: 'watch', ok: 'success', risk: 'risk' };
 const TONE_BORDER = { watch: 'var(--warning)', ok: 'var(--success)', risk: 'var(--error)' };
@@ -303,8 +303,7 @@ const PORTFOLIO_INTERVENTION_QUEUE = [
 
 export default function RmlcLifecycle() {
   const navigate = useNavigate();
-  const { persona, selectedMaterial } = usePlatform();
-  const shouldReduceMotion = useReducedMotion();
+  const { persona, scope, selectedMaterial } = usePlatform();
 
   const materialId = selectedMaterial?.id || 'MAT-1082';
   const eoqInput = EOQ_INPUTS[materialId] || { demand: 4800.0, currentBatchQty: 600.0 };
@@ -378,6 +377,93 @@ export default function RmlcLifecycle() {
   const formatCurrency = (val, decimals = 2) =>
     `$${val.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 
+
+  const lt = profile.leadTimeDays;
+  const atRiskPct = onHandValue > 0 ? (profile.atRiskValue / onHandValue) * 100 : 0;
+  const personaTop = {
+    supervisor: {
+      label: 'Plant Supervisor Lens · Line-Stoppage Relevance',
+      headline: profile.supervisorLens,
+      kpis: [
+        { label: 'Lifecycle state', value: profile.lifecycleStateLabel.split('(')[0].trim(), valueStyle: { color: profile.lifecycleTone === 'ok' ? 'var(--success)' : profile.lifecycleTone === 'watch' ? 'var(--warning)' : 'var(--error)' }, sub: profile.triggerRule },
+        { label: 'Cover vs lead time', value: `${formatNum(daysOfSupply, 1)} days`, delta: daysOfSupply < lt ? `${formatNum(lt - daysOfSupply, 1)}d below ${lt}d lead time` : `+${formatNum(daysOfSupply - lt, 1)}d beyond lead time`, deltaTone: daysOfSupply < lt ? 'down' : 'up', sub: 'Days of supply on hand' },
+        { label: 'Downstream dependency', value: profile.downstreamDependency, sub: `Supplier: ${profile.supplier}` },
+        { label: 'Intervention window', value: profile.preventionWindow.split('(')[0].trim(), delta: profile.interventionUrgency, deltaTone: profile.earlyInterventionNeeded ? 'down' : 'flat', sub: profile.prescribedAction },
+      ],
+    },
+    warehouse: {
+      label: 'Warehouse Manager Lens · Physical Stock & Transfer Execution',
+      headline: profile.warehouseLens,
+      kpis: [
+        { label: 'Ageing class', value: profile.agingClassification, sub: profile.shelfLifeStatus },
+        { label: 'Stagnant days', value: profile.daysStagnant > 0 ? `${formatNum(profile.daysStagnant, 0)} days` : 'None flagged', deltaTone: profile.daysStagnant > 0 ? 'down' : 'up', delta: profile.stagnantLot ? `Lot ${profile.stagnantLot}` : undefined, sub: 'No movement against consumption' },
+        { label: 'On-hand stock', value: `${formatNum(onHandQty, 0)} ${uom}`, sub: `Turning ${formatNum(annualTurns, 2)}×/yr` },
+        { label: 'Intervention window', value: profile.preventionWindow.split('(')[0].trim(), delta: profile.interventionUrgency, deltaTone: profile.earlyInterventionNeeded ? 'down' : 'flat', sub: profile.prescribedAction },
+      ],
+    },
+    planner: {
+      label: 'Materials Planner Lens · Plan & Replenishment Alignment',
+      headline: profile.plannerLens,
+      kpis: [
+        { label: 'Stage in cycle', value: `${profile.stageIndex + 1} of 4`, sub: profile.lifecycleStateLabel },
+        { label: 'Next-state risk', value: profile.earlyInterventionNeeded ? 'Act early' : 'Monitor', deltaTone: profile.earlyInterventionNeeded ? 'down' : 'flat', delta: profile.interventionUrgency, sub: profile.nextStateRisk },
+        { label: 'Days of supply', value: `${formatNum(daysOfSupply, 1)} days`, sub: `${formatNum(dailyDemand, 2)} ${uom}/day · ${formatNum(weeklyDemand, 1)} ${uom}/wk` },
+        { label: 'Trigger rule', value: profile.lifecycleStateLabel.split('(')[0].trim(), sub: profile.triggerRule },
+      ],
+    },
+    procurement: {
+      label: 'Procurement Officer Lens · Sourcing & PO Cadence',
+      headline: profile.procurementLens,
+      kpis: [
+        { label: 'Days beyond 90d buffer', value: daysOfSupply > 90 ? `${formatNum(daysOfSupply - 90, 1)} days` : 'None', deltaTone: daysOfSupply > 90 ? 'down' : 'up', delta: daysOfSupply > 90 ? 'Hold further POs' : 'Replenish as planned', sub: 'Against 60–90d turnover buffer' },
+        { label: 'Supplier lead time', value: `${lt} days`, sub: profile.supplier },
+        { label: 'Annual turns', value: `${formatNum(annualTurns, 2)}×`, sub: `${formatNum(dailyDemand, 2)} ${uom}/day consumption` },
+        { label: 'Prescribed action', value: profile.interventionUrgency, sub: profile.prescribedAction },
+      ],
+    },
+    finance: {
+      label: 'Finance Controller Lens · Working Capital Exposure & Obsolescence Risk Governance',
+      headline: profile.financeLens,
+      kpis: [
+        { label: 'On-hand value', value: formatCurrency(onHandValue), sub: `${formatNum(onHandQty, 0)} ${uom} at ${formatCurrency(unitCost)}/${uom}` },
+        { label: 'Value at risk', value: formatCurrency(profile.atRiskValue), valueStyle: { color: profile.atRiskValue > 0 ? 'var(--error)' : 'var(--success)' }, delta: profile.atRiskValue > 0 ? `${formatNum(atRiskPct, 1)}% of on-hand` : 'Active Operating Capital', deltaTone: profile.atRiskValue > 0 ? 'down' : 'up', sub: profile.exposureType },
+        { label: 'Recoverable opportunity', value: formatCurrency(profile.recoverableOpportunity), valueStyle: { color: 'var(--success)' }, sub: 'If the intervention is taken in time' },
+        { label: 'Annual carrying cost', value: formatCurrency(annualHoldingCost), sub: 'At 6.00%/yr planning rate' },
+      ],
+    },
+  };
+
+  // What each lifecycle stage means to the persona reading it (stage order matches RMLC_STAGES).
+  const STAGE_MEANING = {
+    supervisor: ['Line is covered; no stoppage risk, but stock is building.', 'Normal supply to the line.', 'Not consumed for 90+ days: check the line still uses it (design change, retired product).', 'Feeds no line: confirm no upcoming build needs it before disposal.'],
+    warehouse: ['Receipts outpace issues: stock and space are building up.', 'Normal bin turnover.', 'Ageing stock: plan a transfer or return before it goes stale.', 'Past 180 days: schedule disposal, transfer or sale.'],
+    planner: ['Inflow is above 1.5× consumption: the plan is over-ordering, so pull back open POs.', 'Plan and consumption are aligned.', 'Consumption has stopped: update demand in the plan.', 'Remove from the replenishment plan.'],
+    procurement: ['Defer new POs and renegotiate the delivery schedule.', 'Release POs per plan.', 'Cancel or reschedule open POs; ask the supplier about returns.', 'Return to vendor, claim or sell back.'],
+    finance: ['Cash is building up in stock.', 'Capital is turning within policy.', 'Capital at risk of becoming dead stock.', 'Candidate for write-down or provision.'],
+  };
+  const stageMeaning = STAGE_MEANING[persona] || STAGE_MEANING.supervisor;
+  // Stage figures follow the persona's plant scope: one plant for the plant-floor roles, all four for procurement and finance.
+  const allPlants = scope.startsWith('All Plants');
+  const plantsInScope = allPlants ? RMLC_STAGES_BY_PLANT : RMLC_STAGES_BY_PLANT.filter((pl) => scope.startsWith(pl.plant));
+  const scopedStage = (key) => ({
+    value: plantsInScope.reduce((a, pl) => a + pl.stages[key].value, 0),
+    count: plantsInScope.reduce((a, pl) => a + pl.stages[key].count, 0),
+  });
+  const materialPlant = selectedMaterial?.plant;
+  const materialOutOfScope = !allPlants && materialPlant && !scope.startsWith(materialPlant);
+  const stageStat = (st) => {
+    const { value, count } = scopedStage(st.key);
+    return persona === 'finance' ? `$${value.toFixed(2)}M tied up · ${count} materials` : `${count} materials in this stage`;
+  };
+  const NEXT_STEP = {
+    supervisor: { label: 'Line Impact & Next Step', body: `${profile.nextStateRisk}` },
+    warehouse: { label: 'Stock Handling & Next Step', body: `${profile.agingClassification} · ${profile.shelfLifeStatus}. ${profile.prescribedAction}` },
+    planner: { label: 'Plan Adjustment & Next Step', body: `${profile.nextStateRisk} ${profile.interventionUrgency}.` },
+    procurement: { label: 'PO Action & Next Step', body: profile.prescribedAction },
+    finance: { label: 'Capital Exposure & Next Step', body: `${profile.exposureType}: ${profile.atRiskValue > 0 ? formatCurrency(profile.atRiskValue) : '$0.00'} at risk, ${formatCurrency(profile.recoverableOpportunity)} recoverable. ${profile.prescribedAction}` },
+  };
+  const nextStep = NEXT_STEP[persona] || NEXT_STEP.supervisor;
+
   return (
     <section className="view max-w-7xl mx-auto">
       <ViewHead
@@ -400,7 +486,9 @@ export default function RmlcLifecycle() {
         }
       />
 
-      <RmlcLegs selectedId={selectedMaterial.id} />
+      <PersonaTop persona={persona} config={personaTop} />
+
+      <RmlcLegs selectedId={selectedMaterial.id} persona={persona} />
 
       <div className="section-title">Stock lifecycle stages</div>
 
@@ -512,6 +600,10 @@ export default function RmlcLifecycle() {
             <p className="card__sub text-xs text-body-c">
               Enterprise Lifecycle Model: <strong>Accumulation → Active Circulation → At Risk → Liquidation</strong>
             </p>
+            <p className="text-xs text-body-c mt-1 mb-0">
+              Stage counts and values for <strong>{scope}</strong>
+              {materialOutOfScope && <> · {selectedMaterial.id} is held at {materialPlant}, outside this scope</>}
+            </p>
           </div>
           <Badge tone={profile.lifecycleBadgeTone}>
             Current Position: {profile.lifecycleStateLabel}
@@ -541,14 +633,56 @@ export default function RmlcLifecycle() {
                   )}
                 </div>
                 <div className="text-sm font-bold text-ink mb-1">{s.label}</div>
-                <p className="text-xs text-body-c m-0 mb-3 leading-relaxed">{s.desc}</p>
+                <p className="text-xs text-body-c m-0 mb-3 leading-relaxed">{stageMeaning[idx]}</p>
                 <div className="text-xs text-subtle pt-2 border-t border-border">
+                  <div className="font-semibold text-body-c mb-0.5">{stageStat(s)}</div>
+                  {allPlants && (
+                    <div className="font-mono mb-1">
+                      {RMLC_STAGES_BY_PLANT.map((pl) => (
+                        <span key={pl.plant} className={`mr-2 ${pl.plant === materialPlant ? 'text-primary font-bold' : ''}`}>
+                          P{pl.plant.slice(-1)} {persona === 'finance' ? `$${pl.stages[s.key].value.toFixed(2)}M` : pl.stages[s.key].count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {s.rule}
                 </div>
               </div>
             );
           })}
         </div>
+
+        {allPlants && (
+          <div className="rounded-sm border border-border overflow-hidden mb-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Plant</TableHead>
+                  {RMLC_STAGES.map((st) => (
+                    <TableHead key={st.key} className="text-right">{st.label}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {RMLC_STAGES_BY_PLANT.map((pl) => (
+                  <TableRow key={pl.plant} className={pl.plant === materialPlant ? 'bg-info-bg/30' : undefined}>
+                    <TableCell className="font-bold text-ink">
+                      {pl.name}{pl.plant === materialPlant && <span className="ml-2 text-primary text-xs">● {selectedMaterial.id}</span>}
+                    </TableCell>
+                    {RMLC_STAGES.map((st) => (
+                      <TableCell key={st.key} className="text-right font-mono text-xs">
+                        {persona === 'finance'
+                          ? `$${pl.stages[st.key].value.toFixed(2)}M`
+                          : `${pl.stages[st.key].count} materials`}
+                        {persona === 'finance' ? <span className="text-subtle"> · {pl.stages[st.key].count}</span> : <span className="text-subtle"> · ${pl.stages[st.key].value.toFixed(2)}M</span>}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
         <div className={`p-3.5 rounded-md border text-xs leading-relaxed ${
           profile.lifecycleTone === 'ok' ? 'bg-success-bg border-success' : profile.lifecycleTone === 'watch' ? 'bg-warning-bg border-warning' : 'bg-error-bg border-error'
@@ -560,7 +694,7 @@ export default function RmlcLifecycle() {
             <strong>Observed Evidence:</strong> {profile.triggerEvidence}
           </div>
           <div className="text-ink">
-            <strong>Next-State Transition &amp; Intervention:</strong> {profile.nextStateRisk} {profile.prescribedAction}
+            <strong>{nextStep.label}:</strong> {nextStep.body}
           </div>
         </div>
       </div>
@@ -667,41 +801,6 @@ export default function RmlcLifecycle() {
           </div>
         </div>
       </div>
-
-      {/* Persona Lens */}
-      <motion.div
-        key={persona}
-        initial={shouldReduceMotion ? false : { opacity: 0, y: 4 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-        className="mb-6"
-      >
-        {persona === 'supervisor' && (
-          <Insight label="Plant Supervisor Lens · Line-Stoppage Relevance">
-            {profile.supervisorLens}
-          </Insight>
-        )}
-        {persona === 'warehouse' && (
-          <Insight label="Warehouse Manager Lens · Physical Stock & Transfer Execution">
-            {profile.warehouseLens}
-          </Insight>
-        )}
-        {persona === 'planner' && (
-          <Insight label="Materials Planner Lens · Plan & Replenishment Alignment">
-            {profile.plannerLens}
-          </Insight>
-        )}
-        {persona === 'procurement' && (
-          <Insight label="Procurement Officer Lens · Sourcing & PO Cadence">
-            {profile.procurementLens}
-          </Insight>
-        )}
-        {persona === 'finance' && (
-          <Insight label="Finance Controller Lens · Working Capital Exposure & Obsolescence Risk Governance">
-            {profile.financeLens}
-          </Insight>
-        )}
-      </motion.div>
 
       {/* Why Disclosure */}
       <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">

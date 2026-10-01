@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import OptimizationSetup from '../../components/OptimizationSetup';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ViewHead, KpiTile, WhyDisclosure, Badge } from '../../components/CommonUI';
+import { ViewHead, KpiTile, WhyDisclosure, Badge, Insight } from '../../components/CommonUI';
 import { usePlatform } from '../../context/PlatformContext';
 import { MATERIALS, EOQ_INPUTS, FORECAST_INPUTS } from '../../data/mockData';
 import {
@@ -60,7 +60,7 @@ const formatCurrency = (v, decimals = 2) =>
 
 export default function Optimization() {
   const navigate = useNavigate();
-  const { persona, selectedMaterial } = usePlatform();
+  const { persona, scope, selectedMaterial } = usePlatform();
 
   // Horizon selection: '12w' (Authoritative Multivariate Forecast) vs '26w' (Extended Modeled Outlook)
   const [selectedHorizon, setSelectedHorizon] = useState('26w');
@@ -473,6 +473,8 @@ export default function Optimization() {
   // 7. Persona-specific optimization lens: one shared card shell, five content configs
   const PERSONA_OPT_LENS = {
     supervisor: {
+      headlineLabel: 'Plant Supervisor Lens · Will the Line Keep Running',
+      headline: currentCoverageDays < leadTimeDays ? `${activeId} has ${formatNum(currentCoverageDays, 1)} days of cover against a ${leadTimeDays}-day lead time — order ${formatNum(currentOrderQty, 0)} ${uom} now to avoid a stoppage on ${activeMeta.downstream}.` : `${activeId} has ${formatNum(currentCoverageDays, 1)} days of cover, ${formatNum(currentCoverageDays - leadTimeDays, 1)} beyond the ${leadTimeDays}-day lead time${firstCoverageBreach ? `, but projected cover first breaches lead time on ${firstCoverageBreach.date}` : ' and stays protected across the horizon'}.`,
       title: 'Coverage After Optimizing',
       subtitle: `Whether ${activeId} keeps up with the lines it feeds once this policy is applied`,
       badgeText: currentCoverageDays < leadTimeDays ? '● Coverage Below Lead Time' : '● Coverage Protected',
@@ -486,6 +488,8 @@ export default function Optimization() {
       ],
     },
     warehouse: {
+      headlineLabel: 'Warehouse Manager Lens · What to Hold and What to Clear',
+      headline: currentExcessQty > 0 ? `${formatNum(currentExcessQty, 0)} ${uom} (${formatCurrency(currentExcessValue)}) of ${activeId} sits above the target buffer — defer the next PO and let stock run down toward ${formatNum(targetPositionQty, 0)} ${uom}.` : `${activeId} is at or below its target buffer; the change to make is the lot size, from ${formatNum(currentBatchQty, 0)} to ${formatNum(qStar, 0)} ${uom} per receipt.`,
       title: 'Stock This Policy Implies Holding',
       subtitle: `Physical footprint and batch-size change for ${activeId} under the recommended policy`,
       badgeText: currentExcessQty > 0 ? '● Surplus Above Target' : '● At or Below Target',
@@ -499,6 +503,8 @@ export default function Optimization() {
       ],
     },
     planner: {
+      headlineLabel: 'Materials Planner Lens · Cover Against the Plan',
+      headline: `${activeId} is consuming ${formatNum(baseDailyDemand, 2)} ${uom}/day with a ${(trendPerWeek * 100).toFixed(2)}%/wk trend; on-hand is ${currentOnHand < reorderPoint ? `${formatNum(reorderPoint - currentOnHand, 0)} ${uom} below` : `${formatNum(currentOnHand - reorderPoint, 0)} ${uom} above`} the reorder point of ${formatNum(reorderPoint, 0)} ${uom}. Confirm that matches the production plan.`,
       title: 'Cover Against the Plan',
       subtitle: `Demand trend and reorder position for ${activeId} against the production plan`,
       badgeText: `Trend ${(trendPerWeek * 100).toFixed(2)}%/wk`,
@@ -512,6 +518,8 @@ export default function Optimization() {
       ],
     },
     procurement: {
+      headlineLabel: 'Procurement Officer Lens · What to Order and When',
+      headline: currentOnHand < reorderPoint ? `The reorder point is triggered — raise a PO for ${formatNum(currentOrderQty, 0)} ${uom} (${formatCurrency(currentOrderValue)}) with ${activeMeta.supplier.split('(')[0].trim()}; lead time is ${leadTimeDays} days.` : `No PO needed yet for ${activeId}. Recalibrating the lot from ${formatNum(currentBatchQty, 0)} to ${formatNum(qStar, 0)} ${uom} saves ${formatCurrency(netAnnualPolicySavings)}/yr when the next order is raised.`,
       title: 'Reorder Position & Lot Size',
       subtitle: `What to order and when for ${activeId}, and what recalibrating the lot size is worth`,
       badgeText: currentOnHand < reorderPoint ? '● ROP Trigger Active' : '● Above ROP',
@@ -525,6 +533,8 @@ export default function Optimization() {
       ],
     },
     finance: {
+      headlineLabel: 'Finance Controller Lens · Capital Released or Locked',
+      headline: `${activeId} ties up ${formatCurrency(currentOnHandValue)} today. This policy opens a ${formatCurrency(modeledCapitalReleaseOpportunity)} release opportunity and saves ${formatCurrency(annualCarryingCostSavings)}/yr in carrying cost while holding a 95% service level.`,
       title: '6-Month Capital Opportunity',
       subtitle: `Working capital position and release opportunity for ${activeId} under this policy`,
       badgeText: `Modeled Opportunity: ${formatCurrency(modeledCapitalReleaseOpportunity)}`,
@@ -539,6 +549,61 @@ export default function Optimization() {
     },
   };
   const activeOptLens = PERSONA_OPT_LENS[persona] || PERSONA_OPT_LENS.supervisor;
+
+
+  // Chart and catalog framing per persona: same series, read through each persona's decision.
+  const OPT_COPY = {
+    supervisor: {
+      projSub: `Daily stock against the reorder point and safety stock; ${firstCoverageBreach ? `cover first drops below the ${leadTimeDays}-day lead time on ${firstCoverageBreach.date}` : `cover stays above the ${leadTimeDays}-day lead time across the horizon`}.`,
+      covTitle: 'Line Cover vs Lead Time', covSub: `How many days of production the stock covers, against the ${leadTimeDays} days a new order takes to arrive`,
+      itrTitle: 'Stock Turnover Trend', itrSub: 'Rolling turnover; a falling line means stock is sitting longer than the lines consume it',
+      capTitle: 'Capital Behind the Cover', capSub: 'Value of the stock that keeps the lines running, against the target buffer',
+      catTitle: 'Materials Ranked by Line Risk', catSub: 'Lowest cover first: these are the materials most likely to stop a line',
+      cols: ['coverage', 'alloc'],
+      sort: (a, b) => a.coverageDays - b.coverageDays,
+    },
+    warehouse: {
+      projSub: `Daily stock against the target buffer; today ${currentExcessQty > 0 ? `${formatNum(currentExcessQty, 0)} ${uom} sits above target` : 'stock is at or below target'}.`,
+      covTitle: 'Days of Stock on Hand', covSub: 'How long the shelf stock lasts at forecast consumption, against the supplier lead time',
+      itrTitle: 'Bin Turnover Trend', itrSub: 'Rolling turnover; the faster it climbs, the quicker shelves clear',
+      capTitle: 'Value Sitting on the Shelf', capSub: 'Value of the physical stock in the stores, against the target buffer value',
+      catTitle: 'Materials Ranked by Surplus', catSub: 'Largest surplus above target first: where to defer receipts or clear stock',
+      cols: ['stock', 'target'],
+      sort: (a, b) => (b.currentStock - b.desiredStock) * b.unitCost - (a.currentStock - a.desiredStock) * a.unitCost,
+    },
+    planner: {
+      projSub: `Daily stock against the reorder point of ${formatNum(reorderPoint, 0)} ${uom}; ${currentOnHand < reorderPoint ? 'on-hand is already below it' : 'on-hand is above it today'}.`,
+      covTitle: 'Cover Against the Plan', covSub: `Days of supply against the ${leadTimeDays}-day lead time; check the dips against the production plan`,
+      itrTitle: 'Turnover vs Plan', itrSub: 'Rolling turnover against target; a gap means the plan and stock are out of step',
+      capTitle: 'Capital the Plan Commits', capSub: 'Value of stock the plan needs to carry, against the target buffer',
+      catTitle: 'Materials Ranked by Distance from Target', catSub: 'Largest gap to target buffer first: where the plan needs adjusting',
+      cols: ['coverage', 'target', 'order'],
+      sort: (a, b) => Math.abs(b.desiredStock - b.currentStock) * b.unitCost - Math.abs(a.desiredStock - a.currentStock) * a.unitCost,
+    },
+    procurement: {
+      projSub: `Daily stock against the reorder point; ${currentOnHand < reorderPoint ? `order ${formatNum(currentOrderQty, 0)} ${uom} now` : 'no order is needed yet'}. Q* is ${formatNum(qStar, 0)} ${uom}.`,
+      covTitle: 'Cover vs Supplier Lead Time', covSub: `An order placed when cover drops to ${leadTimeDays} days arrives just in time`,
+      itrTitle: 'Turnover and Order Cadence', itrSub: 'Rolling turnover; it should rise as lot sizes move to the recommended quantity',
+      capTitle: 'Spend Implied by the Plan', capSub: 'Value of stock on hand against the target; the gap is what you will order or defer',
+      catTitle: 'Materials Ranked by Order Value', catSub: 'Largest recommended order first, across your supplier portfolio',
+      cols: ['order', 'alloc', 'priority'],
+      sort: (a, b) => b.orderValue - a.orderValue,
+    },
+    finance: {
+      projSub: `Daily stock against the target buffer; closing the gap releases ${formatCurrency(modeledCapitalReleaseOpportunity)}.`,
+      covTitle: 'Days of Cash in Stock', covSub: 'Days of supply held; every day above the lead time is cash that could be released',
+      itrTitle: 'Inventory Turnover (ITR)', itrSub: 'Rolling ITR (COGS / 30-day average inventory value) against target',
+      capTitle: 'Inventory Capital & Carrying Cost Outlook', capSub: 'Physical inventory capital valuation ($) over the planning horizon vs modeled target buffer ($)',
+      catTitle: 'Materials Ranked by Capital Held', catSub: 'Largest on-hand value first, across all plants in scope',
+      cols: ['stock', 'target', 'conf'],
+      sort: (a, b) => b.currentValue - a.currentValue,
+    },
+  };
+  const optCopy = OPT_COPY[persona] || OPT_COPY.supervisor;
+  const allPlantsScope = scope.startsWith('All Plants');
+  const inScope = (m) => allPlantsScope || m.isSelected || scope.startsWith(m.plant);
+  const catalogRows = [...catalogOptimizationData].filter(inScope).sort(optCopy.sort);
+  const colStyle = (k) => ({ opacity: optCopy.cols.includes(k) ? 1 : 0.45, fontWeight: optCopy.cols.includes(k) ? 700 : undefined });
 
   // Chart Coordinate Engines
   const W1 = 920, H1 = 280, ML1 = 76, MR1 = 30, MT1 = 26, MB1 = 48;
@@ -636,9 +701,50 @@ export default function Optimization() {
         optimal={optimizationTimeline[0]?.targetPosition}
         uom={uom}
         material={`${activeId} · ${name}`}
+        persona={persona}
+        key={`setup-${persona}`}
       />
 
-      {/* 2. CURRENT INVENTORY POSITION — AS OF TODAY */}
+      {/* 2. PERSONA-SPECIFIC INTELLIGENCE LENS (leads the page; the shared position below is the evidence) */}
+      <Insight key={`head-${persona}`} label={activeOptLens.headlineLabel} defaultOpen>
+        {activeOptLens.headline}
+      </Insight>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={persona}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          className={`card mb-4 border-l-4 ${activeOptLens.borderClass}`}
+        >
+          <div className="card__head mb-3">
+            <div>
+              <h2 className="card__title text-base font-bold text-ink m-0">
+                {activeOptLens.title}
+              </h2>
+              <p className="card__sub text-xs text-subtle m-0">
+                {activeOptLens.subtitle}
+              </p>
+            </div>
+            <span className={`badge badge-${activeOptLens.badgeTone} font-bold text-xs`}>
+              {activeOptLens.badgeText}
+            </span>
+          </div>
+
+          <div className="grid-4">
+            {activeOptLens.tiles.map((tile) => (
+              <div key={tile.label} className="bg-bg p-2.5 rounded-md border border-border">
+                <span className="text-xs text-subtle uppercase block font-semibold">{tile.label}</span>
+                <strong className="num text-sm text-ink block">{tile.value}</strong>
+                <span className="text-xs text-subtle font-mono">{tile.sub}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* 3. CURRENT INVENTORY POSITION — AS OF TODAY (shared evidence) */}
       <div className="card mb-4">
         <div className="card__head flex-wrap gap-2 mb-3.5">
           <div>
@@ -736,41 +842,6 @@ export default function Optimization() {
         </div>
       </div>
 
-      {/* 3. PERSONA-SPECIFIC INTELLIGENCE LENS */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={persona}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          className={`card mb-4 border-l-4 ${activeOptLens.borderClass}`}
-        >
-          <div className="card__head mb-3">
-            <div>
-              <h2 className="card__title text-base font-bold text-ink m-0">
-                {activeOptLens.title}
-              </h2>
-              <p className="card__sub text-xs text-subtle m-0">
-                {activeOptLens.subtitle}
-              </p>
-            </div>
-            <span className={`badge badge-${activeOptLens.badgeTone} font-bold text-xs`}>
-              {activeOptLens.badgeText}
-            </span>
-          </div>
-
-          <div className="grid-4">
-            {activeOptLens.tiles.map((tile) => (
-              <div key={tile.label} className="bg-bg p-2.5 rounded-md border border-border">
-                <span className="text-xs text-subtle uppercase block font-semibold">{tile.label}</span>
-                <strong className="num text-sm text-ink block">{tile.value}</strong>
-                <span className="text-xs text-subtle font-mono">{tile.sub}</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      </AnimatePresence>
-
       {/* 4. PRIMARY TIME-SERIES CHARTS (Projected Inventory Position) */}
       <div className="card mb-4">
         <div className="card__head flex-wrap gap-2.5 mb-3.5">
@@ -784,7 +855,7 @@ export default function Optimization() {
               </Badge>
             </div>
             <p className="card__sub text-xs text-subtle mt-0.5">
-              Daily trajectory comparing Baseline Depletion Projection against Modeled Target Buffer (SS + Q*), Safety Stock, and Reorder Point
+              {optCopy.projSub}
             </p>
           </div>
           <div className="chart-legend gap-3.5 flex-wrap text-xs">
@@ -921,10 +992,10 @@ export default function Optimization() {
             <div className="flex justify-between items-start gap-2 mb-2.5">
               <div>
                 <h3 className="card__title text-sm font-bold text-ink m-0">
-                  Inventory Coverage & Runway Outlook
+                  {optCopy.covTitle}
                 </h3>
                 <p className="card__sub text-xs text-subtle mt-0.5">
-                  Days of supply vs {leadTimeDays}-day supplier replenishment lead time threshold
+                  {optCopy.covSub}
                 </p>
               </div>
               <span className={`badge ${firstCoverageBreach ? 'badge-risk' : 'badge-success'} text-xs font-mono`}>
@@ -988,10 +1059,10 @@ export default function Optimization() {
             <div className="flex justify-between items-start gap-2 mb-2.5">
               <div>
                 <h3 className="card__title text-sm font-bold text-ink m-0">
-                  30-Day Rolling Projected ITR Outlook
+                  {optCopy.itrTitle}
                 </h3>
                 <p className="card__sub text-xs text-subtle mt-0.5">
-                  Rolling ITR (COGS / 30-Day Avg Inventory Value) vs target
+                  {optCopy.itrSub}
                 </p>
               </div>
               <span className="badge badge-success text-xs font-mono">
@@ -1054,12 +1125,12 @@ export default function Optimization() {
           <div>
             <div className="flex items-center gap-2.5">
               <h2 className="card__title text-base font-bold text-ink m-0">
-                Inventory Capital & Carrying Cost Outlook
+                {optCopy.capTitle}
               </h2>
               <Badge tone="accent">Financial Valuation Proxy</Badge>
             </div>
             <p className="card__sub text-xs text-subtle mt-0.5">
-              Physical inventory capital valuation ($) over the planning horizon vs modeled target buffer ($)
+              {optCopy.capSub}
             </p>
           </div>
           <div className="chart-legend gap-3.5 text-xs">
@@ -1132,10 +1203,10 @@ export default function Optimization() {
       <div className="card mb-4">
         <div className="card__head mb-3">
           <div>
-            <h2 className="card__title text-base font-bold text-ink m-0">Per-Material Catalog Order Plan</h2>
-            <p className="card__sub text-xs text-subtle mt-0.5">Canonical multi-material optimization parameters, target buffers, and replenishment recommendations</p>
+            <h2 className="card__title text-base font-bold text-ink m-0">{optCopy.catTitle}</h2>
+            <p className="card__sub text-xs text-subtle mt-0.5">{optCopy.catSub}</p>
           </div>
-          <Badge tone="neutral">Catalog Baseline</Badge>
+          <Badge tone="neutral">Scope: {scope}</Badge>
         </div>
 
         <div className="border border-border rounded-lg overflow-hidden mb-3.5">
@@ -1144,23 +1215,23 @@ export default function Optimization() {
               <TableRow>
                 <TableHead>Material</TableHead>
                 <TableHead>ABC Class</TableHead>
-                <TableHead className="text-right">Current Stock</TableHead>
-                <TableHead className="text-right">Target Buffer</TableHead>
-                <TableHead className="text-right">Coverage (DOS)</TableHead>
-                <TableHead className="text-right">Recommended Order Qty</TableHead>
-                <TableHead>Optimization Priority</TableHead>
-                <TableHead>Supplier Allocation</TableHead>
-                <TableHead className="text-right">Model Confidence</TableHead>
+                <TableHead className="text-right" style={colStyle('stock')}>Current Stock</TableHead>
+                <TableHead className="text-right" style={colStyle('target')}>Target Buffer</TableHead>
+                <TableHead className="text-right" style={colStyle('coverage')}>Coverage (DOS)</TableHead>
+                <TableHead className="text-right" style={colStyle('order')}>Recommended Order Qty</TableHead>
+                <TableHead style={colStyle('priority')}>Optimization Priority</TableHead>
+                <TableHead style={colStyle('alloc')}>Supplier Allocation</TableHead>
+                <TableHead className="text-right" style={colStyle('conf')}>Model Confidence</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {catalogOptimizationData.map((m) => (
+              {catalogRows.map((m) => (
                 <TableRow
                   key={m.id}
                   className={m.isSelected ? 'bg-[color-mix(in_srgb,var(--info-bg)_60%,transparent)] font-medium' : undefined}
                 >
                   <TableCell className="font-semibold text-ink font-mono text-xs">
-                    {m.name}
+                    {m.name} <span className="text-subtle font-sans">· {m.plant}</span>
                     {m.isSelected && (
                       <span className="badge badge-accent ml-2 text-xs py-0.5 px-1.5 font-sans">
                         Active SKU
@@ -1172,27 +1243,27 @@ export default function Optimization() {
                       Class {m.abcClass}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-ink ">
+                  <TableCell style={colStyle('stock')} className="text-right font-mono text-xs text-ink ">
                     {formatNum(m.currentStock, 0)} {m.uom} ({formatCurrency(m.currentValue)})
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-ink ">
+                  <TableCell style={colStyle('target')} className="text-right font-mono text-xs text-ink ">
                     {formatNum(m.desiredStock, 0)} {m.uom} ({formatCurrency(m.desiredValue)})
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs">
+                  <TableCell style={colStyle('coverage')} className="text-right font-mono text-xs">
                     {formatNum(m.coverageDays, 1)}d
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs">
+                  <TableCell style={colStyle('order')} className="text-right font-mono text-xs">
                     <strong className={m.orderQty > 0 ? 'text-ink ' : 'text-subtle'}>
                       {formatNum(m.orderQty, 0)} {m.uom} ({formatCurrency(m.orderValue)})
                     </strong>
                   </TableCell>
-                  <TableCell>
+                  <TableCell style={colStyle('priority')}>
                     <span className="text-xs font-semibold text-body-c ">
                       {m.abcPriority}
                     </span>
                   </TableCell>
-                  <TableCell className="text-xs text-subtle">{m.supplierAllocationText}</TableCell>
-                  <TableCell className="text-right font-mono text-xs">{m.confidence.toFixed(2)}%</TableCell>
+                  <TableCell style={colStyle('alloc')} className="text-xs text-subtle">{m.supplierAllocationText}</TableCell>
+                  <TableCell style={colStyle('conf')} className="text-right font-mono text-xs">{m.confidence.toFixed(2)}%</TableCell>
                 </TableRow>
               ))}
             </TableBody>

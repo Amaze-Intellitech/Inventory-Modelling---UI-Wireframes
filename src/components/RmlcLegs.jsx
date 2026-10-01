@@ -25,12 +25,44 @@ export const RMLC_CYCLE_MATERIALS = MATERIALS;
 
 const sum = (a) => a.reduce((x, y) => x + y, 0);
 
-export default function RmlcLegs({ selectedId }) {
+// Each plant persona owns a different slice of the cycle. `legs` are the legs they can act on; the rest are dimmed.
+const PERSONA_LEGS = {
+  supervisor: {
+    label: 'Plant Supervisor', legs: ['lead', 'store'],
+    sub: 'Highlighted: the two legs that decide whether material reaches the line on time.',
+    read: (f, own) => `${f.id} spends ${f.days[0]} days in supplier lead time and ${f.days[2]} waiting in stores before it reaches the line — ${own} of its ${f.total} days.`,
+  },
+  warehouse: {
+    label: 'Warehouse Manager', legs: ['store', 'fg'],
+    sub: 'Highlighted: the legs where stock sits physically in your stores.',
+    read: (f, own) => `${f.id} sits ${f.days[2]} days as raw material in stores and ${f.days[4]} days as unsold finished goods — ${own} of its ${f.total} days on your shelves.`,
+  },
+  planner: {
+    label: 'Materials Planner', legs: ['store', 'make'],
+    sub: 'Highlighted: the legs your plan controls, from stores issue through production.',
+    read: (f, own) => `${f.id} waits ${f.days[2]} days in stores and takes ${f.days[3]} days to produce — ${own} of ${f.total} days sit between the plan and finished goods.`,
+  },
+  procurement: {
+    label: 'Procurement Officer', legs: ['lead', 'credit'],
+    sub: 'Highlighted: the legs you negotiate with the supplier.',
+    read: (f, own) => `${f.id} has a ${f.days[0]}-day supplier lead time and ${f.days[1]} days of supplier credit — ${own} of ${f.total} days are set in the supplier agreement.`,
+  },
+  finance: {
+    label: 'Finance Controller', legs: ['credit', 'fg', 'cust'],
+    sub: 'Highlighted: the legs that decide how long cash stays out — supplier credit, unsold goods and customer terms.',
+    read: (f, own) => `${f.id} ties up cash for ${f.total} days from PO to customer payment; ${own} of them come from supplier credit, unsold finished goods and customer terms.`,
+  },
+};
+
+export default function RmlcLegs({ selectedId, persona }) {
+  const lens = PERSONA_LEGS[persona];
+  const owned = lens ? RMLC_LEGS.map((l) => lens.legs.includes(l.key)) : RMLC_LEGS.map(() => true);
   const rows = MATERIALS.map((m) => {
     const total = sum(m.days);
-    const maxDays = Math.max(...m.days);
-    const idx = m.days.indexOf(maxDays);
-    return { ...m, total, bottleneckIdx: idx };
+    // with a persona, the bottleneck is the longest leg that persona can act on
+    const ownDays = m.days.map((d, i) => (owned[i] ? d : -1));
+    const idx = m.days.indexOf(Math.max(...ownDays));
+    return { ...m, total, bottleneckIdx: idx, ownTotal: sum(m.days.filter((_, i) => owned[i])) };
   });
   const scale = Math.max(...rows.map((r) => r.total));
   const focus = rows.find((r) => r.id === selectedId) || rows[rows.length - 1];
@@ -38,19 +70,19 @@ export default function RmlcLegs({ selectedId }) {
 
   return (
     <div className="space-y-4 mb-6">
-      <Insight label="Cash cycle">
-        <span className="metric">{worst.id} · {worst.name}</span> takes <span className="metric">{worst.total} days</span> to turn
+      <Insight key={persona} label={lens ? `${lens.label} Lens · Where the Days Go` : 'Cash cycle'}>
+        {lens ? lens.read(focus, focus.ownTotal) : <><span className="metric">{worst.id} · {worst.name}</span> takes <span className="metric">{worst.total} days</span> to turn
         a purchase into cash, {(worst.total / rows[0].total).toFixed(0)}× longer than {rows[0].id}.{' '}
         {worst.days[worst.bottleneckIdx]} of those days ({Math.round((worst.days[worst.bottleneckIdx] / worst.total) * 100)}%) are
         spent in one place: <strong>{RMLC_LEGS[worst.bottleneckIdx].short.toLowerCase()}</strong>. Supplier and production
-        timings are normal.
+        timings are normal.</>}
       </Insight>
 
       <Card className="mb-0">
         <CardHead
           title="Days from purchase order to customer payment"
-          sub="Each bar is one material. Segments follow the fixed sequence of events; the longest leg is highlighted."
-          right={<Badge tone="neutral" shape={false}>Example data</Badge>}
+          sub={lens ? lens.sub : 'Each bar is one material. Segments follow the fixed sequence of events; the longest leg is highlighted.'}
+          right={<Badge tone={lens ? 'accent' : 'neutral'} shape={false}>{lens ? `${lens.label} view` : 'Example data'}</Badge>}
         />
 
         <ol className="rmlc-events" aria-label="Event sequence">
@@ -72,25 +104,26 @@ export default function RmlcLegs({ selectedId }) {
                   <span
                     key={RMLC_LEGS[i].key}
                     className={`rmlc-seg ${i === r.bottleneckIdx ? 'rmlc-seg--hot' : ''}`}
-                    style={{ flexGrow: d }}
+                    style={{ flexGrow: d, opacity: owned[i] ? 1 : 0.3 }}
                     title={`${RMLC_LEGS[i].short}: ${d} days`}
                   >
                     {d >= 8 ? d : ''}
                   </span>
                 ))}
               </div>
-              <div className="rmlc-row__total num">{r.total} days</div>
+              <div className="rmlc-row__total num">{lens ? `${r.ownTotal} of ${r.total} days` : `${r.total} days`}</div>
             </div>
           ))}
         </div>
 
         <div className="chart-legend">
           <span><span className="legend-dot" style={{ background: 'var(--s1)' }} /> Each leg (days)</span>
-          <span><span className="legend-dot" style={{ background: 'var(--s2)' }} /> Longest leg, the bottleneck</span>
+          <span><span className="legend-dot" style={{ background: 'var(--s2)' }} /> {lens ? 'Longest leg you can act on' : 'Longest leg, the bottleneck'}</span>
+          {lens && <span><span className="legend-dot" style={{ background: 'var(--s1)', opacity: 0.3 }} /> Outside your remit</span>}
         </div>
 
         <div className="rmlc-why">
-          <Badge tone="watch">Bottleneck · {focus.id}</Badge>
+          <Badge tone="watch">{lens ? `Your bottleneck · ${focus.id}` : `Bottleneck · ${focus.id}`}</Badge>
           <span>
             <strong>{RMLC_LEGS[focus.bottleneckIdx].short}</strong> ({focus.days[focus.bottleneckIdx]} days). {focus.why}
           </span>
@@ -103,7 +136,7 @@ export default function RmlcLegs({ selectedId }) {
             <thead>
               <tr>
                 <th>Material</th>
-                {RMLC_LEGS.map((l) => <th key={l.key} className="num">{l.short}</th>)}
+                {RMLC_LEGS.map((l, i) => <th key={l.key} className="num" style={{ opacity: owned[i] ? 1 : 0.45 }}>{l.short}</th>)}
                 <th className="num">Total</th>
               </tr>
             </thead>
@@ -111,7 +144,7 @@ export default function RmlcLegs({ selectedId }) {
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td><strong className="text-ink">{r.id}</strong> · {r.name}</td>
-                  {r.days.map((d, i) => <td key={i} className="num">{d}</td>)}
+                  {r.days.map((d, i) => <td key={i} className="num" style={{ opacity: owned[i] ? 1 : 0.45, fontWeight: owned[i] && lens ? 700 : undefined }}>{d}</td>)}
                   <td className="num"><strong>{r.total}</strong></td>
                 </tr>
               ))}

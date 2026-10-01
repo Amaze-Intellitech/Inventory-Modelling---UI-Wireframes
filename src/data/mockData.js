@@ -55,6 +55,14 @@ export const RMLC_STAGES = [
   { key: 'liquidation', label: 'Liquidation', value: 2.10, count: 118, desc: 'Past 180-day threshold', rule: 'Alert rule: 0 consumption events in 180 days', tone: 'risk' },
 ];
 
+// The same four stages split by plant. Each stage sums back to the all-plant totals in RMLC_STAGES above.
+export const RMLC_STAGES_BY_PLANT = [
+  { plant: 'Plant 1', name: 'Plant 1 — Assembly', stages: { accumulation: { value: 1.20, count: 26 }, active: { value: 10.40, count: 340 }, atrisk: { value: 0.52, count: 20 }, liquidation: { value: 0.55, count: 30 } } },
+  { plant: 'Plant 2', name: 'Plant 2 — Engine Hub', stages: { accumulation: { value: 1.55, count: 32 }, active: { value: 11.30, count: 380 }, atrisk: { value: 0.68, count: 26 }, liquidation: { value: 0.80, count: 42 } } },
+  { plant: 'Plant 3', name: 'Plant 3 — Microelectronics', stages: { accumulation: { value: 0.85, count: 18 }, active: { value: 8.10, count: 270 }, atrisk: { value: 0.44, count: 18 }, liquidation: { value: 0.45, count: 26 } } },
+  { plant: 'Plant 4', name: 'Plant 4 — Fastener Depot', stages: { accumulation: { value: 0.50, count: 10 }, active: { value: 4.80, count: 150 }, atrisk: { value: 0.30, count: 12 }, liquidation: { value: 0.30, count: 20 } } },
+];
+
 export const DECISION_ROWS = [
   { id: 'd1', tag: 'Act now', tone: 'risk', title: 'Authorize expedited PO — MAT-4120', meta: 'Stockout in 14 days · Plant 3 · Confidence 94.80%', impact: '+$1.82M protected' },
   { id: 'd2', tag: 'Optimize', tone: 'accent', title: 'Recalibrate lot size — 46 Class A materials', meta: 'EOQ recalibration · Confidence 94.80%', impact: '+$3.65M released' },

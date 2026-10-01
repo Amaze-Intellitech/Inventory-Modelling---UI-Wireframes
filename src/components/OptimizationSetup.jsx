@@ -30,9 +30,34 @@ const MODES = [
   { id: 'live', label: 'On-the-fly', desc: 'Takes a new constraint mid-execution without restarting the plan.' },
 ];
 
-export default function OptimizationSetup({ expected, optimal, uom = 'EA', material }) {
-  const [objective, setObjective] = useState('wc');
-  const [constraints, setConstraints] = useState(() => Object.fromEntries(CONSTRAINTS.map((c) => [c.id, c.on])));
+// What each plant persona optimises for first, the constraints they own, and the one sentence that frames the result.
+const PERSONA_SETUP = {
+  supervisor: {
+    objective: 'service', key: ['prod', 'cons', 'slt'], extraOn: [], label: 'Plant Supervisor',
+    read: (gap, f, o, u, m) => <>For {m}, the line-first position is about <span className="metric">{o} {u}</span> against <span className="metric">{f} {u}</span> expected. Objective starts at <strong>hold service level</strong>, with production, consumption and lead time as your key constraints.</>,
+  },
+  warehouse: {
+    objective: 'inv', key: ['stor', 'qty', 'cons'], extraOn: [], label: 'Warehouse Manager',
+    read: (gap, f, o, u, m) => <>For {m}, the shelf-friendly position is about <span className="metric">{o} {u}</span> against <span className="metric">{f} {u}</span> expected{gap > 0 ? <>, which clears about <span className="metric">{Math.abs(gap).toLocaleString(undefined, { maximumFractionDigits: 0 })} {u}</span> of surplus</> : null}. Objective starts at <strong>minimise inventory</strong>, with storage capacity as your key constraint.</>,
+  },
+  planner: {
+    objective: 'cost', key: ['prod', 'cons', 'qty'], extraOn: [], label: 'Materials Planner',
+    read: (gap, f, o, u, m) => <>For {m}, the plan-aligned position is about <span className="metric">{o} {u}</span> against <span className="metric">{f} {u}</span> expected. Objective starts at <strong>minimise inventory cost</strong>; production requirements and quantity limits keep it consistent with the build plan.</>,
+  },
+  procurement: {
+    objective: 'proc', key: ['scap', 'slt', 'pcost', 'price'], extraOn: ['pcost', 'price'], label: 'Procurement Officer',
+    read: (gap, f, o, u, m) => <>For {m}, the best order position is about <span className="metric">{o} {u}</span> against <span className="metric">{f} {u}</span> expected. Objective starts at <strong>optimise procurement quantities</strong>, with supplier capacity, lead time, cost and price switched on.</>,
+  },
+  finance: {
+    objective: 'wc', key: ['pcost', 'price', 'qty'], extraOn: ['pcost'], label: 'Finance Controller',
+    read: (gap, f, o, u, m) => <>For {m}, the capital-efficient position is about <span className="metric">{o} {u}</span> against <span className="metric">{f} {u}</span> expected{gap > 0 ? <>, releasing the cash tied up in about <span className="metric">{Math.abs(gap).toLocaleString(undefined, { maximumFractionDigits: 0 })} {u}</span></> : null}. Objective starts at <strong>optimise working capital</strong>, with procurement cost in scope.</>,
+  },
+};
+
+export default function OptimizationSetup({ expected, optimal, uom = 'EA', material, persona }) {
+  const lens = PERSONA_SETUP[persona];
+  const [objective, setObjective] = useState(lens?.objective || 'wc');
+  const [constraints, setConstraints] = useState(() => Object.fromEntries(CONSTRAINTS.map((c) => [c.id, c.on || !!lens?.extraOn.includes(c.id)])));
   const [mode, setMode] = useState('static');
   const [confirmed, setConfirmed] = useState(false);
   const [extra, setExtra] = useState(false);
@@ -45,10 +70,10 @@ export default function OptimizationSetup({ expected, optimal, uom = 'EA', mater
 
   return (
     <div className="space-y-4 mb-6">
-      <Insight label="Expected vs optimal">
-        The Multivariate stage expects about <span className="metric">{fmt(expected)} {uom}</span> of {material} on hand. Given your
+      <Insight label={lens ? `${lens.label} Lens · Expected vs Optimal` : 'Expected vs optimal'}>
+        {lens ? lens.read(expected - optimal, fmt(expected), fmt(optimal), uom, material) : <>The Multivariate stage expects about <span className="metric">{fmt(expected)} {uom}</span> of {material} on hand. Given your
         objective and constraints, the best position is about <span className="metric">{fmt(optimal)} {uom}</span>. Confirm what
-        you are optimising for and what limits apply, then run the optimizer.
+        you are optimising for and what limits apply, then run the optimizer.</>}
       </Insight>
 
       <Card className="mb-0">
@@ -75,6 +100,7 @@ export default function OptimizationSetup({ expected, optimal, uom = 'EA', mater
               <label key={c.id} className="opt-check">
                 <input type="checkbox" checked={constraints[c.id]} onChange={touch(() => setConstraints((p) => ({ ...p, [c.id]: !p[c.id] })))} />
                 {c.label}
+                {lens?.key.includes(c.id) && <Badge tone="accent" shape={false}>key for you</Badge>}
               </label>
             ))}
             {extra && (
