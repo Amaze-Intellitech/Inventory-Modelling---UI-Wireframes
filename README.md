@@ -8,7 +8,7 @@ The application is currently a front-end wireframe with illustrative data. It is
 
 The platform models raw-material inventory as the starting point for downstream production and replenishment decisions. It follows the nine-stage **Inventory Intelligence pipeline** defined in the solution design, and brings together:
 
-- Sign-in is **always single sign-on** (Microsoft Entra ID, or the organisation's own SAML / OIDC provider). There is no password form. After sign-in, an access check resolves which plants and solutions the user may open. On the solution page only the licensed solution (Inventory Modelling) can be opened; the others are shown disabled for reference.
+- Sign-in is **always single sign-on** (Microsoft Entra ID, or the organisation's own SAML / OIDC provider) and lives in the central **AITEK portal** (`../AiTek-Authentication`), not in this app. The portal lists every AITEK solution, shows the unassigned ones disabled, runs the access check, and opens this app at `/launch` already signed in. Without a session, every page here sends the user to the portal; signing out here also ends the portal session.
 - One-time onboarding for first-time users: material selection, then **parameters** (choose the drivers and declare a source system for each), then **data sources** (connect only the sources those parameters need), then ingestion and data-quality status. Returning users go straight to the dashboard and can change their parameters or data sources later from Data Foundation.
 - Nine analytical stages in a fixed order: Univariate, Bivariate, ABC, EOQ, RMLC, Multivariate (with model validation), Optimization, What-if, and the Inventory Agent
 - "Get to Green, Stay Green" screens for Liquidation and Prevention (wireframe proposals, pending SME review)
@@ -43,7 +43,8 @@ The platform models raw-material inventory dynamics, downstream multi-product de
    - **Production / Materials Planner (`planner`, Plant 1)**: production continuity; shortage resolution, replenishment timing and schedule-risk escalation.
    - **Procurement / Sourcing Manager (`procurement`, all plants)**: supply execution; supplier selection, PO quantity and timing, allocation and supplier-risk mitigation.
 4. **Canonical Workflow (nine stages, fixed order)**:
-   - **Entry**: SSO sign-in → solution → access-check modal. A returning user then opens `/app` directly; a first-time user continues to onboarding. The "loaded" flag is stored in `localStorage` (`aitek-onboarded`), set when ingestion completes.
+   - **Entry**: AITEK portal (SSO sign-in → solution launcher → access check) → `/launch`. A returning user then opens `/app` directly; a first-time user continues to onboarding. The "loaded" flag is stored in `localStorage` (`aitek-onboarded`), set when ingestion completes. The ticket's role (for example Head of Supply Chain) picks the starting persona.
+   - **Hand-over (prototype stand-in)**: the portal passes a short-lived launch ticket in the URL fragment (`/launch#ticket=…`); `src/lib/portal.js` checks its audience and expiry, keeps it in `sessionStorage` and strips it from the URL. In production this app is its own Entra ID (OIDC) client and signs in silently; no token is passed between apps.
    - **Onboarding (first time only)**: Material selection with ABC tier → ~40-parameter checklist with a source per parameter and a data range (one default range per material, as in the design bible; each parameter can override it) → data sources (the page lists the connectors the chosen parameters need, and continuing is blocked until each is connected) → ingestion and data-quality status. Master-data gaps block the run; warnings do not.
    - **1 Univariate** and **2 Bivariate**: Stock on its own, then against one driver at a time. Bivariate ends in a ranked driver shortlist for the Multivariate stage.
    - **3 ABC–XYZ & Criticality**: Value tiers (A, B, C), demand-variability classes (X, Y, Z) and an explicit criticality flag, with the strategy each segment needs and where policy does not match it.
@@ -114,7 +115,7 @@ The platform models raw-material inventory dynamics, downstream multi-product de
 │   │       └── OnboardingShell.jsx  # Frame for the parameter and ingestion steps
 │   └── pages/
 │       └── app/
-│           ├── PrimaryLogin.jsx, SolutionSelection.jsx, AccessCheckDialog (modal)  # SSO sign-in, solution, access check
+│           ├── Launch.jsx         # Entry from the AITEK portal: accepts the launch ticket, routes first-time vs returning
 │           ├── MaterialSelection.jsx, DataSourceConnections.jsx              # Onboarding steps 1–2
 │           ├── ParameterMapping.jsx, Ingestion.jsx                           # Onboarding steps 3–4
 │           ├── Overview.jsx, DataFoundation.jsx
@@ -140,8 +141,11 @@ The platform models raw-material inventory dynamics, downstream multi-product de
 # 1. Install dependencies
 npm install
 
-# 2. Start local development server
+# 2. Start the AITEK portal (sign-in + launcher) in ../AiTek-Authentication on :5170, then this app on :5173
 npm run dev
+#    Open http://localhost:5170 and sign in with a demo account:
+#    alex.vance@enterprisecorp.com (Inventory Modelling only) or priya.nair@enterprisecorp.com (IM + Demand Forecasting)
+#    VITE_PORTAL_URL (see .env.example) points this app at the portal.
 
 # 3. Build for production
 npm run build

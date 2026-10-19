@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { ROLE_CONTEXT, DEFAULT_ROLE, MATERIALS } from '../data/mockData';
 import { defaultParameterSelection, requiredConnectors } from '../data/parameterCatalog';
+import { currentSession } from '../lib/portal';
 
 const PlatformContext = createContext(null);
 
@@ -46,10 +47,16 @@ function readOnboarded() {
   }
 }
 
+// The signed-in user comes from the portal's launch ticket: name, email, tenant, plants and role.
+const userFromSession = (s) => (s ? { name: s.name, email: s.email, tenant: s.tenant, plants: s.plants || [], role: s.role } : null);
+
 export function PlatformProvider({ children }) {
-  const [role, setRoleState] = useState(DEFAULT_ROLE);
-  const [scope, setScope] = useState(ROLE_CONTEXT[DEFAULT_ROLE].scope);
-  const [persona, setPersona] = useState(ROLE_CONTEXT[DEFAULT_ROLE].persona);
+  const [user, setUser] = useState(() => userFromSession(currentSession()));
+  // A role from the ticket that IM knows (e.g. Head of Supply Chain) also picks the starting persona and scope.
+  const startRole = ROLE_CONTEXT[user?.role] ? user.role : DEFAULT_ROLE;
+  const [role, setRoleState] = useState(startRole);
+  const [scope, setScope] = useState(ROLE_CONTEXT[startRole].scope);
+  const [persona, setPersona] = useState(ROLE_CONTEXT[startRole].persona);
   const [selectedMaterialId, setSelectedMaterialId] = useState('MAT-1082');
   // Focus items the user has approved or snoozed this session (in memory only; sign-out clears it).
   const [resolvedFocus, setResolvedFocus] = useState({});
@@ -110,6 +117,11 @@ export function PlatformProvider({ children }) {
     if (ctx) setScope(ctx.scope);
   }
 
+  function signInFromTicket(session) {
+    setUser(userFromSession(session));
+    if (ROLE_CONTEXT[session.role]) setRole(session.role);
+  }
+
   function resolveFocus(id, status) {
     setResolvedFocus((prev) => ({ ...prev, [id]: status }));
   }
@@ -123,11 +135,14 @@ export function PlatformProvider({ children }) {
     }
     setSelectedMaterialId('MAT-1082');
     setResolvedFocus({});
+    setUser(null);
   }
 
   const department = ROLE_CONTEXT[role]?.dept ?? '';
 
   const value = {
+    user,
+    signInFromTicket,
     role,
     setRole,
     scope,

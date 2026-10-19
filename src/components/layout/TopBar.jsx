@@ -1,21 +1,24 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Menu } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { LogOut, LayoutGrid, Menu } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { usePlatform } from '../../context/PlatformContext';
+import { clearSession, goToPortal } from '../../lib/portal';
 import { PERSONAS } from '../../data/personas';
 import ThemeToggle from '../ThemeToggle';
 import PrimaryNav from './PrimaryNav';
 import aitekLogo from '../aitek_logo_bg_removed-removebg-preview.png';
 
 export default function TopBar({ onMenu }) {
-  const navigate = useNavigate();
-  const { persona, setPersona, resetSession } = usePlatform();
+  const { persona, setPersona, user } = usePlatform();
+  const initials = (user?.name || '').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const shouldReduceMotion = useReducedMotion();
 
+  // Single sign-out: end this app's session, then the portal's. The page is leaving, so in-memory state is not
+  // reset first; clearing the user would make the route guard race this redirect with its own.
   function handleSignOut() {
-    resetSession();
-    navigate('/');
+    clearSession();
+    goToPortal('/signout');
   }
 
   return (
@@ -67,6 +70,26 @@ export default function TopBar({ onMenu }) {
       </div>
 
       <ThemeToggle />
+
+      <button
+        type="button"
+        className="theme-toggle"
+        onClick={() => goToPortal('/apps')}
+        aria-label="All AITEK solutions"
+        title="All AITEK solutions"
+      >
+        <LayoutGrid size={15} />
+      </button>
+
+      {user && (
+        <span
+          className="w-8 h-8 rounded-full bg-deep text-white text-xs font-bold flex items-center justify-center shrink-0"
+          title={`${user.name} · ${user.tenant}`}
+          aria-label={`Signed in as ${user.name}, ${user.tenant}`}
+        >
+          {initials}
+        </span>
+      )}
 
       <div className="topbar__divider" />
 

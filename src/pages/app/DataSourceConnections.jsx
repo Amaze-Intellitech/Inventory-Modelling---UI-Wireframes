@@ -314,7 +314,8 @@ export default function DataSourceConnections() {
 
   // Connector States
   // The parameters chosen on the previous step decide which sources are required.
-  const { parameterSelection, connectedSources, setConnectedSources } = usePlatform();
+  const { parameterSelection, connectedSources, setConnectedSources, user } = usePlatform();
+  const initials = (user?.name || '').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const wasConnected = (id) => connectedSources.includes(id);
   const [erpConnected, setErpConnected] = useState(() => wasConnected('erp'));
   const [whConnected, setWhConnected] = useState(() => wasConnected('warehouse'));
@@ -558,14 +559,14 @@ export default function DataSourceConnections() {
           <ThemeToggle />
           <div className="flex items-center gap-2.5 cursor-pointer group">
             <div className="w-8 h-8 rounded-full bg-info-bg border border-border text-primary font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
-              AV
+              {initials}
             </div>
             <div className="hidden sm:flex flex-col text-left">
               <span className="text-[12.5px] font-bold text-ink leading-tight group-hover:text-primary transition-colors">
-                Alex Vance
+                {user?.name}
               </span>
               <span className="text-xs text-subtle leading-tight">
-                Enterprise Corp
+                {user?.tenant}
               </span>
             </div>
             <ChevronDown size={13} className="text-subtle group-hover:text-ink transition-colors hidden sm:block" />

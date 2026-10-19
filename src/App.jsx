@@ -4,9 +4,10 @@ import { PlatformProvider } from './context/PlatformContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
 import AppLayout from './components/layout/AppLayout';
+import { usePlatform } from './context/PlatformContext';
+import { goToPortal } from './lib/portal';
 
-import PrimaryLogin from './pages/app/PrimaryLogin';
-import SolutionSelection from './pages/app/SolutionSelection';
+import Launch from './pages/app/Launch';
 import MaterialSelection from './pages/app/MaterialSelection';
 import DataSourceConnections from './pages/app/DataSourceConnections';
 import ParameterMapping from './pages/app/ParameterMapping';
@@ -26,25 +27,41 @@ import WhatIf from './pages/app/WhatIf';
 import Optimization from './pages/app/Optimization';
 import DecisionIntelligence from './pages/app/DecisionIntelligence';
 
+// Sign-in lives in the AITEK portal. Without a session from its launch ticket, every page sends the user there.
+function ToPortal({ path = '/' }) {
+  React.useEffect(() => goToPortal(path), [path]);
+  return null;
+}
+
+function RequireSession({ children }) {
+  const { user } = usePlatform();
+  return user ? children : <ToPortal />;
+}
+
+const guard = (el) => <RequireSession>{el}</RequireSession>;
+
 export default function App() {
   return (
     <PlatformProvider>
       <TooltipProvider delayDuration={150}>
         <BrowserRouter>
           <Routes>
-            {/* Onboarding flow */}
-            <Route path="/" element={<PrimaryLogin />} />
-            <Route path="/solutions" element={<SolutionSelection />} />
-            {/* the access check is a modal on /solutions now; old links land there */}
-            <Route path="/workspace-access" element={<Navigate to="/solutions" replace />} />
-            <Route path="/workspace-login" element={<Navigate to="/solutions" replace />} />
-            <Route path="/material-selection" element={<MaterialSelection />} />
-            <Route path="/data-sources" element={<DataSourceConnections />} />
-            <Route path="/parameter-mapping" element={<ParameterMapping />} />
-            <Route path="/ingestion" element={<Ingestion />} />
+            {/* Entry from the AITEK portal (sign-in and the solution launcher live there) */}
+            <Route path="/" element={<Navigate to="/launch" replace />} />
+            <Route path="/launch" element={<Launch />} />
+            {/* old entry links go back to the portal launcher */}
+            <Route path="/solutions" element={<ToPortal path="/apps" />} />
+            <Route path="/workspace-access" element={<ToPortal path="/apps" />} />
+            <Route path="/workspace-login" element={<ToPortal path="/apps" />} />
+
+            {/* One-time data setup */}
+            <Route path="/material-selection" element={guard(<MaterialSelection />)} />
+            <Route path="/data-sources" element={guard(<DataSourceConnections />)} />
+            <Route path="/parameter-mapping" element={guard(<ParameterMapping />)} />
+            <Route path="/ingestion" element={guard(<Ingestion />)} />
 
             {/* Platform (persistent Rail + TopBar shell) */}
-            <Route path="/app" element={<AppLayout />}>
+            <Route path="/app" element={guard(<AppLayout />)}>
               <Route index element={<Overview />} />
               <Route path="data-foundation" element={<DataFoundation />} />
               <Route path="univariate" element={<Univariate />} />
