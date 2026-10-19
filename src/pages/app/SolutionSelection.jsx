@@ -34,27 +34,16 @@ export default function SolutionSelection() {
     navigate('/');
   }
 
+  // only the licensed solution is interactive; the rest are shown for reference
   const handleCardKeyDown = (e, card) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (card.active && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
-      if (card.active) {
-        setAccessOpen(true);
-      } else if (card.status === 'Coming soon') {
-        toast.info(`${card.title} is currently in preview and scheduled for upcoming release.`);
-      } else {
-        toast.info(`Requesting access for ${card.title}. An administrator will review your permission.`);
-      }
+      setAccessOpen(true);
     }
   };
 
   const handleCardClick = (card) => {
-    if (card.active) {
-      setAccessOpen(true);
-    } else if (card.status === 'Coming soon') {
-      toast.info(`${card.title} is currently under development. Contact your AITEK account team for early access.`);
-    } else {
-      toast.info(`${card.title} requires an enterprise module license. Contact support to activate.`);
-    }
+    if (card.active) setAccessOpen(true);
   };
 
   const solutions = [
@@ -110,7 +99,8 @@ export default function SolutionSelection() {
       iconBg: 'bg-info-bg',
       iconBorder: 'border-border',
       iconColor: 'text-info-tx',
-      status: null,
+      status: 'Not licensed',
+      statusTone: 'neutral',
       active: false,
       description: 'AI-driven demand forecasting, seasonality analysis, and promotional lift modelling.',
       tags: 'Demand Sensing · Forecasting · Seasonality · Consensus Planning',
@@ -130,7 +120,8 @@ export default function SolutionSelection() {
       iconBg: 'bg-info-bg',
       iconBorder: 'border-border',
       iconColor: 'text-info-tx',
-      status: null,
+      status: 'Not licensed',
+      statusTone: 'neutral',
       active: false,
       description: 'End-to-end network flow optimization, multi-node lead time smoothing, and logistics routing.',
       tags: 'Network Design · Flow Optimization · Lead Time Buffers · Route Efficiency',
@@ -151,7 +142,8 @@ export default function SolutionSelection() {
       iconBg: 'bg-info-bg',
       iconBorder: 'border-border',
       iconColor: 'text-info-tx',
-      status: null,
+      status: 'Not licensed',
+      statusTone: 'neutral',
       active: false,
       description: 'Free cash flow unlocking, cash-to-cash cycle acceleration, and tied-up capital reduction.',
       tags: 'Cash Conversion Cycle · Holding Cost Reduction · Capital Allocation · DSI',
@@ -170,7 +162,8 @@ export default function SolutionSelection() {
       iconBg: 'bg-info-bg',
       iconBorder: 'border-border',
       iconColor: 'text-info-tx',
-      status: null,
+      status: 'Not licensed',
+      statusTone: 'neutral',
       active: false,
       description: 'Scope 3 emissions tracking, carbon footprint per SKU, waste reduction, and circular supply chains.',
       tags: 'Scope 3 Emissions · Carbon Accounting · Waste Minimization · ESG Audits',
@@ -251,6 +244,10 @@ export default function SolutionSelection() {
             <p className="text-[14px] sm:text-[14.5px] text-subtle max-w-2xl leading-relaxed">
               Select the intelligence workspace you want to enter to access models, analytics, and operational workflows.
             </p>
+            <p className="text-[13px] text-subtle mt-2 flex items-center gap-1.5">
+              <Lock size={12} />
+              <span>Your organisation is licensed for Inventory Modelling. Other solutions are shown for reference.</span>
+            </p>
           </div>
 
           {/* 3×2 Solution Card Grid */}
@@ -262,19 +259,18 @@ export default function SolutionSelection() {
               return (
                 <motion.div
                   key={card.id}
-                  onClick={() => handleCardClick(card)}
-                  onKeyDown={(e) => handleCardKeyDown(e, card)}
-                  tabIndex={0}
+                  onClick={isActive ? () => handleCardClick(card) : undefined}
+                  onKeyDown={isActive ? (e) => handleCardKeyDown(e, card) : undefined}
+                  tabIndex={isActive ? 0 : -1}
                   role="button"
-                  aria-label={`Select ${card.title} workspace`}
-                  whileHover={shouldReduceMotion ? {} : { y: isActive ? -3 : -1.5 }}
-                  whileTap={shouldReduceMotion ? {} : { scale: 0.99 }}
+                  aria-disabled={!isActive}
+                  aria-label={isActive ? `Select ${card.title} workspace` : `${card.title}, not available`}
+                  whileHover={shouldReduceMotion || !isActive ? {} : { y: -3 }}
+                  whileTap={shouldReduceMotion || !isActive ? {} : { scale: 0.99 }}
                   className={`relative rounded-xl p-6 sm:p-7 flex flex-col justify-between transition-all duration-200 overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                     isActive
                       ? 'bg-surface border-2 border-primary shadow-[0_4px_20px_rgba(91, 147, 255,0.08)] ring-4 ring-[color-mix(in_srgb,var(--primary)_5%,transparent)] hover:shadow-[0_8px_26px_rgba(91, 147, 255,0.14)] cursor-pointer group'
-                      : card.status === 'Coming soon'
-                      ? 'bg-surface border border-border shadow-subtle opacity-85 hover:opacity-100 hover:border-border-strong cursor-pointer group'
-                      : 'bg-surface border border-border shadow-subtle hover:border-border-strong hover:shadow-card cursor-pointer group'
+                      : 'bg-muted-fill border border-border opacity-60 cursor-not-allowed'
                   }`}
                 >
                   {/* Subtle Bottom-Right Decorative Watermark Shape */}
@@ -287,7 +283,9 @@ export default function SolutionSelection() {
                     {/* Top Row: Icon Container & Status Badge / Arrow */}
                     <div className="flex justify-between items-start mb-5">
                       <div
-                        className={`w-11 h-11 rounded-xl ${card.iconBg} ${card.iconColor} border ${card.iconBorder} flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform duration-200`}
+                        className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs transition-transform duration-200 ${
+                          isActive ? `${card.iconBg} ${card.iconColor} ${card.iconBorder} group-hover:scale-105` : 'bg-bg text-subtle border-border'
+                        }`}
                       >
                         <IconComponent size={21} />
                       </div>
@@ -300,17 +298,11 @@ export default function SolutionSelection() {
                         </span>
                       )}
 
-                      {card.status === 'Coming soon' && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-muted-fill text-subtle border border-border">
+                      {!isActive && card.status && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-surface text-subtle border border-border">
                           <Lock size={12} />
-                          <span>Coming soon</span>
+                          <span>{card.status}</span>
                         </span>
-                      )}
-
-                      {!card.status && (
-                        <div className="w-8 h-8 rounded-full border border-border bg-bg group-hover:bg-primary-solid group-hover:border-primary text-subtle group-hover:text-white flex items-center justify-center transition-all duration-200">
-                          <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-                        </div>
                       )}
                     </div>
 
@@ -318,7 +310,7 @@ export default function SolutionSelection() {
                     <div className="flex items-center justify-between mb-2">
                       <h2
                         className={`text-[16.5px] font-bold tracking-tight transition-colors ${
-                          isActive ? 'text-ink group-hover:text-primary' : 'text-ink'
+                          isActive ? 'text-ink group-hover:text-primary' : 'text-subtle'
                         }`}
                       >
                         {card.title}
