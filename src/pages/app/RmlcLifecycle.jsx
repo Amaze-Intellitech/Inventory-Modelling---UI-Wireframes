@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { usePlatform } from '../../context/PlatformContext';
 import RmlcLegs from '../../components/RmlcLegs';
-import { RMLC_STAGES, RMLC_STAGES_BY_PLANT, EOQ_INPUTS, FORECAST_INPUTS } from '../../data/mockData';
+import { RMLC_STAGES, RMLC_STAGES_BY_PLANT, EOQ_INPUTS, FORECAST_INPUTS, EXPIRY_BY_PLANT } from '../../data/mockData';
 
 const TONE_BADGE = { watch: 'watch', ok: 'success', risk: 'risk' };
 const TONE_BORDER = { watch: 'var(--warning)', ok: 'var(--success)', risk: 'var(--error)' };
@@ -378,50 +378,6 @@ export default function RmlcLifecycle() {
     `$${val.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 
 
-  const lt = profile.leadTimeDays;
-  const atRiskPct = onHandValue > 0 ? (profile.atRiskValue / onHandValue) * 100 : 0;
-  const personaTop = {
-    planner: {
-      label: 'Production / Materials Planner Lens · Line-Stoppage Relevance',
-      headline: profile.supervisorLens,
-      kpis: [
-        { label: 'Lifecycle state', value: profile.lifecycleStateLabel.split('(')[0].trim(), valueStyle: { color: profile.lifecycleTone === 'ok' ? 'var(--success)' : profile.lifecycleTone === 'watch' ? 'var(--warning)' : 'var(--error)' }, sub: profile.triggerRule },
-        { label: 'Cover vs lead time', value: `${formatNum(daysOfSupply, 1)} days`, delta: daysOfSupply < lt ? `${formatNum(lt - daysOfSupply, 1)}d below ${lt}d lead time` : `+${formatNum(daysOfSupply - lt, 1)}d beyond lead time`, deltaTone: daysOfSupply < lt ? 'down' : 'up', sub: 'Days of supply on hand' },
-        { label: 'Downstream dependency', value: profile.downstreamDependency, sub: `Supplier: ${profile.supplier}` },
-        { label: 'Intervention window', value: profile.preventionWindow.split('(')[0].trim(), delta: profile.interventionUrgency, deltaTone: profile.earlyInterventionNeeded ? 'down' : 'flat', sub: profile.prescribedAction },
-      ],
-    },
-    inventory: {
-      label: 'Inventory / Materials Manager Lens · Physical Stock & Transfer Execution',
-      headline: profile.warehouseLens,
-      kpis: [
-        { label: 'Ageing class', value: profile.agingClassification, sub: profile.shelfLifeStatus },
-        { label: 'Stagnant days', value: profile.daysStagnant > 0 ? `${formatNum(profile.daysStagnant, 0)} days` : 'None flagged', deltaTone: profile.daysStagnant > 0 ? 'down' : 'up', delta: profile.stagnantLot ? `Lot ${profile.stagnantLot}` : undefined, sub: 'No movement against consumption' },
-        { label: 'On-hand stock', value: `${formatNum(onHandQty, 0)} ${uom}`, sub: `Turning ${formatNum(annualTurns, 2)}×/yr` },
-        { label: 'Intervention window', value: profile.preventionWindow.split('(')[0].trim(), delta: profile.interventionUrgency, deltaTone: profile.earlyInterventionNeeded ? 'down' : 'flat', sub: profile.prescribedAction },
-      ],
-    },
-    procurement: {
-      label: 'Procurement / Sourcing Manager Lens · Sourcing & PO Cadence',
-      headline: profile.procurementLens,
-      kpis: [
-        { label: 'Days beyond 90d buffer', value: daysOfSupply > 90 ? `${formatNum(daysOfSupply - 90, 1)} days` : 'None', deltaTone: daysOfSupply > 90 ? 'down' : 'up', delta: daysOfSupply > 90 ? 'Hold further POs' : 'Replenish as planned', sub: 'Against 60–90d turnover buffer' },
-        { label: 'Supplier lead time', value: `${lt} days`, sub: profile.supplier },
-        { label: 'Annual turns', value: `${formatNum(annualTurns, 2)}×`, sub: `${formatNum(dailyDemand, 2)} ${uom}/day consumption` },
-        { label: 'Prescribed action', value: profile.interventionUrgency, sub: profile.prescribedAction },
-      ],
-    },
-    head: {
-      label: 'Head of Supply Chain Lens · Working Capital Exposure & Obsolescence Risk Governance',
-      headline: profile.financeLens,
-      kpis: [
-        { label: 'On-hand value', value: formatCurrency(onHandValue), sub: `${formatNum(onHandQty, 0)} ${uom} at ${formatCurrency(unitCost)}/${uom}` },
-        { label: 'Value at risk', value: formatCurrency(profile.atRiskValue), valueStyle: { color: profile.atRiskValue > 0 ? 'var(--error)' : 'var(--success)' }, delta: profile.atRiskValue > 0 ? `${formatNum(atRiskPct, 1)}% of on-hand` : 'Active Operating Capital', deltaTone: profile.atRiskValue > 0 ? 'down' : 'up', sub: profile.exposureType },
-        { label: 'Recoverable opportunity', value: formatCurrency(profile.recoverableOpportunity), valueStyle: { color: 'var(--success)' }, sub: 'If the intervention is taken in time' },
-        { label: 'Annual carrying cost', value: formatCurrency(annualHoldingCost), sub: 'At 6.00%/yr planning rate' },
-      ],
-    },
-  };
 
   // What each lifecycle stage means to the persona reading it (stage order matches RMLC_STAGES).
   const STAGE_MEANING = {
@@ -430,7 +386,7 @@ export default function RmlcLifecycle() {
     procurement: ['Defer new POs and renegotiate the delivery schedule.', 'Release POs per plan.', 'Cancel or reschedule open POs; ask the supplier about returns.', 'Return to vendor, claim or sell back.'],
     head: ['Cash is building up in stock.', 'Capital is turning within policy.', 'Capital at risk of becoming dead stock.', 'Candidate for write-down or provision.'],
   };
-  const stageMeaning = STAGE_MEANING[persona] || STAGE_MEANING.planner;
+  const stageMeaning = STAGE_MEANING[persona] || STAGE_MEANING.head;
   // Stage figures follow the persona's plant scope: one plant for the plant-floor roles, all four for procurement and finance.
   const allPlants = scope.startsWith('All Plants');
   const plantsInScope = allPlants ? RMLC_STAGES_BY_PLANT : RMLC_STAGES_BY_PLANT.filter((pl) => scope.startsWith(pl.plant));
@@ -450,12 +406,72 @@ export default function RmlcLifecycle() {
     procurement: { label: 'PO Action & Next Step', body: profile.prescribedAction },
     head: { label: 'Capital Exposure & Next Step', body: `${profile.exposureType}: ${profile.atRiskValue > 0 ? formatCurrency(profile.atRiskValue) : '$0.00'} at risk, ${formatCurrency(profile.recoverableOpportunity)} recoverable. ${profile.prescribedAction}` },
   };
-  const nextStep = NEXT_STEP[persona] || NEXT_STEP.planner;
+  const nextStep = NEXT_STEP[persona] || NEXT_STEP.head;
+
+  // Blueprint P0 for Screen 5: which materials will not be used before they become a loss. Expired, potentially
+  // obsolete and slow-moving stock are kept apart; figures follow the persona's plant scope.
+  const sumExpiry = (f) => plantsInScope.reduce((acc, pl) => acc + f(EXPIRY_BY_PLANT[pl.plant]), 0);
+  const expired = { value: sumExpiry((e) => e.expired.value), lots: sumExpiry((e) => e.expired.lots) };
+  const expiring = { d30: sumExpiry((e) => e.d30), d60: sumExpiry((e) => e.d60), d90: sumExpiry((e) => e.d90) };
+  const slow = scopedStage('atrisk');
+  const obsolete = scopedStage('liquidation');
+  const totalInventory = RMLC_STAGES.reduce((acc, st) => acc + scopedStage(st.key).value, 0);
+  const slobValue = slow.value + obsolete.value;
+  const slobPct = totalInventory > 0 ? (slobValue / totalInventory) * 100 : 0;
+  const expiringBeforeUse = sumExpiry((e) => e.expiringBeforeUse);
+  const pullableLots = sumExpiry((e) => e.pullableLots);
+  const openPoOnSlob = sumExpiry((e) => e.openPoOnSlob);
+  const cancellablePo = sumExpiry((e) => e.cancellablePo);
+  const scopeName = allPlants ? 'all plants' : plantsInScope.map((pl) => pl.plant).join(', ');
+  const mm = (v) => `$${v.toFixed(2)}M`;
+  const M = ({ children }) => <span className="font-mono font-bold text-ink">{children}</span>;
+  const expiryTile = { label: 'Expiring within 90 days', value: mm(expiring.d90), delta: `${mm(expiring.d30)} within 30 days`, deltaTone: expiring.d30 > 0 ? 'down' : 'flat', sub: `${mm(expiring.d60)} within 60 days` };
+  const slobTile = { label: 'SLOB value', value: mm(slobValue), delta: `${formatNum(slobPct, 1)}% of inventory`, deltaTone: 'down', sub: `Slow-moving ${mm(slow.value)} · potentially obsolete ${mm(obsolete.value)}` };
+  const expiredTile = { label: 'Expired stock', value: mm(expired.value), sub: `${expired.lots} lots · blocked from use` };
+  const noUseTile = { label: 'No consumption 180+ days', value: `${obsolete.count} materials`, sub: `${mm(obsolete.value)} potentially obsolete` };
+
+  const personaTop = {
+    head: {
+      label: 'Head of Supply Chain · Excess, Obsolete and Expiry Exposure',
+      headline: <>Across {scopeName}, <M>{mm(slobValue)}</M> (<M>{formatNum(slobPct, 1)}%</M> of inventory) is slow-moving or potentially obsolete, <M>{mm(expired.value)}</M> has already expired, and another <M>{mm(expiring.d90)}</M> expires within 90 days. Under the client's write-down rules the expired stock and the 180-day tail are the provision candidates.</>,
+      kpis: [slobTile, expiredTile, expiryTile, { label: 'Write-down candidates', value: mm(expired.value + obsolete.value), sub: 'Expired + 180-day tail · client costing rules' }],
+      next: { action: `Approve the provision review for ${mm(expired.value + obsolete.value)} and the transfer plan for stock still usable`, owner: 'Head of Supply Chain', due: 'Month-end close' },
+    },
+    inventory: {
+      label: 'Inventory / Materials Manager · Lot Age, Expiry, Last Movement and Quality Status',
+      headline: <>In {scopeName}, <M>{expired.lots} expired lots</M> (<M>{mm(expired.value)}</M>) need quarantine and disposition, and <M>{mm(expiring.d30)}</M> expires within 30 days. <M>{slow.count} materials</M> have not moved in 90–180 days and <M>{obsolete.count}</M> in over 180 days; quality status decides which can still be transferred.</>,
+      kpis: [expiredTile, expiryTile, { label: 'Slow-moving (90–180 days)', value: `${slow.count} materials`, sub: `${mm(slow.value)} · last movement 90+ days` }, noUseTile],
+      next: { action: `Quarantine the ${expired.lots} expired lots and check quality status on lots expiring within 30 days`, owner: 'Inventory / Materials Manager', due: 'This week' },
+    },
+    planner: {
+      label: 'Production / Materials Planner · Materials Expiring Before Use',
+      headline: <><M>{expiringBeforeUse} lots</M> in {scopeName} will expire before current demand consumes them. <M>{pullableLots}</M> of them can be pulled into scheduled production orders if those orders use the oldest lots first (first-expiry, first-out).</>,
+      kpis: [
+        { label: 'Lots expiring before use', value: `${expiringBeforeUse} lots`, deltaTone: 'down', delta: `${mm(expiring.d60)} within 60 days`, sub: 'At current consumption' },
+        { label: 'Lots pullable into scheduled orders', value: `${pullableLots} lots`, deltaTone: 'up', delta: 'FEFO allocation', sub: 'Saves them from expiry' },
+        expiryTile,
+        expiredTile,
+      ],
+      next: { action: `Allocate the ${pullableLots} pullable lots to scheduled orders, oldest first`, owner: 'Production / Materials Planner', due: 'Before next order release' },
+    },
+    procurement: {
+      label: 'Procurement / Sourcing Manager · Excess Covered by Open POs',
+      headline: <>Open purchase orders worth <M>{mm(openPoOnSlob)}</M> in {scopeName} are for materials already slow-moving or potentially obsolete. <M>{mm(cancellablePo)}</M> of that is still inside the supplier's cancellation window; the rest is a return or reschedule conversation.</>,
+      kpis: [
+        { label: 'Open POs on SLOB materials', value: mm(openPoOnSlob), deltaTone: 'down', delta: 'Adds to excess', sub: 'Not yet received' },
+        { label: 'Cancellable now', value: mm(cancellablePo), deltaTone: 'up', delta: 'Inside cancellation window', sub: 'Per supplier terms' },
+        { label: 'Return or reschedule', value: mm(openPoOnSlob - cancellablePo), sub: 'Negotiate with supplier' },
+        slobTile,
+      ],
+      next: { action: `Cancel the ${mm(cancellablePo)} of open POs still inside the cancellation window`, owner: 'Procurement / Sourcing Manager', due: 'Within 5 days' },
+    },
+  };
+  const RMLC_SAFEGUARD = 'Age is not obsolescence. Expired, potentially obsolete and slow-moving stock are shown separately, and write-downs follow the client\'s costing rules.';
 
   return (
     <section className="view max-w-7xl mx-auto">
       <ViewHead
-        title="RMLC Analysis · Raw Material Life Cycle"
+        title="Raw Material Lifecycle & SLOB"
         subtitle={
           <p className="text-body-c leading-relaxed">
             How long a raw-material purchase takes to become cash, and which leg of the cycle causes the delay. Below it, the stock-lifecycle stages (Accumulation to Liquidation) for <strong>{selectedMaterial.id}</strong>.
@@ -474,7 +490,41 @@ export default function RmlcLifecycle() {
         }
       />
 
-      <PersonaTop persona={persona} config={personaTop} />
+      <PersonaTop persona={persona} config={personaTop} safeguard={RMLC_SAFEGUARD} />
+
+      {/* P1: slow-moving, potentially obsolete and expired kept apart, with the expiry horizons */}
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
+        <div className="card__head mb-4">
+          <h2 className="card__title text-sm font-bold text-ink">SLOB and expiry, {scopeName}</h2>
+          <p className="card__sub text-xs text-body-c">Three different problems with three different actions; none is assumed from age alone.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
+          {[
+            { title: 'Slow-moving', value: mm(slow.value), count: `${slow.count} materials`, rule: 'No consumption for 90–180 days', act: 'Transfer to a plant that uses it, or slow replenishment' },
+            { title: 'Potentially obsolete', value: mm(obsolete.value), count: `${obsolete.count} materials`, rule: 'No consumption for 180+ days', act: 'Confirm no upcoming build needs it, then return, sell or provision' },
+            { title: 'Expired', value: mm(expired.value), count: `${expired.lots} lots`, rule: 'Past shelf-life date', act: 'Quarantine; re-test if the spec allows, else dispose' },
+          ].map((b) => (
+            <div key={b.title} className="rounded-md border border-border p-3.5">
+              <div className="text-xs font-semibold text-subtle">{b.title}</div>
+              <div className="text-xl font-bold font-mono text-ink mt-1">{b.value}</div>
+              <div className="text-xs text-body-c">{b.count} · {b.rule}</div>
+              <div className="text-xs text-ink mt-2 pt-2 border-t border-border">{b.act}</div>
+            </div>
+          ))}
+        </div>
+        <div className="text-xs font-semibold text-subtle mb-1.5">Value expiring within</div>
+        <div className="grid grid-cols-3 gap-2">
+          {[['30 days', expiring.d30], ['60 days', expiring.d60], ['90 days', expiring.d90]].map(([h, v]) => (
+            <div key={h} className="rounded-md bg-bg border border-border px-3 py-2">
+              <div className="text-xs text-subtle">{h}</div>
+              <div className="font-mono font-bold text-ink">{mm(v)}</div>
+              <div className="h-1.5 mt-1.5 rounded-full bg-border overflow-hidden">
+                <div className="h-full bg-warning" style={{ width: `${expiring.d90 > 0 ? (v / expiring.d90) * 100 : 0}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <RmlcLegs selectedId={selectedMaterial.id} persona={persona} />
 

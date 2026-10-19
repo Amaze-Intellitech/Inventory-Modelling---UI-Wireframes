@@ -2,7 +2,9 @@ import React, { useState, useMemo } from 'react';
 import OptimizationSetup from '../../components/OptimizationSetup';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ViewHead, KpiTile, WhyDisclosure, Badge, Insight } from '../../components/CommonUI';
+import { ViewHead, KpiTile, WhyDisclosure, Badge, Insight, DrillDown } from '../../components/CommonUI';
+import PersonaTop from '../../components/PersonaTop';
+import { summarizePlan, CONSTRAINTS, REJECTED, RELAXATION } from '../../data/procurementPlan';
 import { usePlatform } from '../../context/PlatformContext';
 import { MATERIALS, EOQ_INPUTS, FORECAST_INPUTS } from '../../data/mockData';
 import {
@@ -533,7 +535,7 @@ export default function Optimization() {
       ],
     },
   };
-  const activeOptLens = PERSONA_OPT_LENS[persona] || PERSONA_OPT_LENS.planner;
+  const activeOptLens = PERSONA_OPT_LENS[persona] || PERSONA_OPT_LENS.head;
 
 
   // Chart and catalog framing per persona: same series, read through each persona's decision.
@@ -575,7 +577,60 @@ export default function Optimization() {
       sort: (a, b) => b.currentValue - a.currentValue,
     },
   };
-  const optCopy = OPT_COPY[persona] || OPT_COPY.planner;
+  const optCopy = OPT_COPY[persona] || OPT_COPY.head;
+
+  // Blueprint P0 for Screen 7: the best feasible purchase and allocation plan for this cycle.
+  const plan = summarizePlan();
+  const money = (v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(2)}M` : `$${formatNum(v / 1000, 1)}K`);
+  const dateIn = (days) => new Date(Date.now() + days * 86400000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const premium = plan.totalCost - plan.baselineCost;
+  const Mx = ({ children }) => <span className="font-mono font-bold text-ink">{children}</span>;
+  const coverageTile = { label: 'Required quantity covered', value: `${formatNum(plan.coveredPct * 100, 1)}%`, delta: plan.uncoveredCritical.length ? `${plan.uncoveredCritical.length} critical line uncovered` : 'All critical demand covered', deltaTone: plan.uncoveredCritical.length ? 'down' : 'up', sub: `${plan.lines.length - plan.open.length} of ${plan.lines.length} requirement lines in full` };
+  const uncoveredTile = { label: 'Uncovered demand', value: plan.open.length ? plan.open.map((l) => `${formatNum(l.uncovered, 0)} ${l.uom}`).join(', ') : 'None', delta: plan.open.length ? `${plan.ordersAtRisk} orders at risk` : undefined, deltaTone: 'down', sub: plan.open.map((l) => `${l.material} → ${l.destination}, ${dateIn(l.needByDays)}`).join('; ') || 'Every line covered' };
+  const costTile = { label: 'Total landed cost', value: money(plan.totalCost), delta: `${premium >= 0 ? '+' : ''}${money(premium)} vs baseline`, deltaTone: premium > 0 ? 'down' : 'up', sub: `Baseline ${money(plan.baselineCost)} at standard terms` };
+  const concentrationTile = { label: 'Supplier concentration', value: `${formatNum(plan.topShare * 100, 0)}% top source`, sub: `${formatNum(plan.singleSourceShare * 100, 0)}% of spend is single-source` };
+  const procTop = {
+    head: {
+      label: 'Head of Supply Chain · Total Cost, Availability and Supplier Concentration',
+      headline: <>The plan covers <Mx>{formatNum(plan.coveredPct * 100, 1)}%</Mx> of required quantity for <Mx>{money(plan.totalCost)}</Mx> landed, <Mx>{money(premium)}</Mx> above standard terms because of two expedites. That premium avoids the <Mx>$1.82M</Mx> stoppage on MAT-4120. One non-critical line stays open; the smallest fix is below.</>,
+      kpis: [coverageTile, costTile, concentrationTile, uncoveredTile],
+      next: { action: `Approve the plan and the ${money(premium)} expedite premium`, owner: 'Head of Supply Chain', due: 'Today' },
+    },
+    inventory: {
+      label: 'Inventory / Materials Manager · Inbound Impact, Excess Risk and Coverage by Location',
+      headline: <>Two stock transfers move <Mx>1,800 EA</Mx> of MAT-4120 out of Plant 1 and Plant 2, both kept above their own lead-time floor. Inbound volume rises at Plant 2 (<Mx>60,000 EA</Mx> of cells across two suppliers); nothing in the plan lands as excess.</>,
+      kpis: [
+        { label: 'Inbound receipts', value: `${plan.lines.reduce((acc, l) => acc + l.allocs.length, 0)} deliveries`, sub: 'Next 35 days' },
+        { label: 'Transfers out', value: '1,800 EA', sub: 'Plant 1 · Plant 2 → Plant 3' },
+        { label: 'Excess risk from the plan', value: 'None', deltaTone: 'up', delta: 'Quantities net of stock and open POs', sub: 'MOQ rounding absorbed in cover' },
+        { label: 'Coverage by location', value: 'P1 short 600 EA', deltaTone: 'down', delta: 'MAT-4120 from 20 Nov', sub: 'P2, P3 covered' },
+      ],
+      next: { action: 'Book dock slots for the Plant 2 cell deliveries and pick the transfer stock', owner: 'Inventory / Materials Manager', due: 'Within 2 days' },
+    },
+    planner: {
+      label: 'Production / Materials Planner · Will Quantities Arrive on Time',
+      headline: <>Every allocated quantity arrives before its requirement date: MAT-4120 for Plant 3 lands in three parts from <Mx>{dateIn(3)}</Mx> to <Mx>{dateIn(12)}</Mx>, ahead of the <Mx>{dateIn(14)}</Mx> need. The residual shortage is <Mx>600 EA</Mx> of MAT-4120 at Plant 1 from {dateIn(32)}, affecting <Mx>2 orders</Mx>.</>,
+      kpis: [
+        { label: 'Arrivals on time', value: `${plan.lines.reduce((acc, l) => acc + l.allocs.length, 0) - plan.lateCount} of ${plan.lines.reduce((acc, l) => acc + l.allocs.length, 0)}`, deltaTone: plan.lateCount ? 'down' : 'up', delta: plan.lateCount ? `${plan.lateCount} late` : 'None late', sub: 'Against each requirement date' },
+        coverageTile,
+        uncoveredTile,
+        { label: 'Critical lines', value: 'Covered', deltaTone: 'up', delta: 'MAT-4120 P3 · MAT-1082 P1', sub: '12 production orders protected' },
+      ],
+      next: { action: 'Resequence the 2 Plant 1 orders that need MAT-4120 after 20 Nov', owner: 'Production / Materials Planner', due: 'This week' },
+    },
+    procurement: {
+      label: 'Procurement / Sourcing Manager · Feasible Quantities by Supplier, Cost, Timing and Constraints',
+      headline: <>Release four supplier orders: SiliconFoundry <Mx>2,000 EA</Mx> expedited (allocation cap, binding), HydraTech <Mx>400 EA</Mx> expedited, Apex <Mx>40,000 EA</Mx> (capacity, binding) and Voltcell <Mx>20,000 EA</Mx>. NovaSemi would be <Mx>$4.90/EA</Mx> cheaper but is not qualified, so it was rejected.</>,
+      kpis: [
+        { label: 'Supplier orders to release', value: '4 POs', sub: 'Plus 2 internal transfers' },
+        costTile,
+        { label: 'Binding constraints', value: `${CONSTRAINTS.filter((c) => c.binding).length} of ${CONSTRAINTS.length}`, sub: 'Allocation, capacity, donor floor, eligibility' },
+        { label: 'Supplier risk in plan', value: '82% OTD', deltaTone: 'down', delta: 'SiliconFoundry, single source', sub: 'Lowest on-time rate in the plan' },
+      ],
+      next: { action: 'Release the 4 POs and request allocation +600 EA from SiliconFoundry', owner: 'Procurement / Sourcing Manager', due: 'Today' },
+    },
+  };
+  const PROC_SAFEGUARD = 'A cheaper plan is never promoted if it leaves critical demand uncovered or breaks a constraint. When demand cannot be covered, the plan says why and shows the smallest relaxation that would fix it.';
   const allPlantsScope = scope.startsWith('All Plants');
   const inScope = (m) => allPlantsScope || m.isSelected || scope.startsWith(m.plant);
   const catalogRows = [...catalogOptimizationData].filter(inScope).sort(optCopy.sort);
@@ -626,7 +681,7 @@ export default function Optimization() {
     >
       {/* 1. VIEW HEADER & HORIZON SELECTOR */}
       <ViewHead
-        title="Optimization Plan"
+        title="Procurement Optimization"
         subtitle={
           <p>
             Time-phased predictive inventory optimization, lot-sizing economics, lead-time runway, and working-capital intelligence for <strong>{activeId} ({name})</strong>.
@@ -671,6 +726,97 @@ export default function Optimization() {
           </div>
         }
       />
+
+      <PersonaTop persona={persona} config={procTop} safeguard={PROC_SAFEGUARD} />
+
+      {/* P1: allocation by supplier and destination, constraints, rejected alternatives */}
+      <div className="card mb-4">
+        <div className="card__head">
+          <div>
+            <h2 className="card__title">Purchase and allocation plan, this cycle</h2>
+            <p className="card__sub">Quantity by source and destination, arrival against the requirement date, landed cost and capacity use.</p>
+          </div>
+          <Badge tone="neutral">Scope: {scope}</Badge>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse min-w-[760px]">
+            <thead>
+              <tr className="text-subtle text-left">
+                <th className="font-semibold p-2">Requirement</th>
+                <th className="font-semibold p-2">Source</th>
+                <th className="font-semibold p-2 text-right">Quantity</th>
+                <th className="font-semibold p-2">Arrives / needed</th>
+                <th className="font-semibold p-2 text-right">Landed cost</th>
+                <th className="font-semibold p-2 text-right">Capacity use</th>
+                <th className="font-semibold p-2 text-right">OTD · rejects</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plan.lines.map((l) => (
+                <React.Fragment key={l.id}>
+                  {l.allocs.map((a, i) => (
+                    <tr key={a.source} className="border-t border-border align-top">
+                      <td className="p-2 text-ink">
+                        {i === 0 && (
+                          <>
+                            <span className="font-mono font-bold">{l.material}</span> → {l.destination}
+                            {l.critical && <Badge tone="risk" className="ml-1.5">Critical</Badge>}
+                            <div className="text-subtle">{formatNum(l.qty, 0)} {l.uom} needed</div>
+                          </>
+                        )}
+                      </td>
+                      <td className="p-2 text-body-c">{a.source}</td>
+                      <td className="p-2 text-right font-mono">{formatNum(a.qty, 0)}</td>
+                      <td className={`p-2 ${a.arrivesDays > l.needByDays ? 'text-error-tx font-semibold' : 'text-body-c'}`}>{dateIn(a.arrivesDays)} / {dateIn(l.needByDays)}</td>
+                      <td className="p-2 text-right font-mono">{money(a.qty * a.unitLanded)}</td>
+                      <td className="p-2 text-right font-mono">{formatNum(a.capacityUse * 100, 0)}%</td>
+                      <td className="p-2 text-right font-mono">{formatNum(a.otd * 100, 0)}% · {formatNum(a.rejectRate * 100, 1)}%</td>
+                    </tr>
+                  ))}
+                  {l.uncovered > 0 && (
+                    <tr className="border-t border-border bg-[color-mix(in_srgb,var(--error-bg)_60%,transparent)]">
+                      <td className="p-2 text-ink">
+                        <span className="font-mono font-bold">{l.material}</span> → {l.destination}
+                        <div className="text-subtle">{formatNum(l.qty, 0)} {l.uom} needed</div>
+                      </td>
+                      <td className="p-2 text-error-tx font-semibold" colSpan={6}>
+                        {formatNum(l.uncovered, 0)} {l.uom} uncovered from {dateIn(l.needByDays)} · {l.ordersAtRisk} orders at risk. {RELAXATION}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <DrillDown title="Constraints and rejected alternatives" hint="What shaped the plan">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <div className="font-semibold text-ink mb-1.5">Constraints applied</div>
+              <ul className="space-y-1">
+                {CONSTRAINTS.map((c) => (
+                  <li key={c.rule} className="flex items-start gap-2">
+                    <Badge tone={c.binding ? 'watch' : 'neutral'}>{c.binding ? 'Binding' : 'Slack'}</Badge>
+                    <span className="text-body-c"><span className="text-subtle">{c.group}:</span> {c.rule}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="font-semibold text-ink mb-1.5">Rejected alternatives</div>
+              <ul className="space-y-1.5">
+                {REJECTED.map((r) => (
+                  <li key={r.option} className="text-body-c">
+                    <span className="font-semibold text-ink">{r.option}</span>: {r.why} <span className="text-subtle">({r.rule})</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </DrillDown>
+      </div>
+
+      <div className="section-title">Inventory position behind the plan</div>
 
       <OptimizationSetup
         expected={optimizationTimeline[0]?.projectedOnHand}

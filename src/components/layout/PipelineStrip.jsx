@@ -8,7 +8,7 @@ export const PIPELINE_STAGES = [
   { n: 2, to: '/app/bivariate', label: 'Bivariate', group: 'Understand' },
   { n: 3, to: '/app/abc', label: 'ABC–XYZ', group: 'Detect & Explain' },
   { n: 4, to: '/app/eoq', label: 'EOQ', group: 'Detect & Explain' },
-  { n: 5, to: '/app/rmlc', label: 'RMLC', group: 'Detect & Explain' },
+  { n: 5, to: '/app/rmlc', label: 'RMLC & SLOB', group: 'Detect & Explain' },
   { n: 6, to: '/app/raw-materials', label: 'Multivariate', group: 'Predict & Optimize' },
   { n: 7, to: '/app/optimization', label: 'Optimization', group: 'Predict & Optimize' },
   { n: 8, to: '/app/what-if', label: 'What-if', group: 'Predict & Optimize' },

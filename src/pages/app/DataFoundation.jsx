@@ -94,7 +94,7 @@ export default function DataFoundation() {
       />
 
       <Insight key={persona} label="Data readiness">
-        {READINESS_INSIGHT[persona] || READINESS_INSIGHT.planner}
+        {READINESS_INSIGHT[persona] || READINESS_INSIGHT.head}
       </Insight>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">

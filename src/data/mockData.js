@@ -62,6 +62,30 @@ export const RMLC_STAGES_BY_PLANT = [
   { plant: 'Plant 4', name: 'Plant 4 — Fastener Depot', stages: { accumulation: { value: 0.50, count: 10 }, active: { value: 4.80, count: 150 }, atrisk: { value: 0.30, count: 12 }, liquidation: { value: 0.30, count: 20 } } },
 ];
 
+// Expiry and SLOB detail per plant (values in $M, cumulative by horizon: d60 includes d30). Expired stock is kept
+// separate from slow-moving (At Risk) and potentially obsolete (Liquidation) stock in RMLC_STAGES_BY_PLANT.
+export const EXPIRY_BY_PLANT = {
+  'Plant 1': { expired: { value: 0.06, lots: 3 }, d30: 0.06, d60: 0.12, d90: 0.21, expiringBeforeUse: 5, pullableLots: 3, openPoOnSlob: 0.22, cancellablePo: 0.15 },
+  'Plant 2': { expired: { value: 0.08, lots: 3 }, d30: 0.07, d60: 0.16, d90: 0.30, expiringBeforeUse: 6, pullableLots: 2, openPoOnSlob: 0.31, cancellablePo: 0.2 },
+  'Plant 3': { expired: { value: 0.04, lots: 2 }, d30: 0.03, d60: 0.08, d90: 0.15, expiringBeforeUse: 3, pullableLots: 2, openPoOnSlob: 0.18, cancellablePo: 0.11 },
+  'Plant 4': { expired: { value: 0.03, lots: 1 }, d30: 0.02, d60: 0.06, d90: 0.11, expiringBeforeUse: 2, pullableLots: 1, openPoOnSlob: 0.09, cancellablePo: 0.06 },
+};
+
+// Multivariate diagnostics: records that look unusual across several factors together. `impact` is the business
+// exposure in $ (shortage or excess), which sets the ranking; `score` is the statistical anomaly score (on-demand detail only).
+// `kinds` decide which persona sees the record: balance/movement (inventory), production/shortage (planner),
+// leadtime/ordersize/supplier (procurement); the Head of Supply Chain sees all of them.
+export const ANOMALIES = [
+  { id: 'A-01', record: 'MAT-4120 · Plant 3', what: 'Cover fell to 14 days against a 60-day lead time while demand kept rising', factors: ['Demand +1.2%/wk', 'Allocated supply', '60-day lead time'], peer: 'Peers in Class A hold 70+ days', exposure: 'shortage', impact: 1.82, priority: 'High', kinds: ['production', 'shortage', 'supplier'], score: 0.91, expected: '62 days of cover', observed: '14 days of cover', freshness: '2 hours ago' },
+  { id: 'A-02', record: 'MAT-3390 · Plant 1', what: 'Two Plant 1 warehouses hold diverging balances; total stock 34% over optimal', factors: ['Duplicate replenishment', 'No cross-warehouse visibility'], peer: 'Other plants hold one balance', exposure: 'excess', impact: 1.12, priority: 'High', kinds: ['balance'], score: 0.84, expected: '1,340 EA', observed: '1,800 EA', freshness: '2 hours ago' },
+  { id: 'A-03', record: 'MAT-1082 · HydraTech Dynamics', what: 'Lead time averaged 66 days over the last 6 receipts against a 60-day contract', factors: ['Sole source', 'Late tail widening'], peer: 'Other component suppliers: +1 day', exposure: 'shortage', impact: 0.62, priority: 'Medium', kinds: ['leadtime', 'supplier', 'shortage'], score: 0.77, expected: '60 days', observed: '66 days', freshness: '1 day ago' },
+  { id: 'A-04', record: 'MAT-1177 · Seal Kit PO', what: 'Last purchase order was 3× the usual order size', factors: ['Manual PO override', 'No demand change'], peer: 'Typical PO 1,200 EA', exposure: 'excess', impact: 0.21, priority: 'Medium', kinds: ['ordersize', 'balance'], score: 0.81, expected: '1,200 EA', observed: '3,600 EA', freshness: '6 hours ago' },
+  { id: 'A-05', record: 'MAT-2041 · Lot L-2241, Plant 2', what: 'One lot stopped moving while the material overall consumes normally', factors: ['Cell-matching spec change', 'Lot bypassed in picking'], peer: 'Other lots turn every 21 days', exposure: 'excess', impact: 0.1, priority: 'Medium', kinds: ['movement', 'production'], score: 0.69, expected: 'Issued within 21 days', observed: '64 days idle', freshness: '2 hours ago' },
+  { id: 'A-06', record: 'SiliconFoundry International', what: '3 of the last 5 deliveries arrived as split shipments', factors: ['Allocation', 'Partial confirmations'], peer: 'Other suppliers: 1 in 20', exposure: 'shortage', impact: 0.4, priority: 'Medium', kinds: ['supplier', 'leadtime'], score: 0.72, expected: 'Full shipments', observed: '3 of 5 split', freshness: '1 day ago' },
+  { id: 'A-07', record: 'MAT-5501 · Plant 1', what: 'Consumption dropped to zero after a design change but replenishment continued', factors: ['Design change', 'Standing reorder'], peer: 'Plant 2 still consumes it', exposure: 'excess', impact: 0.06, priority: 'Low', kinds: ['movement', 'production', 'ordersize'], score: 0.88, expected: '16 KG/day', observed: '0 KG/day', freshness: '2 hours ago' },
+  { id: 'A-08', record: 'MAT-8812 · Fastener, Plant 4', what: 'Weekly issues spiked to 3.9σ above normal', factors: ['One-off maintenance kit'], peer: 'Within plant norms after one week', exposure: 'none', impact: 0.004, priority: 'Low', kinds: ['movement'], score: 0.95, expected: '2,100 EA/wk', observed: '5,900 EA/wk', freshness: '2 hours ago', unusualOnly: true },
+];
+
 export const DECISION_ROWS = [
   { id: 'd1', tag: 'Act now', tone: 'risk', title: 'Authorize expedited PO — MAT-4120', meta: 'Stockout in 14 days · Plant 3 · Confidence 94.80%', impact: '+$1.82M protected' },
   { id: 'd2', tag: 'Optimize', tone: 'accent', title: 'Recalibrate lot size — 46 Class A materials', meta: 'EOQ recalibration · Confidence 94.80%', impact: '+$3.65M released' },

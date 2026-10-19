@@ -77,7 +77,7 @@ const RESPONSE_COPY = {
 
 export default function WhatIf() {
   const { persona } = usePlatform();
-  const presets = PERSONA_PRESETS[persona] || PERSONA_PRESETS.planner;
+  const presets = PERSONA_PRESETS[persona] || PERSONA_PRESETS.head;
   const leverFocus = LEVER_FOCUS[persona] || [];
   const navigate = useNavigate();
   // Raw lever positions, and which levers are actually moving. Levers that are not active are held at baseline.
@@ -243,50 +243,63 @@ export default function WhatIf() {
   const sgn = (v, d = 1) => `${v >= 0 ? '+' : ''}${v.toFixed(d)}`;
   const scenarioIs = changedLevers.length === 0 ? 'At baseline' : `If ${changedLevers.join(' and ')}`;
   const resultLine = `${scenarioIs}, projected inventory is $${out.value.toFixed(2)}M (${sgn(out.invValuePct)}%), covering ${out.icr.toFixed(0)} days and turning ${out.turnover.toFixed(1)}×.`;
+  // Blueprint P0 for Screen 8: what happens if assumptions change, on both sides of the trade-off.
+  // Value and policy figures are deterministic; stockout, service and orders at risk are probabilistic.
+  const HOLD_RATE = 0.22; // annual carrying rate on inventory value
+  const STOCKOUT_COST_M = 0.35; // $M of expected disruption per point of stockout risk
+  const BASE_EO = 4.04; // $M slow-moving + potentially obsolete today (RMLC & SLOB)
+  const relevantCost = (v, so) => v * HOLD_RATE + so * STOCKOUT_COST_M;
+  const blCost = relevantCost(BL.value, BL.stockout);
+  const scCost = relevantCost(out.value, out.stockout);
+  const ordersAtRisk = (so) => Math.round(so * 4.6); // open production orders exposed per point of stockout risk
+  const eoExposure = BASE_EO + Math.max(out.capitalDelta, 0) * 0.5;
+  const tone = (d, goodWhenHigh = false, eps = 0.05) => (Math.abs(d) <= eps ? 'flat' : (d > 0) === goodWhenHigh ? 'up' : 'down');
+  const fin = {
+    value: { label: 'Inventory value', value: `$${out.value.toFixed(2)}M`, delta: `${sgn(out.capitalDelta, 2)}M vs baseline`, deltaTone: tone(out.capitalDelta), sub: `Baseline $${BL.value.toFixed(2)}M · deterministic` },
+    wc: { label: 'Working capital', value: `${out.capitalDelta >= 0 ? '+' : '−'}$${Math.abs(out.capitalDelta).toFixed(2)}M`, deltaTone: tone(out.capitalDelta), delta: out.capitalDelta > 0.05 ? 'More cash tied up' : out.capitalDelta < -0.05 ? 'Cash released' : 'Unchanged', sub: 'vs baseline' },
+    cost: { label: 'Total relevant cost', value: `$${scCost.toFixed(2)}M/yr`, delta: `${sgn(scCost - blCost, 2)}M vs baseline`, deltaTone: tone(scCost - blCost), sub: 'Carrying + expected disruption' },
+  };
+  const svc = {
+    shortages: { label: 'Stockout risk', value: `${out.stockout.toFixed(2)}%`, delta: `${sgn(out.stockout - BL.stockout, 2)} pp vs baseline`, deltaTone: tone(out.stockout - BL.stockout), sub: 'Probabilistic · 12-week horizon' },
+    orders: { label: 'Orders at risk', value: `${ordersAtRisk(out.stockout)} orders`, delta: `${sgn(ordersAtRisk(out.stockout) - ordersAtRisk(BL.stockout), 0)} vs baseline`, deltaTone: tone(ordersAtRisk(out.stockout) - ordersAtRisk(BL.stockout), false, 0), sub: 'Open production orders exposed' },
+    fill: { label: 'Fill rate', value: `${out.service.toFixed(1)}%`, delta: `${sgn(out.service - BL.service, 2)} pp vs baseline`, deltaTone: tone(out.service - BL.service, true), sub: `Baseline ${BL.service.toFixed(1)}%` },
+  };
+  const pol = {
+    qty: { label: 'Order quantity', value: `${out.eoq.toFixed(0)} EA`, delta: `${sgn(out.eoq - BL.eoq, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Lot per receipt' },
+    safety: { label: 'Safety stock', value: `${out.safety.toFixed(0)} EA`, delta: `${sgn(out.safety - BL.safety, 0)} EA vs baseline`, deltaTone: tone(out.safety - BL.safety, false, 0.5), sub: 'Buffer to hold the service level' },
+    dos: { label: 'Days of supply', value: `${out.icr.toFixed(0)} days`, delta: `${sgn(out.icr - 22, 0)} days vs baseline (22)`, deltaTone: tone(out.icr - 22, true, 0.5), sub: 'Consumption held in stock' },
+    eo: { label: 'E&O exposure', value: `$${eoExposure.toFixed(2)}M`, delta: `${sgn(eoExposure - BASE_EO, 2)}M vs baseline`, deltaTone: tone(eoExposure - BASE_EO), sub: 'Excess and obsolete stock' },
+  };
+  const tradeOff = changedLevers.length === 0 ? '' : `On the other side: total relevant cost ${scCost >= blCost ? 'rises' : 'falls'} by $${Math.abs(scCost - blCost).toFixed(2)}M/yr and fill rate moves to ${out.service.toFixed(1)}%.`;
   const personaTop = {
-    planner: {
-      label: 'Production / Materials Planner Lens · Line Continuity Under This Scenario',
-      headline: `${resultLine} Stockout risk moves to ${out.stockout.toFixed(2)}% (baseline ${BL.stockout.toFixed(2)}%) and service level to ${out.service.toFixed(1)}%. ${out.reco}`,
-      kpis: [
-        { label: 'Stockout risk', value: `${out.stockout.toFixed(2)}%`, delta: `${sgn(out.stockout - BL.stockout, 2)} pp vs baseline`, deltaTone: out.stockout - BL.stockout > 0.05 ? 'down' : out.stockout - BL.stockout < -0.05 ? 'up' : 'flat', sub: 'Chance a line waits on this material' },
-        { label: 'Service level', value: `${out.service.toFixed(1)}%`, delta: `${sgn(out.service - BL.service, 2)} pp vs baseline`, deltaTone: out.service - BL.service < -0.05 ? 'down' : out.service - BL.service > 0.05 ? 'up' : 'flat', sub: `Baseline ${BL.service.toFixed(1)}%` },
-        { label: 'Days of cover', value: `${out.icr.toFixed(0)} days`, delta: `${sgn(out.icr - 22, 0)} days vs baseline (22)`, deltaTone: out.icr - 22 < -0.5 ? 'down' : out.icr - 22 > 0.5 ? 'up' : 'flat', sub: 'Consumption held in stock' },
-        { label: 'Safety stock needed', value: `${out.safety.toFixed(0)} EA`, delta: `${sgn(out.safety - BL.safety, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Buffer to hold the service level' },
-      ],
+    head: {
+      label: 'Head of Supply Chain · Enterprise Inventory, Cost and Service Under This Scenario',
+      headline: `${resultLine} ${tradeOff} ${out.reco}`,
+      kpis: [fin.value, fin.cost, svc.fill, pol.eo],
+      next: { action: changedLevers.length ? 'Decide whether to adopt the countermeasure below as policy' : 'Move a lever to test a scenario against the baseline', owner: 'Head of Supply Chain', due: 'This planning cycle' },
     },
     inventory: {
-      label: 'Inventory / Materials Manager Lens · Stock to Hold Under This Scenario',
-      headline: `${resultLine} Safety stock moves to ${out.safety.toFixed(0)} EA and the EOQ lot to ${out.eoq.toFixed(0)} EA, which changes how much you store and how often loads arrive.`,
-      kpis: [
-        { label: 'Projected inventory', value: `$${out.value.toFixed(2)}M`, delta: `${sgn(out.capitalDelta, 2)}M vs baseline`, deltaTone: out.capitalDelta > 0.05 ? 'down' : out.capitalDelta < -0.05 ? 'up' : 'flat', sub: 'Value on the shelf' },
-        { label: 'Safety stock', value: `${out.safety.toFixed(0)} EA`, delta: `${sgn(out.safety - BL.safety, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Held in reserve' },
-        { label: 'EOQ lot size', value: `${out.eoq.toFixed(0)} EA`, delta: `${sgn(out.eoq - BL.eoq, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Quantity per receipt' },
-        { label: 'Days of cover', value: `${out.icr.toFixed(0)} days`, delta: `${sgn(out.icr - 22, 0)} days vs baseline (22)`, deltaTone: 'flat', sub: 'Consumption held in stock' },
-      ],
+      label: 'Inventory / Materials Manager · Effect on Stock',
+      headline: `${resultLine} Safety stock moves to ${out.safety.toFixed(0)} EA and the order lot to ${out.eoq.toFixed(0)} EA; excess and obsolete exposure becomes $${eoExposure.toFixed(2)}M. ${tradeOff}`,
+      kpis: [fin.value, pol.safety, pol.dos, pol.eo],
+      next: { action: 'Check storage capacity for the scenario stock level before adopting it', owner: 'Inventory / Materials Manager', due: 'Before policy change' },
+    },
+    planner: {
+      label: 'Production / Materials Planner · Component Availability Under Surges and Delays',
+      headline: `${scenarioIs}, stockout risk is ${out.stockout.toFixed(2)}% (baseline ${BL.stockout.toFixed(2)}%), exposing ${ordersAtRisk(out.stockout)} production orders, and fill rate is ${out.service.toFixed(1)}%. Holding that service takes ${out.safety.toFixed(0)} EA of safety stock. ${out.reco}`,
+      kpis: [svc.shortages, svc.orders, svc.fill, pol.safety],
+      next: { action: 'Flag the exposed orders in MRP if this scenario becomes the plan', owner: 'Production / Materials Planner', due: 'Next MRP run' },
     },
     procurement: {
-      label: 'Procurement / Sourcing Manager Lens · Ordering Under This Scenario',
-      headline: `${resultLine} The EOQ lot moves to ${out.eoq.toFixed(0)} EA (baseline ${BL.eoq}), so order frequency and supplier load change. Check supplier capacity before changing the policy.`,
-      kpis: [
-        { label: 'EOQ lot size', value: `${out.eoq.toFixed(0)} EA`, delta: `${sgn(out.eoq - BL.eoq, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Quantity per PO' },
-        { label: 'Stockout risk', value: `${out.stockout.toFixed(2)}%`, delta: `${sgn(out.stockout - BL.stockout, 2)} pp vs baseline`, deltaTone: out.stockout - BL.stockout > 0.05 ? 'down' : out.stockout - BL.stockout < -0.05 ? 'up' : 'flat', sub: 'Exposure to lead time and capacity' },
-        { label: 'Safety stock', value: `${out.safety.toFixed(0)} EA`, delta: `${sgn(out.safety - BL.safety, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Extra to buy up front' },
-        { label: 'Projected inventory', value: `$${out.value.toFixed(2)}M`, delta: `${sgn(out.capitalDelta, 2)}M vs baseline`, deltaTone: out.capitalDelta > 0.05 ? 'down' : out.capitalDelta < -0.05 ? 'up' : 'flat', sub: 'Spend this implies' },
-      ],
-    },
-    head: {
-      label: 'Head of Supply Chain Lens · Capital Under This Scenario',
-      headline: `Bottom line: ${resultLine} ${out.reco}`,
-      kpis: [
-        { label: 'Projected inventory', value: `$${out.value.toFixed(2)}M`, delta: `${sgn(out.capitalDelta, 2)}M vs baseline`, deltaTone: out.capitalDelta > 0.05 ? 'down' : out.capitalDelta < -0.05 ? 'up' : 'flat', sub: `${sgn(out.invValuePct)}% vs baseline $${BL.value.toFixed(2)}M` },
-        { label: 'Turnover', value: `${out.turnover.toFixed(1)}×`, delta: `${sgn(out.turnover - 4.1)}× vs baseline (4.1×)`, deltaTone: out.turnover - 4.1 < -0.05 ? 'down' : out.turnover - 4.1 > 0.05 ? 'up' : 'flat', sub: 'Annual stock turns' },
-        { label: 'Days of cover', value: `${out.icr.toFixed(0)} days`, delta: `${sgn(out.icr - 22, 0)} days vs baseline (22)`, deltaTone: 'flat', sub: 'Cash tied up in consumption days' },
-        { label: 'Safety-stock capital', value: `${out.safety.toFixed(0)} EA`, delta: `${sgn(out.safety - BL.safety, 0)} EA vs baseline`, deltaTone: 'flat', sub: 'Buffer held against variability' },
-      ],
+      label: 'Procurement / Sourcing Manager · Effect on Orders and Allocation',
+      headline: `${resultLine} The order lot moves to ${out.eoq.toFixed(0)} EA (baseline ${BL.eoq}), so order frequency and supplier load change; check supplier capacity and allocation before changing the policy. ${tradeOff}`,
+      kpis: [pol.qty, svc.shortages, fin.cost, fin.wc],
+      next: { action: 'Confirm supplier capacity for the scenario order pattern', owner: 'Procurement / Sourcing Manager', due: 'Before policy change' },
     },
   };
+  const WHATIF_SAFEGUARD = 'Baseline: current policy and 12-week demand forecast. Inventory value, cost and policy figures are deterministic; stockout, fill rate and orders at risk are probabilistic. Both sides of the trade-off are shown.';
 
-  const respOrder = RESPONSE_ORDER[persona] || RESPONSE_ORDER.planner;
+  const respOrder = RESPONSE_ORDER[persona] || RESPONSE_ORDER.head;
   const respTiles = {
     demand: { label: 'Demand Change (Scenario Δ)', value: `${demand > 0 ? '+' : ''}${demand.toFixed(2)}%`, sub: 'vs baseline (0.00%)', valueStyle: { color: demand > 0 ? 'var(--error)' : demand < 0 ? 'var(--success)' : 'var(--ink)' } },
     lead: { label: 'Lead-Time Change (Scenario Δ)', value: `${lead > 0 ? '+' : ''}${lead.toFixed(0)} days`, sub: 'vs baseline (0 days)', valueStyle: { color: lead > 0 ? 'var(--error)' : lead < 0 ? 'var(--success)' : 'var(--ink)' } },
@@ -339,7 +352,7 @@ export default function WhatIf() {
       action: ['Confirm funding headroom before a policy change that raises inventory', 'Track turnover against the 4.1× baseline after the change'],
     },
   };
-  const countermeasure = COUNTERMEASURES[persona] || COUNTERMEASURES.planner;
+  const countermeasure = COUNTERMEASURES[persona] || COUNTERMEASURES.head;
   const allIdx = chartRows.map((r) => r.scIdx);
   const minIdx = Math.min(100, ...allIdx);
   const maxIdx = Math.max(100, ...allIdx);
@@ -384,7 +397,7 @@ export default function WhatIf() {
       />
 
       {/* Persona headline + tiles lead the page; the three portfolio KPIs below are the shared evidence */}
-      <PersonaTop persona={persona} config={personaTop} />
+      <PersonaTop persona={persona} config={personaTop} safeguard={WHATIF_SAFEGUARD} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-6">
         <KpiTile

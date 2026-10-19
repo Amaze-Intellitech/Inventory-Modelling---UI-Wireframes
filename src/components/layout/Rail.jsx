@@ -22,14 +22,14 @@ const GROUPS = [
     items: [
       { to: '/app/abc', label: 'ABC–XYZ & Criticality', icon: PieChart, stage: 3 },
       { to: '/app/eoq', label: 'EOQ & Replenishment', icon: BarChart3, stage: 4 },
-      { to: '/app/rmlc', label: 'RMLC Lifecycle', icon: RefreshCcw, stage: 5 },
+      { to: '/app/rmlc', label: 'RMLC & SLOB', icon: RefreshCcw, stage: 5 },
     ],
   },
   {
     label: 'Predict & Optimize',
     items: [
       { to: '/app/raw-materials', label: 'Multivariate Forecast', icon: TrendingUp, stage: 6 },
-      { to: '/app/optimization', label: 'Optimization Plan', icon: Settings2, stage: 7 },
+      { to: '/app/optimization', label: 'Procurement Optimization', icon: Settings2, stage: 7 },
       { to: '/app/what-if', label: 'What-If Simulation', icon: SlidersHorizontal, stage: 8 },
     ],
   },

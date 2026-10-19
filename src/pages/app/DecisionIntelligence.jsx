@@ -908,7 +908,7 @@ export default function DecisionIntelligence() {
     setInputText('');
   };
 
-  const personaMeta = PERSONA_DESCRIPTIONS[persona] || PERSONA_DESCRIPTIONS.planner;
+  const personaMeta = PERSONA_DESCRIPTIONS[persona] || PERSONA_DESCRIPTIONS.head;
   const orderedPrompts = orderPromptsForPersona(persona);
 
   return (

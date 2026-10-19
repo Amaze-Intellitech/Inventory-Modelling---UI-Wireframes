@@ -1,11 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ViewHead, KpiTile, WhyDisclosure, Badge } from '../../components/CommonUI';
+import { ViewHead, KpiTile, WhyDisclosure, Badge, DrillDown } from '../../components/CommonUI';
 import PersonaTop from '../../components/PersonaTop';
 import { usePlatform } from '../../context/PlatformContext';
 import ModelValidation, { MultivariateHeadline } from '../../components/ModelValidation';
-import { EOQ_INPUTS, FORECAST_INPUTS } from '../../data/mockData';
+import { EOQ_INPUTS, FORECAST_INPUTS, ANOMALIES } from '../../data/mockData';
 import {
   Table,
   TableBody,
@@ -613,15 +613,7 @@ export default function RawMaterialRequirements() {
       ],
       scopeNoteLabel: 'Line-Continuity Note:',
       scopeNoteBody: `This view tracks whether on-hand stock and the forward forecast keep ${downstreamShort} running through the ${leadTimeDays}-day supplier lead time.`,
-      kpis: [
-        { label: '1. Coverage vs Lead Time', value: `${formatNum(daysOfSupply, 1)} Days`, valueStyle: { color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }, delta: daysOfSupply < leadTimeDays ? `LEAN: ${formatNum(leadTimeDays - daysOfSupply, 1)}d below lead time` : `Covered: +${formatNum(daysOfSupply - leadTimeDays, 1)}d beyond lead time`, deltaTone: daysOfSupply < leadTimeDays ? 'down' : 'up', sub: `Supplier lead time is ${leadTimeDays} days` },
-        { label: '2. Downstream Lines Fed', value: downstreamShort, delta: 'Stops here if this material runs out', deltaTone: 'flat', sub: meta.downstream },
-        { label: '3. Reorder Status', value: belowReorderPoint ? 'Trigger Active' : 'Protected', valueStyle: { color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }, delta: belowReorderPoint ? `Gap: -${formatNum(ropGap, 1)} ${uom}` : `Buffer: +${formatNum(ropBuffer, 1)} ${uom}`, deltaTone: belowReorderPoint ? 'down' : 'up', sub: `ROP at ${formatNum(reorderPoint, 1)} ${uom}` },
-        { label: '4. 12-Week Trend', value: `${formatNum(day1Forecast, 2)} → ${formatNum(day84Forecast, 2)} ${uom}/d`, delta: `${trendPerWeek >= 0 ? '+' : ''}${formatNum(trendMagnitudePct, 2)}%/wk`, deltaTone: trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat', sub: 'Day 1 to Day 84 daily rate' },
-      ],
       deepDive: { title: 'Line-Continuity Stock Check', sub: `Physical position behind ${downstreamShort} for ${selectedMaterial.id}.`, badgeText: belowReorderPoint ? 'Reorder Trigger Active' : 'Lines Protected', badgeTone: belowReorderPoint ? 'risk' : 'success', noteBody: belowReorderPoint ? `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} sits ${formatNum(ropGap, 1)} ${uom} below the reorder point — ${meta.downstream} has no buffer until the next receipt.` : `Current on-hand stock of ${formatNum(onHandQty, 0)} ${uom} keeps ${formatNum(ropBuffer, 1)} ${uom} of buffer above the reorder point, protecting ${meta.downstream}.` },
-      insightLabel: 'Production / Materials Planner Lens · Will This Material Still Be There When the Line Needs It',
-      insightBody: `${selectedMaterial.id}'s forecast reaches ${formatNum(day84Forecast, 2)} ${uom}/day by week 12. ${belowReorderPoint ? `Stock is already below the reorder trigger — ${meta.downstream} is exposed until the next receipt lands.` : `On-hand stock protects ${meta.downstream} through the full 12-week horizon.`}`,
       whyHeading: `Why ${selectedMaterial.id} will${belowReorderPoint ? ' not' : ''} keep ${downstreamShort} running`,
       whySummary: 'Line-continuity drivers behind the forecast and reorder position',
       whyDrivers: [
@@ -645,15 +637,7 @@ export default function RawMaterialRequirements() {
       ],
       scopeNoteLabel: 'Storage Note:',
       scopeNoteBody: 'Safety stock and on-hand figures here are the floor to keep on the shelf regardless of the reorder decision made in Optimization.',
-      kpis: [
-        { label: '1. On-Hand Inventory', value: `${formatNum(onHandQty, 0)} ${uom}`, delta: formatCurrency(onHandValue), deltaTone: 'flat', sub: `${formatNum(daysOfSupply, 1)} days of supply` },
-        { label: '2. Safety-Stock Buffer', value: `${formatNum(safetyStock, 1)} ${uom}`, delta: formatCurrency(safetyStockValue), deltaTone: 'flat', sub: `Z=1.65 · CV ${(demandCV * 100).toFixed(1)}%` },
-        { label: '3. Lead-Time Demand', value: `${formatNum(leadTimeDemand, 1)} ${uom}`, delta: `${leadTimeDays} days of consumption`, deltaTone: 'flat', sub: 'Floor stock needed before next receipt' },
-        { label: '4. 12-Week Volume to Shelve', value: `${formatNum(cumulativeHorizonDemand, 0)} ${uom}`, delta: `${formatNum(avgDailyForecast, 2)} ${uom}/day avg`, deltaTone: 'flat', sub: 'Total forecast volume moving through storage' },
-      ],
       deepDive: { title: 'Physical Stock & Buffer Breakdown', sub: `Storage footprint and safety-stock sizing for ${selectedMaterial.id}.`, badgeText: belowReorderPoint ? 'Replenishment Due' : 'Stable Footprint', badgeTone: belowReorderPoint ? 'risk' : 'success', noteBody: belowReorderPoint ? `On-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatNum(daysOfSupply, 1)} days of supply) is ${formatNum(ropGap, 1)} ${uom} below the reorder point — expect a receipt to land soon.` : `On-hand stock of ${formatNum(onHandQty, 0)} ${uom} (${formatNum(daysOfSupply, 1)} days of supply) sits ${formatNum(ropBuffer, 1)} ${uom} above the reorder point — no incoming receipt expected imminently.` },
-      insightLabel: 'Inventory / Materials Manager Lens · How Much Stock This Forecast Implies Holding',
-      insightBody: `Meeting the 12-week forecast of ${formatNum(cumulativeHorizonDemand, 0)} ${uom} means carrying ${formatNum(safetyStock, 1)} ${uom} (${formatCurrency(safetyStockValue)}) of safety buffer on top of lead-time stock — the floor to keep on the shelf regardless of the reorder decision.`,
       whyHeading: `Why ${selectedMaterial.id} needs ${formatNum(safetyStock, 1)} ${uom} of safety stock on the shelf`,
       whySummary: 'Physical buffer sizing and storage implications',
       whyDrivers: [
@@ -674,15 +658,7 @@ export default function RawMaterialRequirements() {
       ],
       scopeNoteLabel: 'Execution Note:',
       scopeNoteBody: `Order timing and sizing here should be reconciled with ${supplierShort}'s MOQ and packaging increments before it's committed.`,
-      kpis: [
-        { label: '1. Reorder Point vs On-Hand', value: `${formatNum(reorderPoint, 1)} ${uom}`, valueStyle: { color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }, delta: belowReorderPoint ? `Gap: -${formatNum(ropGap, 1)} ${uom}` : `Buffer: +${formatNum(ropBuffer, 1)} ${uom}`, deltaTone: belowReorderPoint ? 'down' : 'up', sub: `On-hand is ${formatNum(onHandQty, 0)} ${uom}` },
-        { label: '2. Lead Time', value: `${leadTimeDays} Days`, delta: `${leadTimeWeeks.toFixed(1)} wks`, deltaTone: 'flat', sub: supplierShort },
-        { label: '3. Order Decision', value: belowReorderPoint ? 'Order Now' : 'Hold', valueStyle: { color: belowReorderPoint ? 'var(--error)' : 'var(--success)' }, delta: belowReorderPoint ? formatCurrency(ropGap * unitCost) : formatCurrency(ropBuffer * unitCost), deltaTone: belowReorderPoint ? 'down' : 'up', sub: belowReorderPoint ? 'Gap value at risk' : 'Buffer value held' },
-        { label: '4. 12-Week Demand to Plan Against', value: `${formatNum(cumulativeHorizonDemand, 0)} ${uom}`, delta: formatCurrency(cumulativeHorizonValue), deltaTone: 'flat', sub: `${formatNum(avgDailyForecast, 2)} ${uom}/day avg` },
-      ],
       deepDive: { title: 'Reorder Position & Supply Execution', sub: `When and how much to order for ${selectedMaterial.id} from ${supplierShort}.`, badgeText: belowReorderPoint ? 'Order Now' : 'No Order Needed Yet', badgeTone: belowReorderPoint ? 'risk' : 'success', noteBody: belowReorderPoint ? `Place the order now — on-hand stock is ${formatNum(ropGap, 1)} ${uom} (${formatCurrency(ropGap * unitCost)}) below the reorder point against the ${leadTimeDays}-day lead time from ${meta.supplier}.` : `No order needed yet — on-hand stock is ${formatNum(ropBuffer, 1)} ${uom} (${formatCurrency(ropBuffer * unitCost)}) above the reorder point.` },
-      insightLabel: 'Procurement / Sourcing Manager Lens · When and How Much to Order',
-      insightBody: belowReorderPoint ? `On-hand is ${formatNum(ropGap, 1)} ${uom} below the reorder point — place the order now against the ${leadTimeDays}-day lead time from ${supplierShort}.` : `Stock is ${formatNum(ropBuffer, 1)} ${uom} above the reorder point — no order needed yet.`,
       whyHeading: `Why ${selectedMaterial.id} ${belowReorderPoint ? 'needs an order now' : "doesn't need an order yet"}`,
       whySummary: 'Reorder timing and sizing drivers',
       whyDrivers: [
@@ -705,14 +681,6 @@ export default function RawMaterialRequirements() {
       ],
       scopeNoteLabel: 'Executive Scope Note:',
       scopeNoteBody: `Displayed history: 56 days · Forecast horizon: 84 days (12 wks) · Sourcing replenishment window: ${leadTimeDays} days. The shaded envelope illustrates projected demand variability across the planning cycle.`,
-      kpis: [
-        { label: '1. Annual Consumption Run-Rate', value: formatCurrency(annualConsumptionValue), delta: `${formatNum(demand, 0)} ${uom}/yr`, deltaTone: 'flat', sub: `Unit cost: ${formatCurrency(unitCost)}/${uom} · Class ${abcClass}` },
-        { label: '2. Physical Inventory Capital', value: formatCurrency(onHandValue), delta: `${formatNum(onHandQty, 0)} ${uom} on-hand`, deltaTone: 'flat', sub: `Turning at ${formatNum(annualTurns, 2)} turns/yr` },
-        { label: '3. 12-Week Horizon Spend', value: formatCurrency(cumulativeHorizonValue), delta: `${formatNum(cumulativeHorizonDemand, 0)} ${uom} total`, deltaTone: trendPerWeek >= 0.003 ? 'up' : trendPerWeek <= -0.003 ? 'down' : 'flat', sub: `Avg: ${formatNum(avgDailyForecast, 2)} ${uom}/day` },
-        { label: '4. Safety-Buffer Capital', value: formatCurrency(safetyStockValue), delta: `${formatNum(safetyStock, 1)} ${uom} planning buffer`, deltaTone: 'flat', sub: 'Capital held against demand/lead-time variability' },
-      ],
-      insightLabel: 'Head of Supply Chain Lens · Cash Committed Against This Forecast',
-      insightBody: `On-hand inventory carries ${formatCurrency(onHandValue)} in working capital, with ${formatCurrency(safetyStockValue)} held purely as a demand/lead-time buffer. Meeting the 12-week forecast implies ${formatCurrency(cumulativeHorizonValue)} of consumption value moving through the material, turning at ${formatNum(annualTurns, 2)}×/yr.`,
       whyHeading: `Executive Rationale: Working Capital & Supply Continuity Assessment for ${selectedMaterial.id}`,
       whySummary: 'Strategic demand outlook, working-capital valuation, and executive governance priorities',
       whyDrivers: [
@@ -764,7 +732,7 @@ export default function RawMaterialRequirements() {
       { label: '4. Spend Upside at Week 12', value: formatCurrency(dailyForecastSeries[forecastHorizonDays - 1].upperBand * 7 * unitCost, 0), delta: 'Upper planning envelope (Z = 1.65)', deltaTone: 'flat', sub: 'Worst-case weekly spend if demand runs high' },
     ],
   };
-  const forecastTiles = forecastTilesByPersona[persona] || forecastTilesByPersona.planner;
+  const forecastTiles = forecastTilesByPersona[persona] || forecastTilesByPersona.head;
   // Daily forecast chart and schedule: same 84-day series, with each persona's decision point marked and read in its own units.
   const crossDay = (threshold) => dailyForecastSeries.find((d) => d.cumulativeDemand >= threshold)?.day ?? null;
   const stockoutDay = crossDay(onHandQty);
@@ -779,7 +747,7 @@ export default function RawMaterialRequirements() {
     procurement: { title: 'Daily Demand & Order-By Date — Next 84 Days', sub: `Forecast demand for ${selectedMaterial.id}; the marker is the latest day to place an order and still beat the ${leadTimeDays}-day lead time.`, marker: stockoutDay ? (orderByDay >= 1 ? { day: orderByDay, label: `✎ Order by · Day ${orderByDay}` } : { day: 1, label: '✎ Order now' }) : null },
     head: { title: 'Daily Spend Outlook — Next 84 Days', sub: `Forecast consumption value for ${selectedMaterial.id} at ${formatCurrency(unitCost)}/${uom}; the shaded envelope is the high/low spend range.`, marker: null },
   };
-  const chartCopy = CHART_COPY[persona] || CHART_COPY.planner;
+  const chartCopy = CHART_COPY[persona] || CHART_COPY.head;
   const INSPECTORS = {
     planner: (p) => [
       { label: 'Daily Draw', value: `${p.dailyMean.toFixed(2)} ${uom}/day`, strong: 'text-primary' },
@@ -829,9 +797,56 @@ export default function RawMaterialRequirements() {
       { head: 'Cumulative Spend ($)', cell: (p) => formatNum(p.cumulativeDemand * unitCost, 0), foot: formatCurrency(cumulativeHorizonValue, 0), strong: true },
     ],
   };
-  const scheduleCols = SCHEDULE_COLS[persona] || SCHEDULE_COLS.planner;
-  const lens = PERSONA_LENS[persona] || PERSONA_LENS.planner;
-  const personaTop = { [persona]: { label: lens.insightLabel, headline: lens.insightBody, kpis: lens.kpis } };
+  const scheduleCols = SCHEDULE_COLS[persona] || SCHEDULE_COLS.head;
+  const lens = PERSONA_LENS[persona] || PERSONA_LENS.head;
+
+  // Blueprint P0 for Screen 6: which situations look unusual across factors together, ranked by business impact
+  // (not by anomaly score). Each persona sees the anomaly kinds it can act on.
+  const ANOMALY_KINDS = { inventory: ['balance', 'movement'], planner: ['production', 'shortage'], procurement: ['leadtime', 'ordersize', 'supplier'] };
+  const kinds = ANOMALY_KINDS[persona];
+  const anomalies = ANOMALIES.filter((a) => !kinds || a.kinds.some((k) => kinds.includes(k))).sort((a, b) => b.impact - a.impact);
+  const businessCritical = anomalies.filter((a) => !a.unusualOnly);
+  const highPriority = businessCritical.filter((a) => a.priority === 'High');
+  const sumImpact = (list) => list.reduce((acc, a) => acc + a.impact, 0);
+  const shortageAtRisk = sumImpact(businessCritical.filter((a) => a.exposure === 'shortage'));
+  const excessAtRisk = sumImpact(businessCritical.filter((a) => a.exposure === 'excess'));
+  const mm = (v) => (v >= 0.1 ? `$${v.toFixed(2)}M` : `$${formatNum(v * 1000, 0)}K`);
+  const BASELINE_DOS = 75; // middle of the 60–90 day policy band
+  const top = businessCritical[0];
+  const Mx = ({ children }) => <span className="font-mono font-bold text-ink">{children}</span>;
+  const anomalyKpis = [
+    { label: 'High-priority anomalies', value: `${highPriority.length} of ${anomalies.length}`, delta: `${anomalies.length - businessCritical.length} unusual but not critical`, deltaTone: 'flat', sub: 'Ranked by business impact' },
+    { label: 'Affected value', value: mm(sumImpact(businessCritical)), sub: `Shortage ${mm(shortageAtRisk)} · excess ${mm(excessAtRisk)}` },
+    { label: 'Shortage at risk', value: mm(shortageAtRisk), deltaTone: shortageAtRisk > 0 ? 'down' : 'flat', delta: shortageAtRisk > 0 ? 'Orders exposed' : 'None', sub: 'Revenue on exposed orders' },
+    { label: `${selectedMaterial.id} days of supply vs baseline`, value: `${formatNum(daysOfSupply, 0)} / ${BASELINE_DOS} days`, delta: `${daysOfSupply >= BASELINE_DOS ? '+' : ''}${formatNum(daysOfSupply - BASELINE_DOS, 0)} days`, deltaTone: Math.abs(daysOfSupply - BASELINE_DOS) > 30 ? 'down' : 'flat', sub: `${formatNum(onHandQty, 0)} ${uom} · ${formatCurrency(onHandValue, 0)}` },
+  ];
+  const personaTop = {
+    head: {
+      label: 'Head of Supply Chain · Ranked, Explainable Risks With Exposure',
+      headline: <><Mx>{businessCritical.length} situations</Mx> look unusual across several factors at once and matter to the business, worth <Mx>{mm(sumImpact(businessCritical))}</Mx>. The largest is {top.record}: {top.what.charAt(0).toLowerCase() + top.what.slice(1)} (<Mx>{mm(top.impact)}</Mx>).</>,
+      kpis: anomalyKpis,
+      next: { action: `Assign owners for the ${highPriority.length} high-priority anomalies`, owner: 'Head of Supply Chain', due: 'Today' },
+    },
+    inventory: {
+      label: 'Inventory / Materials Manager · Unusual Balances and Abnormal Movements',
+      headline: <><Mx>{businessCritical.length} balances or movements</Mx> look abnormal, holding <Mx>{mm(excessAtRisk)}</Mx> of excess. Start with {top.record}: {top.what.charAt(0).toLowerCase() + top.what.slice(1)}.</>,
+      kpis: [anomalyKpis[0], { label: 'Excess at risk', value: mm(excessAtRisk), deltaTone: 'down', delta: 'Above expected balance', sub: 'From unusual balances and movements' }, anomalyKpis[1], anomalyKpis[3]],
+      next: { action: `Reconcile ${top.record} and confirm the physical count`, owner: 'Inventory / Materials Manager', due: 'This week' },
+    },
+    planner: {
+      label: 'Production / Materials Planner · Anomalies Signalling Production Issues',
+      headline: <><Mx>{businessCritical.length} anomalies</Mx> point to production issues, with <Mx>{mm(shortageAtRisk)}</Mx> of orders exposed to shortage. Most urgent: {top.record}, {top.what.charAt(0).toLowerCase() + top.what.slice(1)}.</>,
+      kpis: [anomalyKpis[0], anomalyKpis[2], anomalyKpis[1], anomalyKpis[3]],
+      next: { action: `Check which scheduled orders depend on ${top.record.split(' · ')[0]}`, owner: 'Production / Materials Planner', due: 'Today' },
+    },
+    procurement: {
+      label: 'Procurement / Sourcing Manager · Abnormal Lead Times, Order Sizes and Supplier Behaviour',
+      headline: <><Mx>{businessCritical.length} supplier or order anomalies</Mx> are open, worth <Mx>{mm(sumImpact(businessCritical))}</Mx>. The largest is {top.record}: {top.what.charAt(0).toLowerCase() + top.what.slice(1)}.</>,
+      kpis: anomalyKpis,
+      next: { action: `Raise ${top.record.split(' · ')[0]} with the supplier and confirm the next delivery dates`, owner: 'Procurement / Sourcing Manager', due: 'Within 3 days' },
+    },
+  };
+  const MV_SAFEGUARD = 'No PCA plots or raw anomaly scores up front: records are ranked by business impact, and statistically unusual records that carry no business risk are labelled as such.';
 
   return (
     <motion.section 
@@ -845,7 +860,7 @@ export default function RawMaterialRequirements() {
       {/* A. SHARED PAGE HEADER WITH CANONICAL RM PROPAGATION                 */}
       {/* ==================================================================== */}
       <ViewHead
-        title="Multivariate Analysis · Forecast"
+        title="Multivariate Diagnostics"
         subtitle={lens.headerSubtitle}
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -860,7 +875,71 @@ export default function RawMaterialRequirements() {
         }
       />
 
-      <PersonaTop persona={persona} config={personaTop} />
+      <PersonaTop persona={persona} config={personaTop} safeguard={MV_SAFEGUARD} />
+
+      {/* P1: ranked anomalies with contributing factors and peer comparison; P2: score, expected vs observed, freshness */}
+      <div className="card mb-4">
+        <div className="card__head">
+          <div>
+            <h2 className="card__title">Unusual situations, ranked by business impact</h2>
+            <p className="card__sub">What looks unusual, the factors behind it, and how it compares with peers.</p>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse min-w-[720px]">
+            <thead>
+              <tr className="text-subtle text-left">
+                <th className="font-semibold p-2">Record</th>
+                <th className="font-semibold p-2">What is unusual</th>
+                <th className="font-semibold p-2">Contributing factors</th>
+                <th className="font-semibold p-2">Peer comparison</th>
+                <th className="font-semibold p-2 text-right">Impact</th>
+                <th className="font-semibold p-2">Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              {anomalies.map((a) => (
+                <tr key={a.id} className="border-t border-border align-top">
+                  <td className="p-2 font-semibold text-ink whitespace-nowrap">{a.record}</td>
+                  <td className="p-2 text-body-c">{a.what}</td>
+                  <td className="p-2 text-body-c">{a.factors.join(' · ')}</td>
+                  <td className="p-2 text-subtle">{a.peer}</td>
+                  <td className="p-2 text-right font-mono text-ink whitespace-nowrap">{a.exposure === 'none' ? '—' : `${mm(a.impact)} ${a.exposure}`}</td>
+                  <td className="p-2">
+                    {a.unusualOnly
+                      ? <Badge tone="neutral">Unusual, not critical</Badge>
+                      : <Badge tone={a.priority === 'High' ? 'risk' : a.priority === 'Medium' ? 'watch' : 'neutral'}>{a.priority}</Badge>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <DrillDown title="Model detail" hint="Anomaly score, expected vs observed, data freshness">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="text-subtle text-left">
+                <th className="font-semibold p-2">Record</th>
+                <th className="font-semibold p-2 text-right">Anomaly score</th>
+                <th className="font-semibold p-2">Expected</th>
+                <th className="font-semibold p-2">Observed</th>
+                <th className="font-semibold p-2">Data as of</th>
+              </tr>
+            </thead>
+            <tbody>
+              {anomalies.map((a) => (
+                <tr key={a.id} className="border-t border-border">
+                  <td className="p-2 text-ink">{a.record}</td>
+                  <td className="p-2 text-right font-mono">{formatNum(a.score, 2)}</td>
+                  <td className="p-2 text-body-c">{a.expected}</td>
+                  <td className="p-2 text-body-c">{a.observed}</td>
+                  <td className="p-2 text-subtle">{a.freshness}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </DrillDown>
+      </div>
 
       <MultivariateHeadline material={`${selectedMaterial.id} · ${name}`} persona={persona} />
 
