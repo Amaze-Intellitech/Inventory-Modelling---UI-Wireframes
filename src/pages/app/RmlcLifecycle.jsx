@@ -381,8 +381,8 @@ export default function RmlcLifecycle() {
   const lt = profile.leadTimeDays;
   const atRiskPct = onHandValue > 0 ? (profile.atRiskValue / onHandValue) * 100 : 0;
   const personaTop = {
-    supervisor: {
-      label: 'Plant Supervisor Lens · Line-Stoppage Relevance',
+    planner: {
+      label: 'Production / Materials Planner Lens · Line-Stoppage Relevance',
       headline: profile.supervisorLens,
       kpis: [
         { label: 'Lifecycle state', value: profile.lifecycleStateLabel.split('(')[0].trim(), valueStyle: { color: profile.lifecycleTone === 'ok' ? 'var(--success)' : profile.lifecycleTone === 'watch' ? 'var(--warning)' : 'var(--error)' }, sub: profile.triggerRule },
@@ -391,8 +391,8 @@ export default function RmlcLifecycle() {
         { label: 'Intervention window', value: profile.preventionWindow.split('(')[0].trim(), delta: profile.interventionUrgency, deltaTone: profile.earlyInterventionNeeded ? 'down' : 'flat', sub: profile.prescribedAction },
       ],
     },
-    warehouse: {
-      label: 'Warehouse Manager Lens · Physical Stock & Transfer Execution',
+    inventory: {
+      label: 'Inventory / Materials Manager Lens · Physical Stock & Transfer Execution',
       headline: profile.warehouseLens,
       kpis: [
         { label: 'Ageing class', value: profile.agingClassification, sub: profile.shelfLifeStatus },
@@ -401,18 +401,8 @@ export default function RmlcLifecycle() {
         { label: 'Intervention window', value: profile.preventionWindow.split('(')[0].trim(), delta: profile.interventionUrgency, deltaTone: profile.earlyInterventionNeeded ? 'down' : 'flat', sub: profile.prescribedAction },
       ],
     },
-    planner: {
-      label: 'Materials Planner Lens · Plan & Replenishment Alignment',
-      headline: profile.plannerLens,
-      kpis: [
-        { label: 'Stage in cycle', value: `${profile.stageIndex + 1} of 4`, sub: profile.lifecycleStateLabel },
-        { label: 'Next-state risk', value: profile.earlyInterventionNeeded ? 'Act early' : 'Monitor', deltaTone: profile.earlyInterventionNeeded ? 'down' : 'flat', delta: profile.interventionUrgency, sub: profile.nextStateRisk },
-        { label: 'Days of supply', value: `${formatNum(daysOfSupply, 1)} days`, sub: `${formatNum(dailyDemand, 2)} ${uom}/day · ${formatNum(weeklyDemand, 1)} ${uom}/wk` },
-        { label: 'Trigger rule', value: profile.lifecycleStateLabel.split('(')[0].trim(), sub: profile.triggerRule },
-      ],
-    },
     procurement: {
-      label: 'Procurement Officer Lens · Sourcing & PO Cadence',
+      label: 'Procurement / Sourcing Manager Lens · Sourcing & PO Cadence',
       headline: profile.procurementLens,
       kpis: [
         { label: 'Days beyond 90d buffer', value: daysOfSupply > 90 ? `${formatNum(daysOfSupply - 90, 1)} days` : 'None', deltaTone: daysOfSupply > 90 ? 'down' : 'up', delta: daysOfSupply > 90 ? 'Hold further POs' : 'Replenish as planned', sub: 'Against 60–90d turnover buffer' },
@@ -421,8 +411,8 @@ export default function RmlcLifecycle() {
         { label: 'Prescribed action', value: profile.interventionUrgency, sub: profile.prescribedAction },
       ],
     },
-    finance: {
-      label: 'Finance Controller Lens · Working Capital Exposure & Obsolescence Risk Governance',
+    head: {
+      label: 'Head of Supply Chain Lens · Working Capital Exposure & Obsolescence Risk Governance',
       headline: profile.financeLens,
       kpis: [
         { label: 'On-hand value', value: formatCurrency(onHandValue), sub: `${formatNum(onHandQty, 0)} ${uom} at ${formatCurrency(unitCost)}/${uom}` },
@@ -435,13 +425,12 @@ export default function RmlcLifecycle() {
 
   // What each lifecycle stage means to the persona reading it (stage order matches RMLC_STAGES).
   const STAGE_MEANING = {
-    supervisor: ['Line is covered; no stoppage risk, but stock is building.', 'Normal supply to the line.', 'Not consumed for 90+ days: check the line still uses it (design change, retired product).', 'Feeds no line: confirm no upcoming build needs it before disposal.'],
-    warehouse: ['Receipts outpace issues: stock and space are building up.', 'Normal bin turnover.', 'Ageing stock: plan a transfer or return before it goes stale.', 'Past 180 days: schedule disposal, transfer or sale.'],
-    planner: ['Inflow is above 1.5× consumption: the plan is over-ordering, so pull back open POs.', 'Plan and consumption are aligned.', 'Consumption has stopped: update demand in the plan.', 'Remove from the replenishment plan.'],
+    planner: ['Line is covered; no stoppage risk, but stock is building.', 'Normal supply to the line.', 'Not consumed for 90+ days: check the line still uses it (design change, retired product).', 'Feeds no line: confirm no upcoming build needs it before disposal.'],
+    inventory: ['Receipts outpace issues: stock and space are building up.', 'Normal bin turnover.', 'Ageing stock: plan a transfer or return before it goes stale.', 'Past 180 days: schedule disposal, transfer or sale.'],
     procurement: ['Defer new POs and renegotiate the delivery schedule.', 'Release POs per plan.', 'Cancel or reschedule open POs; ask the supplier about returns.', 'Return to vendor, claim or sell back.'],
-    finance: ['Cash is building up in stock.', 'Capital is turning within policy.', 'Capital at risk of becoming dead stock.', 'Candidate for write-down or provision.'],
+    head: ['Cash is building up in stock.', 'Capital is turning within policy.', 'Capital at risk of becoming dead stock.', 'Candidate for write-down or provision.'],
   };
-  const stageMeaning = STAGE_MEANING[persona] || STAGE_MEANING.supervisor;
+  const stageMeaning = STAGE_MEANING[persona] || STAGE_MEANING.planner;
   // Stage figures follow the persona's plant scope: one plant for the plant-floor roles, all four for procurement and finance.
   const allPlants = scope.startsWith('All Plants');
   const plantsInScope = allPlants ? RMLC_STAGES_BY_PLANT : RMLC_STAGES_BY_PLANT.filter((pl) => scope.startsWith(pl.plant));
@@ -453,16 +442,15 @@ export default function RmlcLifecycle() {
   const materialOutOfScope = !allPlants && materialPlant && !scope.startsWith(materialPlant);
   const stageStat = (st) => {
     const { value, count } = scopedStage(st.key);
-    return persona === 'finance' ? `$${value.toFixed(2)}M tied up · ${count} materials` : `${count} materials in this stage`;
+    return persona === 'head' ? `$${value.toFixed(2)}M tied up · ${count} materials` : `${count} materials in this stage`;
   };
   const NEXT_STEP = {
-    supervisor: { label: 'Line Impact & Next Step', body: `${profile.nextStateRisk}` },
-    warehouse: { label: 'Stock Handling & Next Step', body: `${profile.agingClassification} · ${profile.shelfLifeStatus}. ${profile.prescribedAction}` },
-    planner: { label: 'Plan Adjustment & Next Step', body: `${profile.nextStateRisk} ${profile.interventionUrgency}.` },
+    planner: { label: 'Line Impact & Next Step', body: `${profile.nextStateRisk}` },
+    inventory: { label: 'Stock Handling & Next Step', body: `${profile.agingClassification} · ${profile.shelfLifeStatus}. ${profile.prescribedAction}` },
     procurement: { label: 'PO Action & Next Step', body: profile.prescribedAction },
-    finance: { label: 'Capital Exposure & Next Step', body: `${profile.exposureType}: ${profile.atRiskValue > 0 ? formatCurrency(profile.atRiskValue) : '$0.00'} at risk, ${formatCurrency(profile.recoverableOpportunity)} recoverable. ${profile.prescribedAction}` },
+    head: { label: 'Capital Exposure & Next Step', body: `${profile.exposureType}: ${profile.atRiskValue > 0 ? formatCurrency(profile.atRiskValue) : '$0.00'} at risk, ${formatCurrency(profile.recoverableOpportunity)} recoverable. ${profile.prescribedAction}` },
   };
-  const nextStep = NEXT_STEP[persona] || NEXT_STEP.supervisor;
+  const nextStep = NEXT_STEP[persona] || NEXT_STEP.planner;
 
   return (
     <section className="view max-w-7xl mx-auto">
@@ -640,7 +628,7 @@ export default function RmlcLifecycle() {
                     <div className="font-mono mb-1">
                       {RMLC_STAGES_BY_PLANT.map((pl) => (
                         <span key={pl.plant} className={`mr-2 ${pl.plant === materialPlant ? 'text-primary font-bold' : ''}`}>
-                          P{pl.plant.slice(-1)} {persona === 'finance' ? `$${pl.stages[s.key].value.toFixed(2)}M` : pl.stages[s.key].count}
+                          P{pl.plant.slice(-1)} {persona === 'head' ? `$${pl.stages[s.key].value.toFixed(2)}M` : pl.stages[s.key].count}
                         </span>
                       ))}
                     </div>
@@ -671,10 +659,10 @@ export default function RmlcLifecycle() {
                     </TableCell>
                     {RMLC_STAGES.map((st) => (
                       <TableCell key={st.key} className="text-right font-mono text-xs">
-                        {persona === 'finance'
+                        {persona === 'head'
                           ? `$${pl.stages[st.key].value.toFixed(2)}M`
                           : `${pl.stages[st.key].count} materials`}
-                        {persona === 'finance' ? <span className="text-subtle"> · {pl.stages[st.key].count}</span> : <span className="text-subtle"> · ${pl.stages[st.key].value.toFixed(2)}M</span>}
+                        {persona === 'head' ? <span className="text-subtle"> · {pl.stages[st.key].count}</span> : <span className="text-subtle"> · ${pl.stages[st.key].value.toFixed(2)}M</span>}
                       </TableCell>
                     ))}
                   </TableRow>

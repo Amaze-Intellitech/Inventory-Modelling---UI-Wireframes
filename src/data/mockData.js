@@ -4,14 +4,13 @@
 // (abc_analysis.py, eoq.py, optimization.py, etc.)
 
 export const ROLE_CONTEXT = {
-  'Plant Supervisor': { dept: 'Plant Operations', scope: 'Plant 1 — Assembly', persona: 'supervisor' },
-  'Warehouse Manager': { dept: 'Stores & Warehousing', scope: 'Plant 1 — Assembly', persona: 'warehouse' },
-  'Materials Planner': { dept: 'Production Planning', scope: 'Plant 1 — Assembly', persona: 'planner' },
-  'Procurement Officer': { dept: 'Procurement & Sourcing', scope: 'All Plants (4)', persona: 'procurement' },
-  'Finance Controller': { dept: 'Finance & Costing', scope: 'All Plants (4)', persona: 'finance' },
+  'Head of Supply Chain': { dept: 'Supply Chain Planning', scope: 'All Plants (4)', persona: 'head' },
+  'Inventory / Materials Manager': { dept: 'Inventory Control', scope: 'Plant 1 — Assembly', persona: 'inventory' },
+  'Production / Materials Planner': { dept: 'Production Planning', scope: 'Plant 1 — Assembly', persona: 'planner' },
+  'Procurement / Sourcing Manager': { dept: 'Procurement & Sourcing', scope: 'All Plants (4)', persona: 'procurement' },
 };
 
-export const DEFAULT_ROLE = 'Plant Supervisor';
+export const DEFAULT_ROLE = 'Head of Supply Chain';
 
 export const PLANT_SCOPES = [
   'All Plants (4)',

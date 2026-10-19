@@ -32,24 +32,20 @@ const MODES = [
 
 // What each plant persona optimises for first, the constraints they own, and the one sentence that frames the result.
 const PERSONA_SETUP = {
-  supervisor: {
-    objective: 'service', key: ['prod', 'cons', 'slt'], extraOn: [], label: 'Plant Supervisor',
+  planner: {
+    objective: 'service', key: ['prod', 'cons', 'slt'], extraOn: [], label: 'Production / Materials Planner',
     read: (gap, f, o, u, m) => <>For {m}, the line-first position is about <span className="metric">{o} {u}</span> against <span className="metric">{f} {u}</span> expected. Objective starts at <strong>hold service level</strong>, with production, consumption and lead time as your key constraints.</>,
   },
-  warehouse: {
-    objective: 'inv', key: ['stor', 'qty', 'cons'], extraOn: [], label: 'Warehouse Manager',
+  inventory: {
+    objective: 'inv', key: ['stor', 'qty', 'cons'], extraOn: [], label: 'Inventory / Materials Manager',
     read: (gap, f, o, u, m) => <>For {m}, the shelf-friendly position is about <span className="metric">{o} {u}</span> against <span className="metric">{f} {u}</span> expected{gap > 0 ? <>, which clears about <span className="metric">{Math.abs(gap).toLocaleString(undefined, { maximumFractionDigits: 0 })} {u}</span> of surplus</> : null}. Objective starts at <strong>minimise inventory</strong>, with storage capacity as your key constraint.</>,
   },
-  planner: {
-    objective: 'cost', key: ['prod', 'cons', 'qty'], extraOn: [], label: 'Materials Planner',
-    read: (gap, f, o, u, m) => <>For {m}, the plan-aligned position is about <span className="metric">{o} {u}</span> against <span className="metric">{f} {u}</span> expected. Objective starts at <strong>minimise inventory cost</strong>; production requirements and quantity limits keep it consistent with the build plan.</>,
-  },
   procurement: {
-    objective: 'proc', key: ['scap', 'slt', 'pcost', 'price'], extraOn: ['pcost', 'price'], label: 'Procurement Officer',
+    objective: 'proc', key: ['scap', 'slt', 'pcost', 'price'], extraOn: ['pcost', 'price'], label: 'Procurement / Sourcing Manager',
     read: (gap, f, o, u, m) => <>For {m}, the best order position is about <span className="metric">{o} {u}</span> against <span className="metric">{f} {u}</span> expected. Objective starts at <strong>optimise procurement quantities</strong>, with supplier capacity, lead time, cost and price switched on.</>,
   },
-  finance: {
-    objective: 'wc', key: ['pcost', 'price', 'qty'], extraOn: ['pcost'], label: 'Finance Controller',
+  head: {
+    objective: 'wc', key: ['pcost', 'price', 'qty'], extraOn: ['pcost'], label: 'Head of Supply Chain',
     read: (gap, f, o, u, m) => <>For {m}, the capital-efficient position is about <span className="metric">{o} {u}</span> against <span className="metric">{f} {u}</span> expected{gap > 0 ? <>, releasing the cash tied up in about <span className="metric">{Math.abs(gap).toLocaleString(undefined, { maximumFractionDigits: 0 })} {u}</span></> : null}. Objective starts at <strong>optimise working capital</strong>, with procurement cost in scope.</>,
   },
 };

@@ -34,11 +34,10 @@ const formatNum = (v, decimals = 0) =>
 
 // Persona descriptions for context strip
 const PERSONA_DESCRIPTIONS = {
-  supervisor: { label: 'Plant Supervisor Lens', sub: 'Emphasizing which materials could stop a line, how long cover lasts, and the next step to keep the plant running.' },
-  warehouse: { label: 'Warehouse Manager Lens', sub: 'Emphasizing physical stock, ageing and excess, and what clearing it releases.' },
-  planner: { label: 'Materials Planner Lens', sub: 'Emphasizing cover against the production plan, demand swings and safety stock.' },
-  procurement: { label: 'Procurement Officer Lens', sub: 'Emphasizing reorder points, order sizing, lead times and sourcing risk.' },
-  finance: { label: 'Finance Controller Lens', sub: 'Emphasizing working capital release, cash tied up in inventory and decision priority.' },
+  planner: { label: 'Production / Materials Planner Lens', sub: 'Emphasizing which materials could stop a line, how long cover lasts, and the next step to keep the plant running.' },
+  inventory: { label: 'Inventory / Materials Manager Lens', sub: 'Emphasizing physical stock, ageing and excess, and what clearing it releases.' },
+  procurement: { label: 'Procurement / Sourcing Manager Lens', sub: 'Emphasizing reorder points, order sizing, lead times and sourcing risk.' },
+  head: { label: 'Head of Supply Chain Lens', sub: 'Emphasizing working capital release, cash tied up in inventory and decision priority.' },
 };
 
 // 8 Enterprise Prompt Library definitions
@@ -137,11 +136,10 @@ const TAG_TONE = { 'Act now': 'risk', Optimize: 'accent', Monitor: 'watch', Prev
 
 // Which 2-3 prompts each persona is most likely to reach for first; the rest keep their library order.
 const PERSONA_PINNED_PROMPTS = {
-  supervisor: ['stockout_risk', 'canon_leadtime', 'lifecycle_risk'],
-  warehouse: ['working_capital', 'lifecycle_risk', 'explain_health'],
-  planner: ['forecast_risk', 'optimize_replenishment', 'canon_position'],
+  planner: ['stockout_risk', 'canon_leadtime', 'lifecycle_risk'],
+  inventory: ['working_capital', 'lifecycle_risk', 'explain_health'],
   procurement: ['optimize_replenishment', 'canon_leadtime', 'stockout_risk'],
-  finance: ['working_capital', 'exec_summary', 'canon_position'],
+  head: ['working_capital', 'exec_summary', 'canon_position'],
 };
 
 function orderPromptsForPersona(persona) {
@@ -155,39 +153,34 @@ function orderPromptsForPersona(persona) {
 // evidence/reasoning stays a single source of truth; only this closing takeaway varies.
 const PERSONA_TAKEAWAY = {
   why_increasing: {
-    supervisor: () => 'Downstream lines keep the same buffer they have today.',
-    warehouse: () => 'Expect on-hand to drop before the next receipt — flag it in the cycle count.',
-    planner: () => "Update the production plan's material call before the new order date.",
+    planner: () => 'Downstream lines keep the same buffer they have today.',
+    inventory: () => 'Expect on-hand to drop before the next receipt — flag it in the cycle count.',
     procurement: (ctx) => `Issue the revised PO for the EOQ quantity with ${ctx.supplierName}.`,
-    finance: () => "That's the $0.62M showing up in next quarter's cash position.",
+    head: () => "That's the $0.62M showing up in next quarter's cash position.",
   },
   position_next_month: {
-    supervisor: () => 'Coverage still holds above the lead-time floor for downstream lines.',
-    warehouse: () => 'Less cycle stock to shelve and count each cycle.',
-    planner: () => "Confirm this level against next month's confirmed build schedule.",
+    planner: () => 'Coverage still holds above the lead-time floor for downstream lines.',
+    inventory: () => 'Less cycle stock to shelve and count each cycle.',
     procurement: (ctx) => `Size the next PO to the ${formatNum(ctx.qStar)} ${ctx.uom} lot, not the current batch.`,
-    finance: () => 'Turnover improves while coverage stays inside the service-level floor.',
+    head: () => 'Turnover improves while coverage stays inside the service-level floor.',
   },
   leadtime_whatif: {
-    supervisor: () => 'A 3-day-earlier reorder point keeps downstream lines protected.',
-    warehouse: () => 'Expect to hold slightly more cycle stock if the lead-time change sticks.',
-    planner: () => 'Re-check the production plan against the new 8-day lead time before it lands.',
+    planner: () => 'A 3-day-earlier reorder point keeps downstream lines protected.',
+    inventory: () => 'Expect to hold slightly more cycle stock if the lead-time change sticks.',
     procurement: () => 'Start qualifying a second supplier now, before the lead-time change is confirmed.',
-    finance: () => "That's roughly $0.31M of extra working capital tied up if no action is taken.",
+    head: () => "That's roughly $0.31M of extra working capital tied up if no action is taken.",
   },
   explain_health: {
-    supervisor: (ctx) => `Coverage of ${ctx.dos.toFixed(1)} days keeps downstream lines protected.`,
-    warehouse: () => 'No excess or ageing flags on this material right now.',
-    planner: () => 'Demand and lead time are in balance — no plan adjustment needed.',
+    planner: (ctx) => `Coverage of ${ctx.dos.toFixed(1)} days keeps downstream lines protected.`,
+    inventory: () => 'No excess or ageing flags on this material right now.',
     procurement: () => 'No expedite or PO change needed while coverage holds.',
-    finance: (ctx) => `${formatCurrency(ctx.value)} is active operating capital, not at-risk exposure.`,
+    head: (ctx) => `${formatCurrency(ctx.value)} is active operating capital, not at-risk exposure.`,
   },
   default: {
-    supervisor: (ctx) => `Check whether this affects the ${ctx.leadTimeDays}-day coverage on ${ctx.id}.`,
-    warehouse: (ctx) => `Check for excess or ageing impact on ${ctx.id}'s physical stock.`,
-    planner: (ctx) => `Check this against the production plan for ${ctx.id}.`,
+    planner: (ctx) => `Check whether this affects the ${ctx.leadTimeDays}-day coverage on ${ctx.id}.`,
+    inventory: (ctx) => `Check for excess or ageing impact on ${ctx.id}'s physical stock.`,
     procurement: (ctx) => `Check whether this changes the reorder point or lot size for ${ctx.id}.`,
-    finance: (ctx) => `Check the working-capital impact of ${formatCurrency(ctx.value)} tied up in ${ctx.id}.`,
+    head: (ctx) => `Check the working-capital impact of ${formatCurrency(ctx.value)} tied up in ${ctx.id}.`,
   },
 };
 
@@ -915,7 +908,7 @@ export default function DecisionIntelligence() {
     setInputText('');
   };
 
-  const personaMeta = PERSONA_DESCRIPTIONS[persona] || PERSONA_DESCRIPTIONS.supervisor;
+  const personaMeta = PERSONA_DESCRIPTIONS[persona] || PERSONA_DESCRIPTIONS.planner;
   const orderedPrompts = orderPromptsForPersona(persona);
 
   return (

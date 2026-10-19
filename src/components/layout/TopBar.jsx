@@ -59,7 +59,7 @@ export default function TopBar({ onMenu }) {
                   transition={{ type: 'spring', stiffness: 450, damping: 35 }}
                 />
               )}
-              <span className="persona-full">{p.label}</span>
+              <span className="persona-full">{p.tab}</span>
               <span className="persona-short" aria-hidden="true">{p.short}</span>
             </button>
           );

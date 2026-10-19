@@ -134,7 +134,7 @@ export default function EoqCalibration() {
   const coversLt = recDaysOfSupply >= leadTimeDays;
   const sign = (v, d = 1) => `${v >= 0 ? '+' : ''}${formatNum(v, d)}`;
   const personaPolicy = {
-    supervisor: {
+    planner: {
       rows: ['supplyDays', 'interval', 'vsLeadTime', 'buffer'], emphasis: 'supplyDays',
       curBadge: `Lot: ${formatNum(currentBatchQty, 0)} ${uom}`, recBadge: `Q*: ${formatNum(qStar, 0)} ${uom}`,
       curNote: `Each ${formatNum(currentBatchQty, 0)} ${uom} receipt covers ${formatNum(currentDaysOfSupply, 1)} days of line consumption.`,
@@ -145,7 +145,7 @@ export default function EoqCalibration() {
         secondary: { label: 'Planning Buffer (1.5 × Q*)', value: `${formatNum(desiredStockQty, 0)} ${uom}`, sub: 'Cover target, distinct from safety stock' },
       },
     },
-    warehouse: {
+    inventory: {
       rows: ['receipts', 'cycleStock', 'cycleValue', 'weeksOfDemand'], emphasis: 'cycleStock',
       curBadge: `Lot: ${formatNum(currentBatchQty, 0)} ${uom}`, recBadge: `Q*: ${formatNum(qStar, 0)} ${uom}`,
       curNote: `On average ${formatNum(currentCycleStockQty, 0)} ${uom} of cycle stock sits in storage between receipts.`,
@@ -154,17 +154,6 @@ export default function EoqCalibration() {
         badge: 'Space freed', badgeTone: 'success',
         primary: { label: 'Cycle Stock Freed', value: `${formatNum(currentCycleStockQty - recCycleStockQty, 0)} ${uom}`, sub: `${formatNum(currentCycleStockQty > 0 ? ((currentCycleStockQty - recCycleStockQty) / currentCycleStockQty) * 100 : 0, 1)}% less to store` },
         secondary: { label: 'Extra Receipts per Year', value: sign(recOrderFreq - currentOrderFreq), sub: `${formatNum(currentOrderFreq, 1)} → ${formatNum(recOrderFreq, 1)} dock bookings` },
-      },
-    },
-    planner: {
-      rows: ['freq', 'interval', 'weeksOfDemand', 'vsLeadTime'], emphasis: 'interval',
-      curBadge: `Every ~${formatNum(currentOrderIntervalDays, 0)} days`, recBadge: `Every ~${formatNum(recOrderIntervalDays, 0)} days`,
-      curNote: `Today's lot of ${formatNum(currentBatchQty, 0)} ${uom} spans ${formatNum(currentBatchQty / weeklyDemand, 1)} weeks of demand.`,
-      recNote: `Q* spans ${formatNum(qStar / weeklyDemand, 1)} weeks of demand; check it against the production plan's build schedule.`,
-      variance: {
-        badge: 'Cadence change', badgeTone: 'accent',
-        primary: { label: 'New Order Interval', value: `~${formatNum(recOrderIntervalDays, 0)} days`, sub: `Was ~${formatNum(currentOrderIntervalDays, 0)} days (${sign(recOrderIntervalDays - currentOrderIntervalDays, 0)} days)` },
-        secondary: { label: 'Demand Covered per Q*', value: `${formatNum(qStar / weeklyDemand, 1)} wks`, sub: `${formatNum(weeklyDemand, 1)} ${uom}/wk average demand` },
       },
     },
     procurement: {
@@ -178,7 +167,7 @@ export default function EoqCalibration() {
         secondary: { label: 'Net Annual Policy Savings', value: `${formatCurrency(netAnnualSavings)}/yr`, sub: `${formatNum(netSavingsPercent, 1)}% reduction in relevant cost` },
       },
     },
-    finance: {
+    head: {
       rows: ['orderCost', 'holdCost', 'cycleValue', 'totalCost'], emphasis: 'totalCost',
       curBadge: `Lot: ${formatNum(currentBatchQty, 0)} ${uom}`, recBadge: `Q*: ${formatNum(qStar, 0)} ${uom}`,
       curNote: `Current lot sizing fixed at ${formatNum(currentBatchQty, 0)} ${uom} results in holding cost asymmetry.`,
@@ -190,7 +179,7 @@ export default function EoqCalibration() {
       },
     },
   };
-  const policy = personaPolicy[persona] || personaPolicy.supervisor;
+  const policy = personaPolicy[persona] || personaPolicy.planner;
   const renderPolicyRows = (side) =>
     policy.rows.map((id) => {
       const row = POLICY_ROWS[id];
@@ -206,8 +195,8 @@ export default function EoqCalibration() {
   const M = ({ children }) => <span className="font-mono font-bold text-ink">{children}</span>;
   const onHandDays = (onHandQty / demand) * 365;
   const personaTop = {
-    supervisor: {
-      label: 'Plant Supervisor Lens · Cover After Right-Sizing the Batch',
+    planner: {
+      label: 'Production / Materials Planner Lens · Cover After Right-Sizing the Batch',
       headline: (
         <>Moving {selectedMaterial.id}'s lot from <M>{formatNum(currentBatchQty, 0)} {uom}</M> to <M>{formatNum(qStar, 0)} {uom}</M> still leaves <M>{formatNum(recDaysOfSupply, 1)} days</M> of supply per batch against the <M>{leadTimeDays}-day</M> lead time from {meta.supplier} — smaller, more frequent batches don't put the line at more risk.</>
       ),
@@ -218,8 +207,8 @@ export default function EoqCalibration() {
         { label: 'Planning buffer (1.5 × Q*)', value: `${formatNum(desiredStockQty, 0)} ${uom}`, sub: 'Cover target, not statistical safety stock' },
       ],
     },
-    warehouse: {
-      label: 'Warehouse Manager Lens · Less Cycle Stock to Store',
+    inventory: {
+      label: 'Inventory / Materials Manager Lens · Less Cycle Stock to Store',
       headline: (
         <>Average cycle stock drops from <M>{formatNum(currentCycleStockQty, 0)} {uom}</M> to <M>{formatNum(recCycleStockQty, 0)} {uom}</M> once EOQ is applied, freeing shelf and staging space. Batches arrive more often (<M>{formatNum(recOrderFreq, 1)}/yr</M> vs {formatNum(currentOrderFreq, 1)} today) but are smaller each time.</>
       ),
@@ -230,20 +219,8 @@ export default function EoqCalibration() {
         { label: 'Receipts per year', value: `${formatNum(recOrderFreq, 1)}`, delta: `vs ${formatNum(currentOrderFreq, 1)} today`, deltaTone: 'flat', sub: 'More dock appointments, smaller loads' },
       ],
     },
-    planner: {
-      label: 'Materials Planner Lens · Matching Order Cadence to the Plan',
-      headline: (
-        <>{selectedMaterial.id} would move from ordering every ~<M>{formatNum(currentOrderIntervalDays, 0)} days</M> to every ~<M>{formatNum(recOrderIntervalDays, 0)} days</M>. Check that cadence still lines up with the production plan's build schedule before it goes into the ERP lot-size field.</>
-      ),
-      kpis: [
-        { label: 'Order interval now', value: `${formatNum(currentOrderIntervalDays, 0)} days`, sub: `${formatNum(currentOrderFreq, 1)} orders/yr at ${formatNum(currentBatchQty, 0)} ${uom}` },
-        { label: 'Order interval at Q*', value: `${formatNum(recOrderIntervalDays, 0)} days`, valueStyle: { color: 'var(--primary)' }, sub: `${formatNum(recOrderFreq, 1)} orders/yr at ${formatNum(qStar, 0)} ${uom}` },
-        { label: 'Interval vs lead time', value: `${formatNum(recOrderIntervalDays / leadTimeDays, 2)}×`, sub: `${leadTimeDays}-day lead time: ${recOrderIntervalDays < leadTimeDays ? 'orders overlap in transit' : 'one order in transit at a time'}` },
-        { label: 'Weekly demand', value: `${formatNum(demand / 52, 1)} ${uom}/wk`, sub: `${formatNum(qStar / (demand / 52), 1)} weeks of demand per Q*` },
-      ],
-    },
     procurement: {
-      label: 'Procurement Officer Lens · Lot-Sizing Governance & Replenishment Execution',
+      label: 'Procurement / Sourcing Manager Lens · Lot-Sizing Governance & Replenishment Execution',
       headline: (
         <>The current ERP lot of <M>{formatNum(currentBatchQty, 0)} {uom}</M> costs <M>{formatCurrency(currentHoldCost)}/yr</M> in holding alone. Recalibrating to <M>{formatNum(qStar, 0)} {uom}</M> lifts order frequency to <M>{formatNum(recOrderFreq, 1)}/yr</M> with {meta.supplier} — confirm the new size against their MOQ and packaging increments before updating the material master.</>
       ),
@@ -254,8 +231,8 @@ export default function EoqCalibration() {
         { label: 'Supplier', value: `${leadTimeDays}-day LT`, sub: meta.supplier },
       ],
     },
-    finance: {
-      label: 'Finance Controller Lens · Working Capital Velocity & Risk-Balanced Governance',
+    head: {
+      label: 'Head of Supply Chain Lens · Working Capital Velocity & Risk-Balanced Governance',
       headline: (
         <>For <M>{selectedMaterial.id}</M>, this EOQ policy reduces relevant annual ordering and carrying cost by <span className="font-mono font-bold text-success">{formatCurrency(netAnnualSavings)}/yr</span> ({formatNum(netSavingsPercent, 1)}%) and releases an estimated <span className="font-mono font-bold text-success">{formatCurrency(workingCapitalReleased)}</span> of average cycle-stock capital.</>
       ),

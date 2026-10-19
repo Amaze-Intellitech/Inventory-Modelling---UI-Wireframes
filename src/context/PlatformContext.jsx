@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
 import { ROLE_CONTEXT, DEFAULT_ROLE, MATERIALS } from '../data/mockData';
-import { LEGACY_LENS } from '../data/personas';
 import { defaultParameterSelection, requiredConnectors } from '../data/parameterCatalog';
 
 const PlatformContext = createContext(null);
@@ -104,7 +103,7 @@ export function PlatformProvider({ children }) {
     }
   }
 
-  // The persona tabs also move the plant scope: plant-floor roles see their own plant, procurement and finance see all plants.
+  // The persona tabs also move the plant scope: plant roles see their own plant, the Head of Supply Chain and procurement see all plants.
   function choosePersona(key) {
     setPersona(key);
     const ctx = Object.values(ROLE_CONTEXT).find((c) => c.persona === key);
@@ -135,8 +134,6 @@ export function PlatformProvider({ children }) {
     setScope,
     persona,
     setPersona: choosePersona,
-    // for stage pages not yet rewritten for the plant personas (see LEGACY_LENS)
-    legacyPersona: LEGACY_LENS[persona] ?? 'analyst',
     department,
     resetSession,
     resolvedFocus,
@@ -160,12 +157,4 @@ export function usePlatform() {
   const ctx = useContext(PlatformContext);
   if (!ctx) throw new Error('usePlatform must be used within a PlatformProvider');
   return ctx;
-}
-
-// Convenience wrapper for persona-gated content, e.g.:
-//   <ForPersona allow={['supervisor', 'planner']}><CoverRunway /></ForPersona>
-export function ForPersona({ allow, children }) {
-  const { persona } = usePlatform();
-  if (!allow.includes(persona)) return null;
-  return children;
 }

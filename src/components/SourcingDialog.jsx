@@ -11,11 +11,10 @@ import { cn } from '@/lib/utils';
 
 // Which column each persona should read first. Same table for everyone; the emphasis moves.
 const EMPHASIS = {
-  supervisor: ['arrives', 'risk'],
-  planner: ['arrives'],
+  planner: ['arrives', 'risk'],
   procurement: ['extra'],
-  warehouse: ['option'],
-  finance: ['total'],
+  inventory: ['option'],
+  head: ['total'],
 };
 
 const RISK_TONE = { Low: 'success', Medium: 'watch', High: 'risk' };
@@ -30,7 +29,7 @@ export default function SourcingDialog({ open, onOpenChange, row, focusId }) {
   const emph = EMPHASIS[persona] ?? [];
   const cell = (key) => cn(emph.includes(key) && 'sourcing__emph');
   const best = comparison.options.find((o) => o.key === comparison.recommended);
-  const nextPersona = persona === 'procurement' ? 'warehouse' : 'procurement';
+  const nextPersona = persona === 'procurement' ? 'inventory' : 'procurement';
 
   const approve = () => {
     if (best) {

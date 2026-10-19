@@ -22,8 +22,8 @@ const kilo = (v) => `$${Math.round(v / 1000).toLocaleString()}K`;
 const fix = (n, d = 0) => Number(n).toLocaleString(undefined, { maximumFractionDigits: d });
 const decision = (id) => DECISION_ROWS.find((d) => d.id === id);
 
-// ---- Plant Supervisor: which materials could stop a line ----
-function supervisorPlan(rows) {
+// ---- Production / Materials Planner: which materials could stop a line ----
+function plannerPlan(rows) {
   const sorted = [...rows].sort((a, b) => a.daysOfSupply - b.daysOfSupply).slice(0, 5);
   const first = sorted[0];
   const exposed = rows.filter((r) => r.daysOfSupply < r.leadTimeDays);
@@ -65,14 +65,14 @@ function supervisorPlan(rows) {
       },
     },
     actions: [
-      { title: `Authorize the expedited PO for ${first.id}`, owner: 'Procurement Officer', due: 'Within 3 days', effect: d1?.impact ?? 'Line stoppage avoided', handoff: 'procurement', compare: first.id },
-      { title: `Check other plants for spare ${first.name.split(' ')[0]} stock`, owner: 'Warehouse Manager', due: 'This week', effect: 'Bridges part of the gap without a purchase', handoff: 'warehouse' },
-      { title: `Run lines that do not use ${first.id} first`, owner: 'Materials Planner', due: 'Within 2 days', effect: 'Buys a few days while the order arrives', handoff: 'planner' },
+      { title: `Authorize the expedited PO for ${first.id}`, owner: 'Procurement / Sourcing Manager', due: 'Within 3 days', effect: d1?.impact ?? 'Line stoppage avoided', handoff: 'procurement', compare: first.id },
+      { title: `Check other plants for spare ${first.name.split(' ')[0]} stock`, owner: 'Inventory / Materials Manager', due: 'This week', effect: 'Bridges part of the gap without a purchase', handoff: 'inventory' },
+      { title: `Run lines that do not use ${first.id} first`, owner: 'Production / Materials Planner', due: 'Within 2 days', effect: 'Buys a few days while the order arrives' },
     ],
   };
 }
 
-// ---- Warehouse Manager: physical stock that is ageing or in excess ----
+// ---- Inventory / Materials Manager: physical stock that is ageing or in excess ----
 const AGEING = {
   // value in $M today, in 90 days if nothing is done, and after clearing it (illustrative shift of stock between stages)
   accumulation: { nothing: -0.7, act: -0.7 },
@@ -81,7 +81,7 @@ const AGEING = {
   liquidation: { nothing: 0.6, act: -1.2 },
 };
 
-function warehousePlan() {
+function inventoryPlan() {
   const rows = RMLC_STAGES.map((s) => ({
     label: s.label,
     now: s.value,
@@ -125,96 +125,13 @@ function warehousePlan() {
       },
     },
     actions: [
-      { title: 'Transfer MAT-5501 to Plant 2 before it expires', owner: 'Warehouse Manager', due: 'Before expiry', effect: d4?.impact ?? 'Salvage value recovered', handoff: 'planner' },
-      { title: `Return or sell the ${mill(byKey.liquidation.now)} of stock past 180 days`, owner: 'Warehouse Manager', due: 'Within 30 days', effect: `${mill(byKey.liquidation.now - byKey.liquidation.act)} released`, handoff: 'finance' },
-      { title: `Cycle-count the ${RMLC_STAGES.find((s) => s.key === 'atrisk').count} at-risk SKUs`, owner: 'Warehouse Manager', due: 'Within 2 weeks', effect: 'Confirms the stock is really there before any sale' },
+      { title: 'Transfer MAT-5501 to Plant 2 before it expires', owner: 'Inventory / Materials Manager', due: 'Before expiry', effect: d4?.impact ?? 'Salvage value recovered', handoff: 'planner' },
+      { title: `Return or sell the ${mill(byKey.liquidation.now)} of stock past 180 days`, owner: 'Inventory / Materials Manager', due: 'Within 30 days', effect: `${mill(byKey.liquidation.now - byKey.liquidation.act)} released`, handoff: 'head' },
+      { title: `Cycle-count the ${RMLC_STAGES.find((s) => s.key === 'atrisk').count} at-risk SKUs`, owner: 'Inventory / Materials Manager', due: 'Within 2 weeks', effect: 'Confirms the stock is really there before any sale' },
     ],
   };
 }
 
-// ---- Materials Planner: cover against the production plan and demand swings ----
-function plannerPlan(rows) {
-  const focus = rows.find((r) => r.id === 'MAT-1082') ?? rows[0];
-  const weekly = focus.dailyConsumption * 7;
-  const receiptWeek = Math.floor(focus.leadTimeDays / 7);
-  const receipt = focus.currentBatchQty;
-  const weeks = Array.from({ length: WEEKS + 1 }, (_, i) => (i === 0 ? 'Now' : `W${i}`));
-
-  const run = (uplift, withOrder) => {
-    let stock = focus.qty;
-    return weeks.map((_, w) => {
-      if (w > 0) stock = Math.max(stock - weekly * (1 + uplift), 0);
-      if (withOrder && w === receiptWeek) stock += receipt;
-      return Math.round(stock);
-    });
-  };
-  const plan = run(0, false);
-  const high = run(DEMAND_UPLIFT, false);
-  const planAct = run(0, true);
-  const highAct = run(DEMAND_UPLIFT, true);
-  const firstBelow = (s) => s.findIndex((v) => v < focus.safetyStock);
-  const firstZero = (s) => s.findIndex((v) => v === 0);
-  const wPlan = firstBelow(plan);
-  const wHigh = firstBelow(high);
-  const zero = firstZero(high);
-  const minAct = Math.min(...planAct, ...highAct);
-  const dipAct = firstBelow(highAct);
-
-  const table = {
-    columns: ['Week', 'Plan demand', `Demand +${DEMAND_UPLIFT * 100}%`, 'Plan + order now', `+${DEMAND_UPLIFT * 100}% + order now`],
-    rows: weeks.map((w, i) => [w, fix(plan[i]), fix(high[i]), fix(planAct[i]), fix(highAct[i])]),
-  };
-
-  return {
-    title: `Cover against the production plan, ${focus.id}`,
-    insight: (
-      <>
-        At plan demand, <M>{focus.id}</M> drops below its safety stock in week <M>{wPlan < 0 ? `${WEEKS}+` : wPlan}</M>. If demand runs{' '}
-        <M>{DEMAND_UPLIFT * 100}% high</M> it does so in week <M>{wHigh < 0 ? `${WEEKS}+` : wHigh}</M>, before an order placed today (
-        {focus.leadTimeDays}-day lead time) could arrive in week {receiptWeek}.
-      </>
-    ),
-    chart: {
-      kind: 'runway',
-      label: `${focus.id} stock over ${WEEKS} weeks`,
-      unit: focus.uom,
-      weeks,
-      threshold: { label: `Safety stock (${fix(focus.safetyStock)} ${focus.uom})`, value: focus.safetyStock },
-      table,
-      series: {
-        nothing: [
-          { label: 'Plan demand', color: 'var(--s1)', values: plan },
-          { label: `Demand +${DEMAND_UPLIFT * 100}%`, color: 'var(--s2)', values: high, dash: true },
-        ],
-        act: [
-          { label: 'Plan demand, order now', color: 'var(--s1)', values: planAct },
-          { label: `Demand +${DEMAND_UPLIFT * 100}%, order now`, color: 'var(--s2)', values: highAct, dash: true },
-        ],
-      },
-    },
-    outcome: {
-      nothing: {
-        tone: 'risk',
-        headline: zero >= 0 ? `Stock-out in week ${zero} if demand runs ${DEMAND_UPLIFT * 100}% high` : `Below safety stock in week ${wHigh} if demand runs ${DEMAND_UPLIFT * 100}% high`,
-        detail: `Nothing is on order yet. Illustrative: a flat weekly draw of ${fix(weekly)} ${focus.uom} at plan, ${fix(weekly * (1 + DEMAND_UPLIFT))} ${focus.uom} in the high case.`,
-      },
-      act: {
-        tone: minAct >= focus.safetyStock ? 'ok' : 'watch',
-        headline: minAct >= focus.safetyStock
-          ? `Stays above safety stock through week ${WEEKS} in both cases`
-          : `Still dips below safety stock in week ${dipAct}`,
-        detail: `Ordering the ${fix(receipt)} ${focus.uom} batch now lands it in week ${receiptWeek}, after the ${focus.leadTimeDays}-day lead time.`,
-      },
-    },
-    actions: [
-      { title: `Place the full ${fix(receipt)} ${focus.uom} batch order now`, owner: 'Procurement Officer', due: 'Today', effect: `Cover holds through week ${WEEKS} in both cases`, handoff: 'procurement' },
-      { title: 'Confirm the production plan for the next 10 weeks', owner: 'Materials Planner', due: 'This week', effect: `Narrows the ${DEMAND_UPLIFT * 100}% demand uncertainty`, handoff: 'supervisor' },
-      { title: `Review the BOM usage rate for ${focus.id}`, owner: 'Materials Planner', due: 'Within 2 weeks', effect: 'Fixes the "Risk" BOM coverage flag' },
-    ],
-  };
-}
-
-// ---- Procurement Officer: reorder position, supplier delay and sourcing risk ----
 function procurementPlan(rows) {
   const position = (r, extra, slip) => ((r.qty + extra - slip * r.dailyConsumption) / r.reorderPoint) * 100;
   const sorted = [...rows].sort((a, b) => a.qty / a.reorderPoint - b.qty / b.reorderPoint).slice(0, 5);
@@ -266,18 +183,18 @@ function procurementPlan(rows) {
       },
     },
     actions: [
-      { title: d1?.title ?? `Authorize an expedited PO for ${first.id}`, owner: 'Procurement Officer', due: 'Within 3 days', effect: d1?.impact ?? 'Stock-out avoided', handoff: 'finance', compare: first.id },
-      { title: d2?.title ?? 'Recalibrate lot sizes for Class A materials', owner: 'Procurement Officer', due: 'This month', effect: d2?.impact ?? 'Working capital released', handoff: 'finance' },
-      { title: 'Qualify a second source for sole and allocated materials', owner: 'Procurement Officer', due: 'This quarter', effect: 'Removes the single-supplier exposure' },
+      { title: d1?.title ?? `Authorize an expedited PO for ${first.id}`, owner: 'Procurement / Sourcing Manager', due: 'Within 3 days', effect: d1?.impact ?? 'Stock-out avoided', handoff: 'head', compare: first.id },
+      { title: d2?.title ?? 'Recalibrate lot sizes for Class A materials', owner: 'Procurement / Sourcing Manager', due: 'This month', effect: d2?.impact ?? 'Working capital released', handoff: 'head' },
+      { title: 'Qualify a second source for sole and allocated materials', owner: 'Procurement / Sourcing Manager', due: 'This quarter', effect: 'Removes the single-supplier exposure' },
     ],
   };
 }
 
-// ---- Finance Controller: where cash is stuck in the cycle ----
+// ---- Head of Supply Chain: where cash is stuck in the cycle ----
 const CYCLE_SHIFT = { fg: { nothing: 9, act: -31 }, cust: { nothing: 0, act: -5 } };
 const EXCESS_TOTAL = '$4.2M';
 
-function financePlan(rows) {
+function headPlan(rows) {
   const mat = RMLC_CYCLE_MATERIALS.find((m) => m.id === 'MAT-2041') ?? RMLC_CYCLE_MATERIALS[0];
   const full = rows.find((r) => r.id === mat.id);
   const legs = RMLC_LEGS.map((l, i) => {
@@ -321,19 +238,18 @@ function financePlan(rows) {
       },
     },
     actions: [
-      { title: `Clear the ${EXCESS_TOTAL} of excess stock through the three transfer options`, owner: 'Warehouse Manager', due: 'This quarter', effect: `${EXCESS_TOTAL} released`, handoff: 'warehouse' },
-      { title: `Cut ${mat.id} finished-goods wait from ${fg.now} to ${fg.now + CYCLE_SHIFT.fg.act} days`, owner: 'Materials Planner', due: 'This quarter', effect: `${kilo(-CYCLE_SHIFT.fg.act * perDay)} freed`, handoff: 'planner' },
-      { title: 'Negotiate shorter customer payment terms', owner: 'Finance Controller', due: 'Next quarter', effect: `${kilo(-CYCLE_SHIFT.cust.act * perDay)} freed` },
+      { title: `Clear the ${EXCESS_TOTAL} of excess stock through the three transfer options`, owner: 'Inventory / Materials Manager', due: 'This quarter', effect: `${EXCESS_TOTAL} released`, handoff: 'inventory' },
+      { title: `Cut ${mat.id} finished-goods wait from ${fg.now} to ${fg.now + CYCLE_SHIFT.fg.act} days`, owner: 'Production / Materials Planner', due: 'This quarter', effect: `${kilo(-CYCLE_SHIFT.fg.act * perDay)} freed`, handoff: 'planner' },
+      { title: 'Negotiate shorter customer payment terms', owner: 'Head of Supply Chain', due: 'Next quarter', effect: `${kilo(-CYCLE_SHIFT.cust.act * perDay)} freed` },
     ],
   };
 }
 
 export function buildPlan(persona, rows) {
   switch (persona) {
-    case 'warehouse': return warehousePlan();
+    case 'inventory': return inventoryPlan();
     case 'planner': return plannerPlan(rows);
     case 'procurement': return procurementPlan(rows);
-    case 'finance': return financePlan(rows);
-    default: return supervisorPlan(rows);
+    default: return headPlan(rows);
   }
 }

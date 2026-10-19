@@ -5,10 +5,10 @@ const MAX_ITEMS = 3;
 
 // Which personas should see each kind of item.
 const AUDIENCE = {
-  sourcing: ['supervisor', 'procurement', 'planner', 'finance'],
+  sourcing: ['planner', 'procurement', 'head'],
   reorder: ['procurement', 'planner'],
-  transfer: ['warehouse', 'supervisor'],
-  cash: ['finance', 'warehouse'],
+  transfer: ['inventory', 'planner'],
+  cash: ['head', 'inventory'],
 };
 
 // The few things worth a person's attention today, ranked by value at risk. Nothing is listed unless a

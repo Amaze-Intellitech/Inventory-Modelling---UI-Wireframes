@@ -472,8 +472,8 @@ export default function Optimization() {
 
   // 7. Persona-specific optimization lens: one shared card shell, five content configs
   const PERSONA_OPT_LENS = {
-    supervisor: {
-      headlineLabel: 'Plant Supervisor Lens · Will the Line Keep Running',
+    planner: {
+      headlineLabel: 'Production / Materials Planner Lens · Will the Line Keep Running',
       headline: currentCoverageDays < leadTimeDays ? `${activeId} has ${formatNum(currentCoverageDays, 1)} days of cover against a ${leadTimeDays}-day lead time — order ${formatNum(currentOrderQty, 0)} ${uom} now to avoid a stoppage on ${activeMeta.downstream}.` : `${activeId} has ${formatNum(currentCoverageDays, 1)} days of cover, ${formatNum(currentCoverageDays - leadTimeDays, 1)} beyond the ${leadTimeDays}-day lead time${firstCoverageBreach ? `, but projected cover first breaches lead time on ${firstCoverageBreach.date}` : ' and stays protected across the horizon'}.`,
       title: 'Coverage After Optimizing',
       subtitle: `Whether ${activeId} keeps up with the lines it feeds once this policy is applied`,
@@ -487,8 +487,8 @@ export default function Optimization() {
         { label: 'Days to Next Breach', value: firstCoverageBreach ? `${firstCoverageBreach.dayIndex} days` : 'None projected', sub: firstCoverageBreach ? `On ${firstCoverageBreach.date}` : 'Within modeled horizon' },
       ],
     },
-    warehouse: {
-      headlineLabel: 'Warehouse Manager Lens · What to Hold and What to Clear',
+    inventory: {
+      headlineLabel: 'Inventory / Materials Manager Lens · What to Hold and What to Clear',
       headline: currentExcessQty > 0 ? `${formatNum(currentExcessQty, 0)} ${uom} (${formatCurrency(currentExcessValue)}) of ${activeId} sits above the target buffer — defer the next PO and let stock run down toward ${formatNum(targetPositionQty, 0)} ${uom}.` : `${activeId} is at or below its target buffer; the change to make is the lot size, from ${formatNum(currentBatchQty, 0)} to ${formatNum(qStar, 0)} ${uom} per receipt.`,
       title: 'Stock This Policy Implies Holding',
       subtitle: `Physical footprint and batch-size change for ${activeId} under the recommended policy`,
@@ -502,23 +502,8 @@ export default function Optimization() {
         { label: 'Storage Note', value: currentExcessQty > 0 ? 'Defer next PO' : 'Recalibrate lot size', sub: currentExcessQty > 0 ? 'Until stock nears ROP' : `Target ${formatNum(qStar, 0)} ${uom} batches` },
       ],
     },
-    planner: {
-      headlineLabel: 'Materials Planner Lens · Cover Against the Plan',
-      headline: `${activeId} is consuming ${formatNum(baseDailyDemand, 2)} ${uom}/day with a ${(trendPerWeek * 100).toFixed(2)}%/wk trend; on-hand is ${currentOnHand < reorderPoint ? `${formatNum(reorderPoint - currentOnHand, 0)} ${uom} below` : `${formatNum(currentOnHand - reorderPoint, 0)} ${uom} above`} the reorder point of ${formatNum(reorderPoint, 0)} ${uom}. Confirm that matches the production plan.`,
-      title: 'Cover Against the Plan',
-      subtitle: `Demand trend and reorder position for ${activeId} against the production plan`,
-      badgeText: `Trend ${(trendPerWeek * 100).toFixed(2)}%/wk`,
-      badgeTone: 'accent',
-      borderClass: 'border-success',
-      tiles: [
-        { label: 'Baseline Daily Demand', value: `${formatNum(baseDailyDemand, 2)} ${uom}/d`, sub: `${(trendPerWeek * 100).toFixed(2)}%/wk trend` },
-        { label: 'Reorder Point vs On-Hand', value: `${formatNum(reorderPoint, 0)} ${uom}`, sub: currentOnHand < reorderPoint ? `On-hand is ${formatNum(reorderPoint - currentOnHand, 0)} ${uom} below` : `${formatNum(currentOnHand - reorderPoint, 0)} ${uom} of buffer` },
-        { label: 'Demand Volatility (CV)', value: `${(demandCV * 100).toFixed(1)}%`, sub: demandCV <= 0.15 ? 'Stable' : 'Elevated — check plan alignment' },
-        { label: 'Review Cadence', value: abcReviewCadence, sub: `Class ${abcClass} governance` },
-      ],
-    },
     procurement: {
-      headlineLabel: 'Procurement Officer Lens · What to Order and When',
+      headlineLabel: 'Procurement / Sourcing Manager Lens · What to Order and When',
       headline: currentOnHand < reorderPoint ? `The reorder point is triggered — raise a PO for ${formatNum(currentOrderQty, 0)} ${uom} (${formatCurrency(currentOrderValue)}) with ${activeMeta.supplier.split('(')[0].trim()}; lead time is ${leadTimeDays} days.` : `No PO needed yet for ${activeId}. Recalibrating the lot from ${formatNum(currentBatchQty, 0)} to ${formatNum(qStar, 0)} ${uom} saves ${formatCurrency(netAnnualPolicySavings)}/yr when the next order is raised.`,
       title: 'Reorder Position & Lot Size',
       subtitle: `What to order and when for ${activeId}, and what recalibrating the lot size is worth`,
@@ -532,8 +517,8 @@ export default function Optimization() {
         { label: 'Order Quantity Needed', value: `${formatNum(currentOrderQty, 0)} ${uom}`, sub: currentOrderQty > 0 ? formatCurrency(currentOrderValue) : 'None needed yet' },
       ],
     },
-    finance: {
-      headlineLabel: 'Finance Controller Lens · Capital Released or Locked',
+    head: {
+      headlineLabel: 'Head of Supply Chain Lens · Capital Released or Locked',
       headline: `${activeId} ties up ${formatCurrency(currentOnHandValue)} today. This policy opens a ${formatCurrency(modeledCapitalReleaseOpportunity)} release opportunity and saves ${formatCurrency(annualCarryingCostSavings)}/yr in carrying cost while holding a 95% service level.`,
       title: '6-Month Capital Opportunity',
       subtitle: `Working capital position and release opportunity for ${activeId} under this policy`,
@@ -548,12 +533,12 @@ export default function Optimization() {
       ],
     },
   };
-  const activeOptLens = PERSONA_OPT_LENS[persona] || PERSONA_OPT_LENS.supervisor;
+  const activeOptLens = PERSONA_OPT_LENS[persona] || PERSONA_OPT_LENS.planner;
 
 
   // Chart and catalog framing per persona: same series, read through each persona's decision.
   const OPT_COPY = {
-    supervisor: {
+    planner: {
       projSub: `Daily stock against the reorder point and safety stock; ${firstCoverageBreach ? `cover first drops below the ${leadTimeDays}-day lead time on ${firstCoverageBreach.date}` : `cover stays above the ${leadTimeDays}-day lead time across the horizon`}.`,
       covTitle: 'Line Cover vs Lead Time', covSub: `How many days of production the stock covers, against the ${leadTimeDays} days a new order takes to arrive`,
       itrTitle: 'Stock Turnover Trend', itrSub: 'Rolling turnover; a falling line means stock is sitting longer than the lines consume it',
@@ -562,7 +547,7 @@ export default function Optimization() {
       cols: ['coverage', 'alloc'],
       sort: (a, b) => a.coverageDays - b.coverageDays,
     },
-    warehouse: {
+    inventory: {
       projSub: `Daily stock against the target buffer; today ${currentExcessQty > 0 ? `${formatNum(currentExcessQty, 0)} ${uom} sits above target` : 'stock is at or below target'}.`,
       covTitle: 'Days of Stock on Hand', covSub: 'How long the shelf stock lasts at forecast consumption, against the supplier lead time',
       itrTitle: 'Bin Turnover Trend', itrSub: 'Rolling turnover; the faster it climbs, the quicker shelves clear',
@@ -570,15 +555,6 @@ export default function Optimization() {
       catTitle: 'Materials Ranked by Surplus', catSub: 'Largest surplus above target first: where to defer receipts or clear stock',
       cols: ['stock', 'target'],
       sort: (a, b) => (b.currentStock - b.desiredStock) * b.unitCost - (a.currentStock - a.desiredStock) * a.unitCost,
-    },
-    planner: {
-      projSub: `Daily stock against the reorder point of ${formatNum(reorderPoint, 0)} ${uom}; ${currentOnHand < reorderPoint ? 'on-hand is already below it' : 'on-hand is above it today'}.`,
-      covTitle: 'Cover Against the Plan', covSub: `Days of supply against the ${leadTimeDays}-day lead time; check the dips against the production plan`,
-      itrTitle: 'Turnover vs Plan', itrSub: 'Rolling turnover against target; a gap means the plan and stock are out of step',
-      capTitle: 'Capital the Plan Commits', capSub: 'Value of stock the plan needs to carry, against the target buffer',
-      catTitle: 'Materials Ranked by Distance from Target', catSub: 'Largest gap to target buffer first: where the plan needs adjusting',
-      cols: ['coverage', 'target', 'order'],
-      sort: (a, b) => Math.abs(b.desiredStock - b.currentStock) * b.unitCost - Math.abs(a.desiredStock - a.currentStock) * a.unitCost,
     },
     procurement: {
       projSub: `Daily stock against the reorder point; ${currentOnHand < reorderPoint ? `order ${formatNum(currentOrderQty, 0)} ${uom} now` : 'no order is needed yet'}. Q* is ${formatNum(qStar, 0)} ${uom}.`,
@@ -589,7 +565,7 @@ export default function Optimization() {
       cols: ['order', 'alloc', 'priority'],
       sort: (a, b) => b.orderValue - a.orderValue,
     },
-    finance: {
+    head: {
       projSub: `Daily stock against the target buffer; closing the gap releases ${formatCurrency(modeledCapitalReleaseOpportunity)}.`,
       covTitle: 'Days of Cash in Stock', covSub: 'Days of supply held; every day above the lead time is cash that could be released',
       itrTitle: 'Inventory Turnover (ITR)', itrSub: 'Rolling ITR (COGS / 30-day average inventory value) against target',
@@ -599,7 +575,7 @@ export default function Optimization() {
       sort: (a, b) => b.currentValue - a.currentValue,
     },
   };
-  const optCopy = OPT_COPY[persona] || OPT_COPY.supervisor;
+  const optCopy = OPT_COPY[persona] || OPT_COPY.planner;
   const allPlantsScope = scope.startsWith('All Plants');
   const inScope = (m) => allPlantsScope || m.isSelected || scope.startsWith(m.plant);
   const catalogRows = [...catalogOptimizationData].filter(inScope).sort(optCopy.sort);

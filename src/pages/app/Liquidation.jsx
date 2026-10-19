@@ -96,22 +96,16 @@ export default function Liquidation() {
       />
 
       <Insight key={persona} label="Get to Green">
-        {persona === 'warehouse' ? (
+        {persona === 'inventory' ? (
           <>
             {OPPORTUNITIES.length} actions are ready, worth <span className="metric">{fmtMoney(total)}</span> in total. The largest is
             moving <span className="metric">$1.12M</span> of MAT-3390 between the two Plant 1 warehouses, and the Sealant Paste lots on
             MAT-5501 expire inside 60 days, so ship or consume those first.
           </>
-        ) : persona === 'supervisor' ? (
+        ) : persona === 'planner' ? (
           <>
             Before approving a transfer, check it does not take cover below lead time on a material that feeds a critical line. The
             Sealant Paste lots on MAT-5501 expire inside 60 days, so have the lines that use it consume those lots first.
-          </>
-        ) : persona === 'planner' ? (
-          <>
-            Steel Housing sits <span className="metric">34% over</span> its optimal position and Sealant Paste{' '}
-            <span className="metric">28% under</span>, so plan the next production runs to use the older Sealant Paste lots and hold new
-            Steel Housing purchases until the excess is worked down.
           </>
         ) : persona === 'procurement' ? (
           <>

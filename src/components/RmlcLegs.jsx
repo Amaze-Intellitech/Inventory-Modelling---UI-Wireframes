@@ -27,28 +27,23 @@ const sum = (a) => a.reduce((x, y) => x + y, 0);
 
 // Each plant persona owns a different slice of the cycle. `legs` are the legs they can act on; the rest are dimmed.
 const PERSONA_LEGS = {
-  supervisor: {
-    label: 'Plant Supervisor', legs: ['lead', 'store'],
+  planner: {
+    label: 'Production / Materials Planner', legs: ['lead', 'store'],
     sub: 'Highlighted: the two legs that decide whether material reaches the line on time.',
     read: (f, own) => `${f.id} spends ${f.days[0]} days in supplier lead time and ${f.days[2]} waiting in stores before it reaches the line — ${own} of its ${f.total} days.`,
   },
-  warehouse: {
-    label: 'Warehouse Manager', legs: ['store', 'fg'],
+  inventory: {
+    label: 'Inventory / Materials Manager', legs: ['store', 'fg'],
     sub: 'Highlighted: the legs where stock sits physically in your stores.',
     read: (f, own) => `${f.id} sits ${f.days[2]} days as raw material in stores and ${f.days[4]} days as unsold finished goods — ${own} of its ${f.total} days on your shelves.`,
   },
-  planner: {
-    label: 'Materials Planner', legs: ['store', 'make'],
-    sub: 'Highlighted: the legs your plan controls, from stores issue through production.',
-    read: (f, own) => `${f.id} waits ${f.days[2]} days in stores and takes ${f.days[3]} days to produce — ${own} of ${f.total} days sit between the plan and finished goods.`,
-  },
   procurement: {
-    label: 'Procurement Officer', legs: ['lead', 'credit'],
+    label: 'Procurement / Sourcing Manager', legs: ['lead', 'credit'],
     sub: 'Highlighted: the legs you negotiate with the supplier.',
     read: (f, own) => `${f.id} has a ${f.days[0]}-day supplier lead time and ${f.days[1]} days of supplier credit — ${own} of ${f.total} days are set in the supplier agreement.`,
   },
-  finance: {
-    label: 'Finance Controller', legs: ['credit', 'fg', 'cust'],
+  head: {
+    label: 'Head of Supply Chain', legs: ['credit', 'fg', 'cust'],
     sub: 'Highlighted: the legs that decide how long cash stays out — supplier credit, unsold goods and customer terms.',
     read: (f, own) => `${f.id} ties up cash for ${f.total} days from PO to customer payment; ${own} of them come from supplier credit, unsold finished goods and customer terms.`,
   },

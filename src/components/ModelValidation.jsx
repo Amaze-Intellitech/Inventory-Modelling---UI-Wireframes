@@ -17,23 +17,17 @@ const fmt = (v, d = 2) => v.toLocaleString(undefined, { minimumFractionDigits: d
 
 // Each plant persona watches different drivers; the others are dimmed so the same ranking reads differently.
 const PERSONA_DRIVERS = {
-  supervisor: {
+  planner: {
     own: ['Supplier lead time', 'Production volume'],
     title: 'Which drivers could leave the line short?',
     sub: 'Highlighted: the drivers that decide whether material arrives and is used on time.',
     read: (m, o) => <>For {m}, supplier lead time and production volume together explain <span className="metric">{o}%</span> of stock movement. Those are the two to watch for a line stoppage; finished-goods demand sets how fast stock is used.</>,
   },
-  warehouse: {
+  inventory: {
     own: ['Finished-goods demand', 'Supplier lead time'],
     title: 'Which drivers fill or empty the shelves?',
     sub: 'Highlighted: the drivers behind how much stock arrives and leaves your stores.',
     read: (m, o) => <>For {m}, finished-goods demand and supplier lead time explain <span className="metric">{o}%</span> of stock movement: demand drains the shelves and long lead times make deliveries land in bunches.</>,
-  },
-  planner: {
-    own: ['Finished-goods demand', 'Production volume'],
-    title: 'Which drivers should the plan track?',
-    sub: 'Highlighted: the drivers that come from the production plan and the order book.',
-    read: (m, o) => <>For {m}, finished-goods demand and production volume explain <span className="metric">{o}%</span> of stock movement. Recheck the forecast whenever either changes in the plan.</>,
   },
   procurement: {
     own: ['Supplier lead time', 'Price'],
@@ -41,7 +35,7 @@ const PERSONA_DRIVERS = {
     sub: 'Highlighted: the drivers you can negotiate or time around.',
     read: (m, o) => <>For {m}, supplier lead time is <span className="metric">24%</span> of stock movement and price only <span className="metric">6%</span> ({o}% together): order timing matters far more than price for this must-buy material.</>,
   },
-  finance: {
+  head: {
     own: ['Finished-goods demand', 'Price'],
     title: 'Which drivers move the cash tied up?',
     sub: 'Highlighted: the drivers that change what stock costs and how quickly it turns into cash.',
@@ -129,11 +123,10 @@ function ResidualChart() {
 }
 
 const TRUST_NOTE = {
-  supervisor: (r2, rmse) => `Typical weekly miss is about ±${fmt(rmse, 1)} units. Keep the line's lead-time buffer at least that large and the forecast is safe to plan against.`,
-  warehouse: (r2, rmse) => `Typical weekly miss is about ±${fmt(rmse, 1)} units, so expect inbound and outbound volumes to differ from the forecast by about that much week to week.`,
-  planner: (r2) => `The model explains ${fmt(r2 * 100, 0)}% of weekly variation. Rerun the forecast, and this check, whenever the production plan or a driver changes.`,
+  planner: (r2, rmse) => `Typical weekly miss is about ±${fmt(rmse, 1)} units. Keep the line's lead-time buffer at least that large and the forecast is safe to plan against.`,
+  inventory: (r2, rmse) => `Typical weekly miss is about ±${fmt(rmse, 1)} units, so expect inbound and outbound volumes to differ from the forecast by about that much week to week.`,
   procurement: (r2, rmse) => `A ±${fmt(rmse, 1)}-unit weekly error is small next to a lead-time window of several weeks; size orders on the forecast, then add the safety stock for the error.`,
-  finance: (r2, rmse, avg) => `Forecast error is about ${fmt((rmse / avg) * 100, 1)}% of weekly demand, which bounds how far the 12-week spend and capital figures can drift.`,
+  head: (r2, rmse, avg) => `Forecast error is about ${fmt((rmse / avg) * 100, 1)}% of weekly demand, which bounds how far the 12-week spend and capital figures can drift.`,
 };
 
 export default function ModelValidation({ modelR2 = 0.91, rmse = 9, avgWeekly = 100, persona }) {
