@@ -8,13 +8,13 @@ The application is currently a front-end wireframe with illustrative data. It is
 
 The platform models raw-material inventory as the starting point for downstream production and replenishment decisions. It follows the nine-stage **Inventory Intelligence pipeline** defined in the solution design, and brings together:
 
-- Sign-in is **always single sign-on** (Microsoft Entra ID, or the organisation's own SAML / OIDC provider). There is no password form. After sign-in, an access check resolves which plants and solutions the user may open.
+- Sign-in is **always single sign-on** (Microsoft Entra ID, or the organisation's own SAML / OIDC provider). There is no password form. After sign-in, an access check resolves which plants and solutions the user may open. On the solution page only the licensed solution (Inventory Modelling) can be opened; the others are shown disabled for reference.
 - One-time onboarding for first-time users: material selection, then **parameters** (choose the drivers and declare a source system for each), then **data sources** (connect only the sources those parameters need), then ingestion and data-quality status. Returning users go straight to the dashboard and can change their parameters or data sources later from Data Foundation.
 - Nine analytical stages in a fixed order: Univariate, Bivariate, ABC, EOQ, RMLC, Multivariate (with model validation), Optimization, What-if, and the Inventory Agent
 - "Get to Green, Stay Green" screens for Liquidation and Prevention (wireframe proposals, pending SME review)
 - A business-first layout on every stage page: an AI insight in plain language first, then the chart, then collapsed technical detail
 
-The interface supports the people who run a plant (plant supervisor, warehouse manager, materials planner, procurement officer and finance controller) through persona-aware views. On the Overview, each persona also gets an **Understand & plan** section: what is happening, what could happen if nothing changes versus if they act, and the next steps, which can be handed off to another persona.
+The interface follows the persona-driven product blueprint (`Inventory_Modelling_Blueprint.docx`) and supports its four primary personas (Head of Supply Chain, Inventory / Materials Manager, Production / Materials Planner and Procurement / Sourcing Manager) through persona-aware views. Every analysis screen opens with its P0 layer (the decision for that persona, with a next step and owner), then supporting analysis (P1), then on-demand detail (P2), and shows the screen's trust safeguard. On the Overview, each persona also gets an **Understand & plan** section: what is happening, what could happen if nothing changes versus if they act, and the next steps, which can be handed off to another persona.
 
 ## Prototype Scope
 
@@ -37,22 +37,21 @@ The platform models raw-material inventory dynamics, downstream multi-product de
    - Primary economic segmentation basis is **Annual Consumption Value** ($\text{Annual Demand} \times \text{Unit Purchase Cost}$) across a $43.86M enterprise catalog (1,420 SKUs).
    - Augmented with 5-dimensional contextual intelligence: Demand Volatility ($\text{CV}$), Downstream Product Dependency (fan-out and critical lines), Supply Latency (lead time & single-source exposure), and Assembly Criticality.
    - Strict separation of financial measures: Annual Consumption Value, Physical On-Hand Stock ($13.71M enterprise total), Working Capital, and Inventory Value at Risk.
-3. **Plant Persona Engine**: an organisation is a plant, so every persona is an internal role. Each lens changes the Overview insight, KPIs, table columns and sort, and adds its own *Understand & plan* section.
-   - **Plant Supervisor (`supervisor`)**: which materials could stop a line, days of cover against lead time, and the downstream lines exposed. Next steps: expedite, transfer, or re-sequence.
-   - **Warehouse Manager (`warehouse`)**: ageing and excess stock by lifecycle stage, and the value released by returning, transferring or selling it.
-   - **Materials Planner (`planner`)**: stock runway against the production plan and a 15% demand swing, with the safety-stock line.
-   - **Procurement Officer (`procurement`)**: stock as a share of reorder point, the effect of a supplier delay, and sole or allocated sourcing exposure.
-   - **Finance Controller (`finance`)**: where cash is stuck in the purchase-to-payment cycle, and the working capital each option frees or locks.
+3. **Persona Engine** (blueprint §2): one shared data foundation; only insight ordering, actions and level of detail change by persona. Every persona is an internal role. Each lens changes the Overview insight, KPIs, table columns and sort, its *Understand & plan* section, and the P0 top of every analysis screen. The persona tab also sets plant scope.
+   - **Head of Supply Chain (`head`, default, all plants)**: balances inventory investment, production continuity, supply reliability and cost across the network; cross-plant priorities and major escalations.
+   - **Inventory / Materials Manager (`inventory`, Plant 1)**: inventory health; classification, cycle counts, transfers, excess disposition and replenishment parameters.
+   - **Production / Materials Planner (`planner`, Plant 1)**: production continuity; shortage resolution, replenishment timing and schedule-risk escalation.
+   - **Procurement / Sourcing Manager (`procurement`, all plants)**: supply execution; supplier selection, PO quantity and timing, allocation and supplier-risk mitigation.
 4. **Canonical Workflow (nine stages, fixed order)**:
    - **Entry**: SSO sign-in → solution → access-check modal. A returning user then opens `/app` directly; a first-time user continues to onboarding. The "loaded" flag is stored in `localStorage` (`aitek-onboarded`), set when ingestion completes.
    - **Onboarding (first time only)**: Material selection with ABC tier → ~40-parameter checklist with a source per parameter and a data range (one default range per material, as in the design bible; each parameter can override it) → data sources (the page lists the connectors the chosen parameters need, and continuing is blocked until each is connected) → ingestion and data-quality status. Master-data gaps block the run; warnings do not.
    - **1 Univariate** and **2 Bivariate**: Stock on its own, then against one driver at a time. Bivariate ends in a ranked driver shortlist for the Multivariate stage.
-   - **3 ABC**: Value tiers (A, B, C) that decide which materials get full modelling.
-   - **4 EOQ**: Economic order quantity as a time series, with the drivers of its change (demand, ordering cost, carrying cost).
-   - **5 RMLC**: The cash cycle from supplier PO to customer payment, split by leg, with the bottleneck leg called out. The earlier stock-lifecycle stages sit below it.
-   - **6 Multivariate**: Expected stock with the drivers that matter most. Residuals, error metrics and diagnostics (multicollinearity, heteroskedasticity, ANOVA) are in a collapsed *Model validation* panel.
-   - **7 Optimization**: Confirm the objective and constraints, choose Static, Dynamic or On-the-fly mode, then read expected vs optimal.
-   - **8 What-if**: Single or multi-variable scenarios with projected inventory, inventory coverage ratio and turnover, each with an AI interpretation.
+   - **3 ABC–XYZ & Criticality**: Value tiers (A, B, C), demand-variability classes (X, Y, Z) and an explicit criticality flag, with the strategy each segment needs and where policy does not match it.
+   - **4 EOQ & Replenishment**: What to order and when: projected stockout date, order quantity, release and receipt dates, reorder point and safety stock. EOQ is the lot-size benchmark, shown as a time series with the drivers of its change.
+   - **5 RMLC & SLOB**: Expiry exposure by horizon and SLOB value, with slow-moving, potentially obsolete and expired stock kept apart; then the cash cycle from supplier PO to customer payment and the stock-lifecycle stages.
+   - **6 Multivariate Diagnostics**: Situations that look unusual across several factors, ranked by business impact (anomaly scores only on demand), then expected stock with the drivers that matter most. Residuals, error metrics and diagnostics are in a collapsed *Model validation* panel.
+   - **7 Procurement Optimization**: The purchase and allocation plan for the cycle: coverage, uncovered demand, landed cost vs baseline, quantity by supplier and destination, binding constraints, rejected alternatives and the smallest relaxation (`src/data/procurementPlan.js`). The inventory position behind it follows: objective and constraints, Static / Dynamic / On-the-fly mode, expected vs optimal.
+   - **8 What-if**: Single or multi-variable scenarios with financial (inventory value, working capital, total relevant cost), service (stockout risk, orders at risk, fill rate) and policy (order quantity, safety stock, days of supply, E&O) results, labelled deterministic or probabilistic against a stated baseline and horizon.
    - **9 Inventory Agent**: Free-text questions, an always-visible trace of the stages it invoked (each links back to its page), and the three canonical prompts.
    - **Liquidation** and **Prevention**: Clear existing excess, ageing and duplicate stock ("Get to Green"), then warn early before it builds up again ("Stay Green").
 
@@ -68,7 +67,7 @@ The platform models raw-material inventory dynamics, downstream multi-product de
 - **Charts**: Responsive SVG built directly in JSX (`src/components/Charts.jsx`), each with a legend and a "View as table" view
 - **Theme**: Light and dark, toggled from the header of every screen (`src/components/ThemeToggle.jsx`) and stored in `localStorage` (`src/lib/theme.js`)
 - **Focus today and sourcing comparison**: a strip at the top of the Overview lists at most three decisions waiting for the active persona, ranked by value at risk (`src/components/FocusStrip.jsx`, `src/data/focusItems.js`). For a shortfall such as MAT-4120 at Plant 3, *Compare sourcing options* opens a side-by-side view of moving stock from other plants versus expediting or switching vendors, with total landed cost and a recommendation (`src/components/SourcingDialog.jsx`, `src/data/sourcingOptions.js`). Approving is a proposal for this session only; nothing is executed. Plant stock and vendor terms are illustrative values.
-- **Persona lens**: the top-bar switch (Plant Supervisor / Warehouse Manager / Materials Planner / Procurement Officer / Finance Controller, defined in `src/data/personas.js`) changes the Overview insight, KPIs, table columns and sort and adds the *Understand & plan* section (`src/components/UnderstandAndPlan.jsx`, content in `src/data/personaPlans.jsx`). It also changes the insight sections on Data Foundation, Liquidation, Prevention and What-if. Stage pages not yet rewritten for these personas (ABC, EOQ, RMLC, Optimization, Raw Materials, Decisions) map each persona to their older lens content through `legacyPersona`.
+- **Persona lens**: the top-bar switch (Head of Supply Chain / Inventory Manager / Production Planner / Sourcing Manager, defined in `src/data/personas.js`) changes the Overview insight, KPIs, table columns and sort and adds the *Understand & plan* section (`src/components/UnderstandAndPlan.jsx`, content in `src/data/personaPlans.jsx`). Every analysis screen opens with `src/components/PersonaTop.jsx`: the persona's P0 headline and KPIs, the next step with owner and due date, and the screen's safeguard note.
 - **Screen density**: Page and card descriptions sit behind an ⓘ popover (`InfoTip`), and AI insights clamp to two lines with a "Show more" toggle
 
 ---
@@ -88,7 +87,7 @@ The platform models raw-material inventory dynamics, downstream multi-product de
 │   │   ├── utils.js         # `cn` class-name helper
 │   │   └── theme.js         # `useTheme` hook (light / dark)
 │   ├── context/
-│   │   └── PlatformContext.jsx  # Persona (exec/analyst/ds), role, plant, & material state
+│   │   └── PlatformContext.jsx  # Persona, role, plant scope and material state
 │   ├── data/
 │   │   ├── mockData.js      # Canonical material intelligence and illustrative dataset
 │   │   └── parameterCatalog.js  # ~40 candidate parameters and source options
