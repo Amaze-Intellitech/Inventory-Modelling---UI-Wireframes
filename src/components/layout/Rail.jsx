@@ -20,8 +20,8 @@ const GROUPS = [
   {
     label: 'Detect & Explain',
     items: [
-      { to: '/app/abc', label: 'ABC Classification', icon: PieChart, stage: 3 },
-      { to: '/app/eoq', label: 'EOQ Analysis', icon: BarChart3, stage: 4 },
+      { to: '/app/abc', label: 'ABC–XYZ & Criticality', icon: PieChart, stage: 3 },
+      { to: '/app/eoq', label: 'EOQ & Replenishment', icon: BarChart3, stage: 4 },
       { to: '/app/rmlc', label: 'RMLC Lifecycle', icon: RefreshCcw, stage: 5 },
     ],
   },

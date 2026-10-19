@@ -4,6 +4,7 @@ import { ViewHead, KpiTile, WhyDisclosure, Badge, Insight } from '../../componen
 import DriverHeatmap from '../../components/DriverHeatmap';
 import { UnivariateTrendChart, BivariateScatterChart } from '../../components/Charts';
 import { usePlatform } from '../../context/PlatformContext';
+import PersonaTop from '../../components/PersonaTop';
 
 // ============================================================================
 // PRE-SELECTED UNIVARIATE VARIABLES DEFINITION
@@ -306,6 +307,105 @@ function DemandVsOnTimeScatterChart() {
   );
 }
 
+// Blueprint P0 for Screen 1: where inventory is today and how it is changing, ordered by what each persona needs most.
+const M = ({ children }) => <span className="metric">{children}</span>;
+const UNI_TOP = {
+  head: {
+    label: 'Head of Supply Chain · Exposure and What Is Changing It',
+    headline: <>Inventory on this material stands at <M>$1.02M</M> and <M>70.9 days</M> of supply against a 60-day lead time. The change is real demand, not a data artefact: consumption is up <M>26%</M> on the prior period while lead time has stretched to a 66-day average over the last six receipts.</>,
+    kpis: [
+      { label: 'Total inventory value', value: '$1.02M', sub: '13,000 EA on hand · 4 plants' },
+      { label: 'Days of supply', value: '70.9 days', delta: '+10.9d above lead time', deltaTone: 'up', sub: 'Lead time 60 days' },
+      { label: 'Consumption vs prior period', value: '+26.2%', delta: '1,620 vs 1,284 EA/wk', deltaTone: 'down', sub: 'Draws cover down faster' },
+      { label: 'Lead time, last 6 receipts', value: '66 days', delta: '+6d vs contract', deltaTone: 'down', sub: 'σ ±14.2 days' },
+    ],
+    next: { action: 'Ask procurement to confirm the 60-day lead time with the supplier before cover drops below it', owner: 'Procurement / Sourcing Manager', due: 'This week' },
+  },
+  inventory: {
+    label: 'Inventory / Materials Manager · Stock Position and Usability',
+    headline: <>Of <M>13,000 EA</M> on hand, <M>12,140 EA</M> is available and <M>860 EA</M> is blocked in quality inspection. Cover is <M>70.9 days</M>. Separately, <M>14 materials</M> at Plant 1 have had no issues in 90 days and hold <M>$0.38M</M>.</>,
+    kpis: [
+      { label: 'On hand', value: '13,000 EA', sub: '$1.02M' },
+      { label: 'Available / blocked', value: '12,140 / 860 EA', delta: '6.6% blocked in QI', deltaTone: 'down', sub: 'Release or reject the QI lots' },
+      { label: 'Coverage', value: '70.9 days', sub: 'At 1,620 EA/wk consumption' },
+      { label: 'Zero-use items (90 days)', value: '14 materials', delta: '$0.38M held', deltaTone: 'down', sub: 'Plant 1 · candidates for SLOB review' },
+    ],
+    next: { action: 'Clear the 860 EA quality hold so it counts as available stock', owner: 'Inventory / Materials Manager', due: 'Within 5 days' },
+  },
+  planner: {
+    label: 'Production / Materials Planner · Consumption Against Requirement',
+    headline: <>The next 8 weeks of production need <M>12,960 EA</M>; <M>12,140 EA</M> is available today, so the plan relies on the open purchase order arriving on time. Consumption is running at <M>1,620 EA/wk</M>, <M>81%</M> of the 2,000 EA line cap.</>,
+    kpis: [
+      { label: 'Component consumption', value: '1,620 EA/wk', delta: '+26.2% vs prior period', deltaTone: 'down', sub: 'Baseline 1,284 EA/wk' },
+      { label: 'Available vs 8-week requirement', value: '12,140 / 12,960 EA', delta: '820 EA short without receipts', deltaTone: 'down', sub: 'Open PO covers the gap if on time' },
+      { label: 'Days of supply', value: '70.9 days', sub: 'Lead time 60 days' },
+      { label: 'Line cap utilisation', value: '81%', delta: '19% headroom', deltaTone: 'flat', sub: '2 breach weeks in the last 104' },
+    ],
+    next: { action: 'Confirm the open PO arrival date against the week-7 requirement', owner: 'Production / Materials Planner', due: 'Before next MRP run' },
+  },
+  procurement: {
+    label: 'Procurement / Sourcing Manager · Lead Times, Receipts and Open Orders',
+    headline: <>Supplier lead time is <M>60 days</M> on contract but has averaged <M>66 days</M> over the last six receipts (σ ±14.2 days, right-skewed). <M>11,006 EA</M> (<M>$865.6K</M>) is on open purchase orders, roughly 8.6 weeks of demand.</>,
+    kpis: [
+      { label: 'Lead time, contract vs actual', value: '60 / 66 days', delta: '+6d late on average', deltaTone: 'down', sub: 'Last 6 receipts' },
+      { label: 'Lead-time variability', value: '±14.2 days', sub: 'CV 23.7% · late tail, not early' },
+      { label: 'Open purchase orders', value: '11,006 EA', sub: '$865.6K · 8.6 weeks of demand' },
+      { label: 'Receipt pattern', value: 'Every 19 days', sub: 'Avg 2,400 EA per receipt' },
+    ],
+    next: { action: 'Ask the supplier for confirmed ship dates on the two oldest open POs', owner: 'Procurement / Sourcing Manager', due: 'Within 3 days' },
+  },
+};
+const UNI_SAFEGUARD = 'Real changes are separated from data gaps, unit-of-measure changes, stock adjustments and transfers before anything is flagged.';
+
+// Blueprint P0 for Screen 2: which factors move with inventory outcomes, ranked by business impact (not by the largest correlation).
+const BI_TOP = {
+  head: {
+    label: 'Head of Supply Chain · What Drives Cost, Shortages and Reliability',
+    headline: <>Lead-time length is the factor most tied to shortages (<M>r = 0.74</M>, n = 142) and touches <M>$1.82M</M> of at-risk stock. Batch size is next: larger lots cut unit cost (<M>r = −0.68</M>) but add carrying cost. Both are associations, worth investigating, not proven causes.</>,
+    kpis: [
+      { label: '#1 · Lead time → shortages', value: 'r 0.74', delta: '$1.82M affected', deltaTone: 'down', sub: 'n 142 · 95% CI 0.65–0.81' },
+      { label: '#2 · Batch size → unit cost', value: 'r −0.68', delta: '$0.94M affected', deltaTone: 'flat', sub: 'n 118 · 95% CI −0.77 to −0.56' },
+      { label: '#3 · Order swings → excess', value: 'r 0.52', delta: '$0.61M affected', deltaTone: 'flat', sub: 'n 96 · bullwhip amplification 1.8×' },
+      { label: 'Price → stock level', value: 'r 0.08', sub: 'Not significant · deprioritised' },
+    ],
+    next: { action: 'Take lead time and batch size into the Multivariate model', owner: 'Head of Supply Chain', due: 'This planning cycle' },
+  },
+  inventory: {
+    label: 'Inventory / Materials Manager · Links to Excess, Coverage and Ageing',
+    headline: <>Order swings go with excess build-up (<M>r = 0.52</M>), and excess goes with ageing: materials with more than 120 days of cover are <M>3×</M> more likely to pass 180 days without use. Safety stock set without lead-time variability explains part of the excess.</>,
+    kpis: [
+      { label: 'Order swings → excess', value: 'r 0.52', delta: '$0.61M affected', deltaTone: 'down', sub: 'n 96 · 95% CI 0.36–0.65' },
+      { label: 'Coverage > 120d → ageing', value: '3.1× more likely', sub: 'Odds ratio · n 1,302 materials' },
+      { label: 'Safety stock vs excess', value: 'r 0.41', sub: 'n 142 · moderate' },
+      { label: 'Demand level → stock level', value: 'r 0.63', sub: 'Strongest link to stock movement' },
+    ],
+    next: { action: 'Review safety stock on materials with more than 120 days of cover', owner: 'Inventory / Materials Manager', due: 'This month' },
+  },
+  planner: {
+    label: 'Production / Materials Planner · What Goes With Shortages',
+    headline: <>Longer lead times go with more stock-outs (<M>r = 0.74</M>), and demand variability adds to it: materials with demand CV above 25% had <M>2.4×</M> the stock-out weeks. Those two factors are where shortages start.</>,
+    kpis: [
+      { label: 'Lead time → shortages', value: 'r 0.74', delta: '$1.82M affected', deltaTone: 'down', sub: 'n 142 · 95% CI 0.65–0.81' },
+      { label: 'Demand CV > 25% → stock-outs', value: '2.4× weeks', sub: 'n 142 · vs CV ≤ 25%' },
+      { label: 'Lead-time variability → shortages', value: 'r 0.58', sub: 'n 142 · late tail matters most' },
+      { label: 'Materials with both factors', value: '9 materials', delta: '3 feed critical lines', deltaTone: 'down', sub: 'Watch list for MRP' },
+    ],
+    next: { action: 'Add the 9 high-lead-time, high-variability materials to the MRP watch list', owner: 'Production / Materials Planner', due: 'This week' },
+  },
+  procurement: {
+    label: 'Procurement / Sourcing Manager · MOQ, Frequency, Price and Delivery',
+    headline: <>Delivery variability is the factor most tied to exposure (<M>r = 0.58</M> with shortages), ahead of price. MOQ drives excess: materials whose MOQ exceeds 60 days of demand hold <M>$0.94M</M> above need.</>,
+    kpis: [
+      { label: 'Delivery variability → shortages', value: 'r 0.58', delta: '$1.82M affected', deltaTone: 'down', sub: 'n 142 · 95% CI 0.46–0.68' },
+      { label: 'MOQ > 60 days → excess', value: '$0.94M', sub: '23 materials · n 118' },
+      { label: 'Order frequency → stock level', value: 'r −0.44', sub: 'More frequent orders, less stock' },
+      { label: 'Price → stock level', value: 'r 0.08', sub: 'Not significant' },
+    ],
+    next: { action: 'Renegotiate MOQ on the 23 materials ordered in more than 60 days of demand', owner: 'Procurement / Sourcing Manager', due: 'Next supplier review' },
+  },
+};
+const BI_SAFEGUARD = 'Correlation is not causation. Relationships are ranked by business relevance, with effect size, confidence interval and sample size shown; they point to investigation, not certainty.';
+
 // `mode` fixes the view to one pipeline stage: 'uni' (Stage 1) or 'bi' (Stage 2). Without it both tabs show.
 export default function Descriptive({ mode }) {
   const { persona, selectedMaterial } = usePlatform();
@@ -362,27 +462,23 @@ export default function Descriptive({ mode }) {
       vizSub: 'Strong expansion trajectory with capacity ceiling alert at Plant 1 assembly line ($157.30K/wk threshold)',
     },
   };
-  const uniLens = PERSONA_UNI_LENS[persona] || PERSONA_UNI_LENS.planner;
+  const uniLens = PERSONA_UNI_LENS[persona] || PERSONA_UNI_LENS.head;
 
   const PERSONA_BI_LENS = {
     planner: {
-      headline: <>Longer supplier lead times go with more stock-outs (<span className="metric">r = 0.74</span>) — the strongest single risk to line continuity. Three drivers clear the bar for the Multivariate model; price barely matters for this must-buy material.</>,
       relationship: <>A <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> links supplier lead time to stockout frequency across 142 Class A materials — the clearest early-warning signal for a line-stoppage risk in this dataset.</>,
     },
     inventory: {
-      headline: <>Finished-goods demand is the strongest single link to stock movement, ahead of price. Longer lead times also go with more stock-outs (<span className="metric">r = 0.74</span>), so physical buffer sizing should track supplier reliability more than unit cost.</>,
       relationship: <>A <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> links supplier lead time to stockout frequency — the longer the lead time, the more buffer stock this material needs on the shelf.</>,
     },
     procurement: {
-      headline: <>Longer supplier lead times go with more stock-outs (<span className="metric">r = 0.74</span>) — the clearest signal in this dataset. Order quantity vs unit cost (r = -0.68) is the next most actionable relationship for sourcing decisions.</>,
       relationship: <>A <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> links supplier lead time to stockout frequency across 142 Class A materials — single-sourced, long-lead-time materials are the ones to qualify a second vendor for first.</>,
     },
     head: {
-      headline: <>Longer supplier lead times go with more stock-outs (<span className="metric">r = 0.74</span>), and finished-goods demand is the strongest single link to stock. Three drivers clear the bar for the Multivariate model; price barely matters for this must-buy material.</>,
       relationship: <>A <span className="metric">strong positive empirical association (r = 0.74, R² = 0.548)</span> links supplier lead time to stockout frequency across 142 Class A materials — the working-capital exposure behind this link is quantified in RMLC Lifecycle.</>,
     },
   };
-  const biLens = PERSONA_BI_LENS[persona] || PERSONA_BI_LENS.planner;
+  const biLens = PERSONA_BI_LENS[persona] || PERSONA_BI_LENS.head;
 
   return (
     <motion.section 
@@ -421,11 +517,7 @@ export default function Descriptive({ mode }) {
       {/* TAB 1: UNIVARIATE ANALYSIS */}
       {tab === 'uni' && (
         <div>
-          <Insight label="Stock history">
-            Average weekly consumption is up <span className="metric">26%</span> on the 104-week baseline, and stock has
-            drifted upward at about <span className="metric">2.4% a week</span>. Two weeks stand out: a demand spike in
-            week 21 and a plant-capacity breach in week 27. Why this happened is answered in the later stages.
-          </Insight>
+          <PersonaTop persona={persona} config={UNI_TOP} safeguard={UNI_SAFEGUARD} />
           {/* Material Context Bar */}
           <div className="card__head mb-3">
             <span className="font-semibold text-ink ">
@@ -638,9 +730,7 @@ export default function Descriptive({ mode }) {
       {/* TAB 2: BIVARIATE RELATIONSHIP EXPLORER */}
       {tab === 'bi' && (
         <div>
-          <Insight label="Driver relationships">
-            {biLens.headline}
-          </Insight>
+          <PersonaTop persona={persona} config={BI_TOP} safeguard={BI_SAFEGUARD} />
           <DriverHeatmap />
           <div className="mb-4" />
           {/* PRE-SELECTED RELATIONSHIPS SECTION */}

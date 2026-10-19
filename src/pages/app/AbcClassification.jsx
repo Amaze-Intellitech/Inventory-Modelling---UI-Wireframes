@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { ParetoChart } from '../../components/Charts';
 import { usePlatform } from '../../context/PlatformContext';
+import PersonaTop from '../../components/PersonaTop';
 
 // ============================================================================
 // CANONICAL MATERIAL INTELLIGENCE & DOWNSTREAM PRODUCT DEMAND BREAKDOWNS
@@ -259,6 +260,30 @@ const MATERIAL_INTELLIGENCE = {
   },
 };
 
+// XYZ = demand variability class (coefficient of variation). Thresholds are client-configurable.
+const XYZ_LIMITS = { X: 0.15, Y: 0.3 };
+const xyzClass = (cv) => (cv <= XYZ_LIMITS.X ? 'X' : cv <= XYZ_LIMITS.Y ? 'Y' : 'Z');
+const XYZ_LABEL = { X: 'Stable', Y: 'Variable', Z: 'Erratic' };
+
+// Criticality is an explicit model, never inferred from value: line stoppage, substitutability and supply route.
+const criticalityFlag = (m) => m.criticality.split(' ')[0];
+
+// Portfolio counts by ABC × XYZ, with how many SKUs in each cell are flagged Critical (illustrative).
+const SEGMENT_MATRIX = {
+  A: { X: { skus: 62, critical: 9 }, Y: { skus: 54, critical: 11 }, Z: { skus: 26, critical: 6 } },
+  B: { X: { skus: 110, critical: 4 }, Y: { skus: 128, critical: 7 }, Z: { skus: 60, critical: 5 } },
+  C: { X: { skus: 300, critical: 3 }, Y: { skus: 420, critical: 6 }, Z: { skus: 260, critical: 4 } },
+};
+// Strategy per cell, and where today's policy does not match it.
+const SEGMENT_STRATEGY = {
+  A: { X: 'Tight ROP, weekly review', Y: 'Safety stock on variability', Z: 'Order to forecast, expedite plan' },
+  B: { X: 'Periodic review', Y: 'Periodic review + buffer', Z: 'Buffer or make-to-order' },
+  C: { X: 'Two-bin / Kanban', Y: 'Two-bin, larger bin', Z: 'Order on demand' },
+};
+const POLICY_GAP = { 'C-Z': 'Critical items still on two-bin', 'A-Z': 'Safety stock not sized for variability' };
+
+const ABC_SAFEGUARD = 'Criticality comes from an explicit model (line stoppage, substitutes, supply route), never from value alone: a low-cost seal can stop a line. ABC and XYZ thresholds are client-configurable.';
+
 const ENTERPRISE_TOTAL_CONSUMPTION_VALUE = 43860000.0;
 const ENTERPRISE_PHYSICAL_ON_HAND_VALUE = 13710000.0;
 
@@ -289,13 +314,65 @@ export default function AbcClassification() {
   const totalDerivedValue = mat.downstreamProducts.reduce((sum, p) => sum + p.derivedValue, 0);
   const totalSharePct = mat.downstreamProducts.reduce((sum, p) => sum + p.sharePct, 0);
 
+  const coverDays = (m) => m.onHandQty / (m.annualDemand / 365);
+  const weakCover = trackedMaterials.filter((m) => criticalityFlag(m) === 'Critical' && coverDays(m) < m.leadTimeDays);
+  const M = ({ children }) => <span className="font-mono font-bold text-ink">{children}</span>;
+
+  // Blueprint P0 for Screen 3: which materials need most attention, and what strategy each needs.
+  const abcTop = {
+    head: {
+      label: 'Head of Supply Chain · Valuable and Critical Materials With Weak Coverage',
+      headline: <><M>7 critical materials</M> across the network have less cover than their lead time, putting <M>12 production orders</M> and <M>$1.82M</M> at risk. Value is concentrated: <M>10%</M> of materials hold <M>78%</M> of consumption value, but 13 of the 55 critical materials sit in Class B or C.</>,
+      kpis: [
+        { label: 'Critical below coverage', value: '7 materials', delta: 'cover < lead time', deltaTone: 'down', sub: `${weakCover.map((m) => m.id).join(', ')} among them` },
+        { label: 'Orders affected', value: '12 orders', sub: 'Next 30 days' },
+        { label: 'Value at risk', value: '$1.82M', sub: 'Revenue on affected orders' },
+        { label: 'Class A share', value: '78.3%', sub: '$34.28M · 142 of 1,420 SKUs' },
+      ],
+      next: { action: 'Approve a coverage exception review for the 7 critical materials', owner: 'Head of Supply Chain', due: 'This week' },
+    },
+    inventory: {
+      label: 'Inventory / Materials Manager · Classes, Criticality Flags and Count Priorities',
+      headline: <>The count plan follows value only, so <M>10 critical Class C items</M> are counted quarterly. Move them, and the <M>26 erratic Class A items</M>, to the weekly cycle count. Class C still holds <M>980 SKUs</M> for 6.4% of value.</>,
+      kpis: [
+        { label: 'A / B / C share of value', value: '78 / 15 / 6%', sub: '142 / 298 / 980 SKUs' },
+        { label: 'Critical flags', value: '55 materials', sub: '26 A · 16 B · 13 C' },
+        { label: 'Count priority gaps', value: '10 items', delta: 'critical C on quarterly count', deltaTone: 'down', sub: 'Move to weekly' },
+        { label: 'Erratic (Z) Class A', value: '26 SKUs', sub: 'Highest count-error exposure' },
+      ],
+      next: { action: 'Re-sequence the cycle-count plan by criticality, then value', owner: 'Inventory / Materials Manager', due: 'Before next count cycle' },
+    },
+    planner: {
+      label: 'Production / Materials Planner · Critical, Volatile or Unreliable-Supply Components',
+      headline: <><M>MAT-4120</M> is critical, variable (CV 0.28) and on allocated supply, with <M>14 days</M> of cover against a 60-day lead time. It feeds 19 controller SKUs. <M>17 critical materials</M> are in the Y or Z demand classes and need buffers sized for variability.</>,
+      kpis: [
+        { label: 'Critical + variable (Y/Z)', value: '17 materials', sub: '11 AY · 6 AZ' },
+        { label: 'Critical below coverage', value: '7 materials', delta: '12 orders affected', deltaTone: 'down', sub: 'Next 30 days' },
+        { label: 'Unreliable supply', value: '3 of 4 tracked', sub: 'Sole, allocated or dual source' },
+        { label: 'Worst case', value: 'MAT-4120', delta: '14d cover vs 60d LT', deltaTone: 'down', sub: '19 downstream SKUs' },
+      ],
+      next: { action: 'Put MAT-4120 on daily shortage review and resequence orders that do not use it', owner: 'Production / Materials Planner', due: 'Today' },
+    },
+    procurement: {
+      label: 'Procurement / Sourcing Manager · High-Value, Long-Lead, Single-Source Materials',
+      headline: <><M>{constrainedSourceCount} of {trackedMaterials.length}</M> tracked materials come from a sole, allocated or limited source, all with <M>60-day</M> lead times. Across the portfolio, <M>38 Class A materials</M> are single-sourced with lead times over 45 days: a delay there has no buffer to absorb it.</>,
+      kpis: [
+        { label: 'Single-source Class A', value: '38 materials', sub: '$11.6M consumption value' },
+        { label: 'Long lead (> 45 days)', value: '52 materials', sub: '31 also critical' },
+        { label: 'Tracked constrained sources', value: `${constrainedSourceCount} of ${trackedMaterials.length}`, sub: 'Sole · allocated · dual' },
+        { label: 'Second-source candidates', value: '9 materials', delta: 'Critical + sole + A', deltaTone: 'down', sub: 'Qualify first' },
+      ],
+      next: { action: 'Start second-source qualification on the 9 critical, sole-source Class A materials', owner: 'Procurement / Sourcing Manager', due: 'This quarter' },
+    },
+  };
+
   return (
     <section className="view max-w-7xl mx-auto">
       <ViewHead
-        title="ABC Analysis"
+        title="ABC–XYZ & Criticality"
         subtitle={
           <p className="text-body-c leading-relaxed">
-            Raw materials segmented by <strong>Annual Consumption Value</strong> (Annual Demand × Unit Cost) across the $43.86M enterprise raw-material portfolio, augmented with downstream product dependency and operational risk context.
+            Which materials need most attention, and what strategy each needs: <strong>ABC</strong> by annual consumption value across the $43.86M portfolio, <strong>XYZ</strong> by demand variability, and an explicit <strong>criticality</strong> flag.
           </p>
         }
         actions={
@@ -311,11 +388,7 @@ export default function AbcClassification() {
         }
       />
 
-      <Insight label="Where to focus">
-        Just <span className="metric">10% of your materials</span> hold <span className="metric">78% of the value</span>. These Class A
-        materials get full modelling and tight control; Class C runs on simple, automated rules. This ranking decides which
-        materials you can choose on the Material Selection step.
-      </Insight>
+      <PersonaTop persona={persona} config={abcTop} safeguard={ABC_SAFEGUARD} />
 
       {/* 1. Portfolio Segmentation Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -344,6 +417,81 @@ export default function AbcClassification() {
           <p className="text-xs text-ink mt-3 pt-3 border-t border-border leading-relaxed">
             Quarterly or visual two-bin review · Minimal administrative oversight · Target service level 90.00–95.00% · Bulk order processing.
           </p>
+        </div>
+      </div>
+
+      {/* P1: ABC × XYZ × criticality matrix — strategy per segment and where policy does not match */}
+      <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
+        <div className="card__head mb-4">
+          <h2 className="card__title text-sm font-bold text-ink">ABC × XYZ × Criticality</h2>
+          <p className="card__sub text-xs text-body-c">
+            SKUs per segment, how many are flagged Critical, and the replenishment strategy each segment needs. XYZ: X CV ≤ {XYZ_LIMITS.X}, Y ≤ {XYZ_LIMITS.Y}, Z above.
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse min-w-[560px]">
+            <thead>
+              <tr>
+                <th className="text-left font-semibold text-subtle p-2 w-20" />
+                {['X', 'Y', 'Z'].map((x) => (
+                  <th key={x} className="text-left font-semibold text-subtle p-2">{x} · {XYZ_LABEL[x]}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {['A', 'B', 'C'].map((a) => (
+                <tr key={a} className="border-t border-border">
+                  <th className="text-left font-bold text-ink p-2 align-top">Class {a}</th>
+                  {['X', 'Y', 'Z'].map((x) => {
+                    const cell = SEGMENT_MATRIX[a][x];
+                    const gap = POLICY_GAP[`${a}-${x}`];
+                    const isSelected = mat.abcClass === a && xyzClass(mat.demandCV) === x;
+                    return (
+                      <td key={x} className={`p-2 align-top ${isSelected ? 'bg-info-bg' : ''}`}>
+                        <div className="font-mono font-bold text-ink">{cell.skus} SKUs</div>
+                        <div className={cell.critical ? 'text-error-tx font-semibold' : 'text-subtle'}>{cell.critical} critical</div>
+                        <div className="text-subtle mt-0.5">{SEGMENT_STRATEGY[a][x]}</div>
+                        {gap && <Badge tone="watch" className="mt-1">Policy gap · {gap}</Badge>}
+                        {isSelected && <div className="text-primary font-semibold mt-1">{mat.id} is here</div>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-xs border-collapse min-w-[560px]">
+            <thead>
+              <tr className="text-subtle">
+                <th className="text-left font-semibold p-2">Tracked material</th>
+                <th className="text-left font-semibold p-2">ABC</th>
+                <th className="text-left font-semibold p-2">XYZ (CV)</th>
+                <th className="text-left font-semibold p-2">Criticality</th>
+                <th className="text-right font-semibold p-2">Cover vs lead time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trackedMaterials.map((m) => {
+                const cover = coverDays(m);
+                const short = cover < m.leadTimeDays;
+                return (
+                  <tr key={m.id} className="border-t border-border">
+                    <td className="p-2 text-ink"><span className="font-mono font-bold">{m.id}</span> · {m.name}</td>
+                    <td className="p-2">{m.abcClass}</td>
+                    <td className="p-2">{xyzClass(m.demandCV)} ({formatNum(m.demandCV)})</td>
+                    <td className="p-2">
+                      <Badge tone={criticalityFlag(m) === 'Critical' ? 'risk' : 'neutral'}>{criticalityFlag(m)}</Badge>
+                    </td>
+                    <td className={`p-2 text-right font-mono ${short ? 'text-error-tx font-bold' : 'text-body-c'}`}>
+                      {formatNum(cover, 0)}d / {m.leadTimeDays}d
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 

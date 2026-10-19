@@ -27,21 +27,25 @@ const MATERIAL_METADATA = {
     supplier: 'HydraTech Dynamics GmbH (Sole Source)',
     leadTimeDays: 60,
     contextTag: 'Class A · High Value · Sole Source Supply',
+    moq: 200, openPoQty: 600, openPoDueDays: 45, reservedPct: 0.08,
   },
   'MAT-4120': {
     supplier: 'SiliconFoundry International (Allocated Supply)',
     leadTimeDays: 60,
     contextTag: 'Class A · High Volatility · Allocated Latency',
+    moq: 1000, openPoQty: 3000, openPoDueDays: 52, reservedPct: 0.08,
   },
   'MAT-2041': {
     supplier: 'Apex Energy Storage Ltd (Dual Sourced)',
     leadTimeDays: 30,
     contextTag: 'Class A · High Velocity · Dual Sourced Feed',
+    moq: 20000, openPoQty: 60000, openPoDueDays: 12, reservedPct: 0.05,
   },
   'MAT-5501': {
     supplier: 'BondTech Polymer Solutions (Multi-Vendor)',
     leadTimeDays: 21,
     contextTag: 'Class C · Consumable · Shelf-Life Sensitive',
+    moq: 500, openPoQty: 0, openPoDueDays: null, reservedPct: 0.1,
   },
 };
 
@@ -193,62 +197,101 @@ export default function EoqCalibration() {
     });
 
   const M = ({ children }) => <span className="font-mono font-bold text-ink">{children}</span>;
-  const onHandDays = (onHandQty / demand) * 365;
+  // Replenishment policy (the decision); EOQ is only the lot-size benchmark inside it.
+  const serviceLevel = abcClass === 'A' ? 0.98 : 0.95;
+  const z = abcClass === 'A' ? 2.05 : 1.65;
+  const dailyDemand = demand / 365;
+  const demandCV = forecastInputs.demandCV ?? 0.2;
+  const safetyStock = z * dailyDemand * demandCV * Math.sqrt(leadTimeDays);
+  const reorderPoint = dailyDemand * leadTimeDays + safetyStock;
+  const moq = meta.moq ?? 0;
+  const orderQty = Math.max(moq, moq ? Math.ceil(qStar / moq) * moq : qStar);
+  const openPoQty = meta.openPoQty ?? 0;
+  const openPoDueDays = meta.openPoDueDays;
+  const netAvailable = onHandQty * (1 - (meta.reservedPct ?? 0)); // net of reservations
+  const daysToStockout = netAvailable / dailyDemand;
+  const shortageBeforeReceipt = openPoDueDays == null ? 0 : Math.max(0, dailyDemand * openPoDueDays - netAvailable);
+  const releaseInDays = Math.max(0, (netAvailable + openPoQty - reorderPoint) / dailyDemand);
+  const releaseOverdue = netAvailable + openPoQty < reorderPoint;
+  const receiptInDays = releaseInDays + leadTimeDays;
+  const dateIn = (days) => new Date(Date.now() + days * 86400000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const stockoutTile = {
+    label: 'Projected stockout',
+    value: shortageBeforeReceipt > 0 ? dateIn(daysToStockout) : 'None before receipt',
+    delta: shortageBeforeReceipt > 0 ? `${formatNum(shortageBeforeReceipt, 0)} ${uom} short before next receipt` : `${formatNum(daysToStockout, 0)} days of net available`,
+    deltaTone: shortageBeforeReceipt > 0 ? 'down' : 'up',
+    sub: openPoDueDays == null ? 'No open PO' : `Open PO ${formatNum(openPoQty, 0)} ${uom} due ${dateIn(openPoDueDays)}`,
+  };
+  const releaseTile = {
+    label: 'Release next order',
+    value: releaseOverdue ? 'Now (overdue)' : dateIn(releaseInDays),
+    deltaTone: releaseOverdue ? 'down' : 'flat',
+    delta: releaseOverdue ? 'Stock + open PO already below ROP' : `in ${formatNum(releaseInDays, 0)} days`,
+    sub: `Receipt ${dateIn(receiptInDays)} at ${leadTimeDays}-day lead time`,
+  };
+  const policyTile = { label: 'ROP / safety stock', value: `${formatNum(reorderPoint, 0)} / ${formatNum(safetyStock, 0)} ${uom}`, sub: `${formatNum(serviceLevel * 100, 0)}% service level · CV ${formatNum(demandCV)}` };
+  const orderTile = { label: 'Order quantity', value: `${formatNum(orderQty, 0)} ${uom}`, sub: `EOQ ${formatNum(qStar, 0)} rounded to MOQ ${formatNum(moq, 0)}` };
+  const shortageLine = shortageBeforeReceipt > 0
+    ? <>Net available stock runs out on <M>{dateIn(daysToStockout)}</M>, <M>{formatNum(shortageBeforeReceipt, 0)} {uom}</M> short before the open PO lands on {dateIn(openPoDueDays)}.</>
+    : <>No shortage before the next receipt: <M>{formatNum(netAvailable, 0)} {uom}</M> net available covers <M>{formatNum(daysToStockout, 0)} days</M>.</>;
+  const releaseLine = releaseOverdue
+    ? <>The next order of <M>{formatNum(orderQty, 0)} {uom}</M> should be released <M>now</M>; it would arrive {dateIn(receiptInDays)}.</>
+    : <>Release the next order of <M>{formatNum(orderQty, 0)} {uom}</M> on <M>{dateIn(releaseInDays)}</M> for receipt on {dateIn(receiptInDays)}.</>;
+
+  // Blueprint P0 for Screen 4: what to order, when it must arrive, and what follows.
   const personaTop = {
-    planner: {
-      label: 'Production / Materials Planner Lens · Cover After Right-Sizing the Batch',
-      headline: (
-        <>Moving {selectedMaterial.id}'s lot from <M>{formatNum(currentBatchQty, 0)} {uom}</M> to <M>{formatNum(qStar, 0)} {uom}</M> still leaves <M>{formatNum(recDaysOfSupply, 1)} days</M> of supply per batch against the <M>{leadTimeDays}-day</M> lead time from {meta.supplier} — smaller, more frequent batches don't put the line at more risk.</>
-      ),
+    head: {
+      label: 'Head of Supply Chain · Service and Inventory Impact of the Policy',
+      headline: <>{shortageLine} At a <M>{formatNum(serviceLevel * 100, 0)}%</M> service target the policy holds <M>{formatCurrency(safetyStock * unitCost, 0)}</M> of safety stock; right-sizing the lot to the EOQ benchmark saves <span className="font-mono font-bold text-success">{formatCurrency(netAnnualSavings, 0)}/yr</span>.</>,
       kpis: [
-        { label: 'Supply per batch after Q*', value: `${formatNum(recDaysOfSupply, 1)} days`, sub: `Was ${formatNum(currentDaysOfSupply, 1)} days per batch` },
-        { label: 'Supplier lead time', value: `${leadTimeDays} days`, sub: meta.supplier },
-        { label: 'Stock on hand', value: `${formatNum(onHandDays, 1)} days`, delta: onHandDays < leadTimeDays ? `${formatNum(leadTimeDays - onHandDays, 1)}d below lead time` : `+${formatNum(onHandDays - leadTimeDays, 1)}d beyond lead time`, deltaTone: onHandDays < leadTimeDays ? 'down' : 'up', sub: `${formatNum(onHandQty, 0)} ${uom} physical` },
-        { label: 'Planning buffer (1.5 × Q*)', value: `${formatNum(desiredStockQty, 0)} ${uom}`, sub: 'Cover target, not statistical safety stock' },
+        stockoutTile,
+        { label: 'Service level target', value: `${formatNum(serviceLevel * 100, 0)}%`, sub: `Class ${abcClass} policy` },
+        { label: 'Safety stock value', value: formatCurrency(safetyStock * unitCost, 0), sub: `${formatNum(safetyStock, 0)} ${uom} at ${formatCurrency(unitCost)}/${uom}` },
+        { label: 'Policy cost saving (benchmark)', value: `${formatCurrency(netAnnualSavings, 0)}/yr`, valueStyle: { color: 'var(--success)' }, sub: `${formatCurrency(workingCapitalReleased, 0)} cycle stock released` },
       ],
+      next: { action: releaseOverdue ? `Approve the expedited release for ${selectedMaterial.id}` : `Approve the ${formatNum(serviceLevel * 100, 0)}% service policy for ${selectedMaterial.id}`, owner: 'Head of Supply Chain', due: releaseOverdue ? 'Today' : 'This planning cycle' },
     },
     inventory: {
-      label: 'Inventory / Materials Manager Lens · Less Cycle Stock to Store',
-      headline: (
-        <>Average cycle stock drops from <M>{formatNum(currentCycleStockQty, 0)} {uom}</M> to <M>{formatNum(recCycleStockQty, 0)} {uom}</M> once EOQ is applied, freeing shelf and staging space. Batches arrive more often (<M>{formatNum(recOrderFreq, 1)}/yr</M> vs {formatNum(currentOrderFreq, 1)} today) but are smaller each time.</>
-      ),
+      label: 'Inventory / Materials Manager · Order Quantity, Reorder Point and Exceptions',
+      headline: <>{selectedMaterial.id} reorders at <M>{formatNum(reorderPoint, 0)} {uom}</M> with <M>{formatNum(safetyStock, 0)} {uom}</M> of safety stock, in lots of <M>{formatNum(orderQty, 0)} {uom}</M>. Across the portfolio, <M>18 materials</M> sit below their reorder point with no open order: those are today's exceptions.</>,
       kpis: [
-        { label: 'Avg cycle stock now', value: `${formatNum(currentCycleStockQty, 0)} ${uom}`, sub: `${formatCurrency(currentCycleStockValue)} held` },
-        { label: 'Avg cycle stock at Q*', value: `${formatNum(recCycleStockQty, 0)} ${uom}`, valueStyle: { color: 'var(--primary)' }, sub: `${formatCurrency(recCycleStockValue)} held` },
-        { label: 'Space freed', value: `${formatNum(currentCycleStockQty - recCycleStockQty, 0)} ${uom}`, delta: `${formatNum(((currentCycleStockQty - recCycleStockQty) / currentCycleStockQty) * 100, 1)}% less to store`, deltaTone: 'up', sub: 'Average shelf and staging footprint' },
-        { label: 'Receipts per year', value: `${formatNum(recOrderFreq, 1)}`, delta: `vs ${formatNum(currentOrderFreq, 1)} today`, deltaTone: 'flat', sub: 'More dock appointments, smaller loads' },
+        orderTile,
+        policyTile,
+        { label: 'Net available', value: `${formatNum(netAvailable, 0)} ${uom}`, sub: `On hand ${formatNum(onHandQty, 0)} less reservations` },
+        { label: 'Exceptions', value: '18 materials', delta: 'below ROP, no open order', deltaTone: 'down', sub: '6 are Class A' },
       ],
+      next: { action: 'Work the 18 below-ROP exceptions, Class A first', owner: 'Inventory / Materials Manager', due: 'Today' },
+    },
+    planner: {
+      label: 'Production / Materials Planner · Arrivals, Net Available and Shortages',
+      headline: <>{shortageLine} {releaseLine}</>,
+      kpis: [
+        stockoutTile,
+        { label: 'Net available', value: `${formatNum(netAvailable, 0)} ${uom}`, sub: `${formatNum(daysToStockout, 0)} days at ${formatNum(dailyDemand, 1)} ${uom}/day` },
+        { label: 'Next arrival', value: openPoDueDays == null ? 'None open' : dateIn(openPoDueDays), sub: openPoDueDays == null ? 'Next order not released' : `${formatNum(openPoQty, 0)} ${uom} on open PO` },
+        releaseTile,
+      ],
+      next: shortageBeforeReceipt > 0
+        ? { action: `Ask procurement to expedite the open PO, and resequence orders that use ${selectedMaterial.id}`, owner: 'Production / Materials Planner', due: 'Today' }
+        : { action: 'Check the arrival date against the next production orders in MRP', owner: 'Production / Materials Planner', due: 'Next MRP run' },
     },
     procurement: {
-      label: 'Procurement / Sourcing Manager Lens · Lot-Sizing Governance & Replenishment Execution',
-      headline: (
-        <>The current ERP lot of <M>{formatNum(currentBatchQty, 0)} {uom}</M> costs <M>{formatCurrency(currentHoldCost)}/yr</M> in holding alone. Recalibrating to <M>{formatNum(qStar, 0)} {uom}</M> lifts order frequency to <M>{formatNum(recOrderFreq, 1)}/yr</M> with {meta.supplier} — confirm the new size against their MOQ and packaging increments before updating the material master.</>
-      ),
+      label: 'Procurement / Sourcing Manager · Order Quantity, Release Date, Lead Time and MOQ',
+      headline: <>{releaseLine} The quantity is the EOQ benchmark of {formatNum(qStar, 0)} {uom} rounded up to {meta.supplier.split(' (')[0]}'s MOQ of <M>{formatNum(moq, 0)} {uom}</M>.</>,
       kpis: [
-        { label: 'POs per year', value: `${formatNum(recOrderFreq, 1)}`, delta: `${recOrderFreq >= currentOrderFreq ? '+' : ''}${formatNum(recOrderFreq - currentOrderFreq, 1)} vs today`, deltaTone: 'flat', sub: `${formatCurrency(recOrderCost)}/yr ordering cost` },
-        { label: 'Spend per order', value: formatCurrency(qStar * unitCost, 0), sub: `${formatNum(qStar, 0)} ${uom} at ${formatCurrency(unitCost)}/${uom}` },
-        { label: 'Holding cost now', value: `${formatCurrency(currentHoldCost, 0)}/yr`, sub: `Falls to ${formatCurrency(recHoldCost, 0)}/yr at Q*` },
-        { label: 'Supplier', value: `${leadTimeDays}-day LT`, sub: meta.supplier },
+        orderTile,
+        releaseTile,
+        { label: 'Supplier lead time', value: `${leadTimeDays} days`, sub: meta.supplier },
+        { label: 'MOQ', value: `${formatNum(moq, 0)} ${uom}`, sub: `${formatNum(orderQty / moq, 0)} × MOQ per order` },
       ],
-    },
-    head: {
-      label: 'Head of Supply Chain Lens · Working Capital Velocity & Risk-Balanced Governance',
-      headline: (
-        <>For <M>{selectedMaterial.id}</M>, this EOQ policy reduces relevant annual ordering and carrying cost by <span className="font-mono font-bold text-success">{formatCurrency(netAnnualSavings)}/yr</span> ({formatNum(netSavingsPercent, 1)}%) and releases an estimated <span className="font-mono font-bold text-success">{formatCurrency(workingCapitalReleased)}</span> of average cycle-stock capital.</>
-      ),
-      kpis: [
-        { label: 'Annual policy cost now', value: formatCurrency(currentTotalCost, 0), sub: `${formatCurrency(currentOrderCost, 0)} ordering + ${formatCurrency(currentHoldCost, 0)} holding` },
-        { label: 'Annual policy cost at Q*', value: formatCurrency(recTotalCost, 0), valueStyle: { color: 'var(--primary)' }, sub: `${formatCurrency(recOrderCost, 0)} ordering + ${formatCurrency(recHoldCost, 0)} holding` },
-        { label: 'Net annual saving', value: formatCurrency(netAnnualSavings, 0), valueStyle: { color: 'var(--success)' }, delta: `${formatNum(netSavingsPercent, 1)}% cost reduction`, deltaTone: 'up', sub: 'Ordering plus carrying cost' },
-        { label: 'Working capital released', value: formatCurrency(workingCapitalReleased, 0), valueStyle: { color: 'var(--success)' }, sub: `Carrying cost at ${formatNum(activeHoldingRate * 100)}%/yr` },
-      ],
+      next: { action: releaseOverdue ? `Release a PO for ${formatNum(orderQty, 0)} ${uom} and request an expedite` : `Schedule the PO release for ${dateIn(releaseInDays)}`, owner: 'Procurement / Sourcing Manager', due: releaseOverdue ? 'Today' : dateIn(releaseInDays) },
     },
   };
 
   return (
     <section className="view max-w-7xl mx-auto">
       <ViewHead
-        title="EOQ Analysis"
+        title="EOQ & Replenishment"
         subtitle={
           <p className="text-body-c leading-relaxed">
             Economic Order Quantity optimization and lot-size recalibration across Class A materials, balancing ordering setup costs against capital carrying costs to minimize total relevant inventory cost.
@@ -278,7 +321,7 @@ export default function EoqCalibration() {
         }
       />
 
-      <PersonaTop persona={persona} config={personaTop} />
+      <PersonaTop persona={persona} config={personaTop} safeguard="EOQ is a benchmark only. Dependent-demand components follow MRP and production-order requirements; open orders and reservations are netted off before any release date is set." />
 
       {/* Selected SKU Context Header */}
       <div className="card bg-surface border border-border rounded-md p-5 shadow-subtle mb-6">
