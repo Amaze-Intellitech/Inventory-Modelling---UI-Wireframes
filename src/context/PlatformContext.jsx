@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { ROLE_CONTEXT, DEFAULT_ROLE, MATERIALS } from '../data/mockData';
-import { defaultParameterSelection, requiredConnectors } from '../data/parameterCatalog';
+import { DEPENDENT_VARIABLE, defaultParameterSelection, returningParameterSelection, requiredConnectors } from '../data/parameterCatalog';
 import { currentSession } from '../lib/portal';
 
 const PlatformContext = createContext(null);
@@ -11,7 +11,8 @@ const ONBOARDED_KEY = 'aitek-onboarded';
 
 // The user's data setup: which parameters they chose (and the source declared for each), and which data
 // sources are connected. It survives sign-out for the same reason as the flag above.
-const PARAMS_KEY = 'aitek-parameters';
+// v2: the catalogue moved to the model's dependent/independent variables, so older selections are ignored.
+const PARAMS_KEY = 'aitek-parameters-v2';
 const CONNECTED_KEY = 'aitek-connected-sources';
 
 function readJson(key, fallback) {
@@ -35,8 +36,10 @@ function readParameterSelection() {
   const stored = readJson(PARAMS_KEY, null);
   const base = defaultParameterSelection();
   if (!stored || !stored.rows) return base;
-  // keep any parameter added to the catalogue since the selection was stored
-  return { fromYear: stored.fromYear || base.fromYear, toYear: stored.toYear || base.toYear, rows: { ...base.rows, ...stored.rows } };
+  // keep any parameter added to the catalogue since the selection was stored; the dependent variable is always in the model
+  const rows = { ...base.rows, ...stored.rows };
+  rows[DEPENDENT_VARIABLE.id] = { ...rows[DEPENDENT_VARIABLE.id], on: true };
+  return { fromYear: stored.fromYear || base.fromYear, toYear: stored.toYear || base.toYear, rows };
 }
 
 function readOnboarded() {
@@ -75,14 +78,14 @@ export function PlatformProvider({ children }) {
   }
 
   // Prototype helpers: a first-time user has chosen and connected nothing yet;
-  // a returning user has a complete setup (default parameters, every required source connected).
+  // a returning user has a complete setup (a typical variable set, every required source connected).
   function resetSetup() {
     setParameterSelection(defaultParameterSelection());
     setConnectedSources([]);
   }
 
   function seedReturningSetup() {
-    const selection = defaultParameterSelection();
+    const selection = returningParameterSelection();
     setParameterSelection(selection);
     setConnectedSources(requiredConnectors(selection.rows).map((c) => c.id));
   }

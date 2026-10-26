@@ -1,72 +1,51 @@
-// Candidate independent variables for the Multivariate model (design bible §5.3 / §6.3).
-// The named seed parameters come from the SME session; the customer keeps the ones that apply and declares a source for each.
-// `on: false` = not selected by default (e.g. a site with only open warehouses has no storage tanks).
+// Model variables for the Multivariate model (design bible §5.3 / §6.3).
+// base_stock is the one dependent variable and is always in the model; every other variable is an independent
+// (candidate driver) that the customer drags into the model and then declares a source for.
+// Each variable carries the source it most often comes from, as a starting suggestion.
 
 export const SOURCE_OPTIONS = ['SAP', 'Oracle', 'DCS', 'PCS', 'LIMS', 'Supplier feed', 'Custom software', 'External feed', 'Excel upload'];
 
-export const PARAMETER_CATALOG = [
-  {
-    category: 'Commercial & demand',
-    items: [
-      { id: 'price', label: 'Price', source: 'SAP', on: true },
-      { id: 'seasonality', label: 'Seasonality', source: 'External feed', on: true },
-      { id: 'fg-demand', label: 'Finished-goods demand', source: 'SAP', on: true },
-      { id: 'substitution', label: 'Material substitution', source: 'SAP', on: true },
-      { id: 'promotions', label: 'Promotions and campaigns', source: 'Custom software', on: false },
-      { id: 'backlog', label: 'Customer order backlog', source: 'SAP', on: true },
-      { id: 'contract-vol', label: 'Contract volumes', source: 'SAP', on: true },
-      { id: 'forecast-bias', label: 'Forecast bias', source: 'Custom software', on: false },
-      { id: 'returns', label: 'Return rate', source: 'SAP', on: false },
-      { id: 'channel-mix', label: 'Channel mix', source: 'Excel upload', on: false },
-    ],
-  },
-  {
-    category: 'Production & internal operations',
-    items: [
-      { id: 'production', label: 'Production volume (per unit)', source: 'DCS', on: true },
-      { id: 'wip', label: 'Work in progress (WIP)', source: 'SAP', on: true },
-      { id: 'quality', label: 'Quality of finished good', source: 'LIMS', on: true },
-      { id: 'storage-cap', label: 'Storage capacity', source: 'SAP', on: true },
-      { id: 'storage-occ', label: 'Storage occupancy (%)', source: 'SAP', on: true },
-      { id: 'storage-tank', label: 'Storage tank capacity', source: '', on: false, note: 'Not applicable to this site' },
-      { id: 'downtime', label: 'Planned downtime', source: 'PCS', on: true },
-      { id: 'yield', label: 'Yield rate', source: 'DCS', on: true },
-      { id: 'batch', label: 'Batch size', source: 'PCS', on: true },
-      { id: 'changeover', label: 'Changeover time', source: 'PCS', on: false },
-      { id: 'shifts', label: 'Shift pattern', source: 'Excel upload', on: false },
-      { id: 'scrap', label: 'Scrap rate', source: 'DCS', on: true },
-    ],
-  },
-  {
-    category: 'Supplier',
-    items: [
-      { id: 'supplier', label: 'Supplier (identity and terms)', source: 'Supplier feed', on: true },
-      { id: 'lead-time', label: 'Supplier lead time', source: 'Supplier feed', on: true },
-      { id: 'capacity', label: 'Supplier capacity', source: 'Supplier feed', on: true },
-      { id: 'discount', label: 'Supplier discount', source: 'Supplier feed', on: true },
-      { id: 'otd', label: 'On-time delivery rate', source: 'SAP', on: true },
-      { id: 'moq', label: 'Minimum order quantity', source: 'SAP', on: true },
-      { id: 'pay-terms', label: 'Payment terms', source: 'SAP', on: false },
-      { id: 'transit', label: 'Transit mode', source: 'Supplier feed', on: false },
-      { id: 'rejects', label: 'Quality rejection rate', source: 'LIMS', on: false },
-      { id: 'single-src', label: 'Single-source flag', source: 'SAP', on: true },
-    ],
-  },
-  {
-    category: 'External & macro',
-    items: [
-      { id: 'fx', label: 'Foreign exchange (e.g. INR/USD)', source: 'External feed', on: true },
-      { id: 'market', label: 'External market conditions', source: 'External feed', on: true },
-      { id: 'regulatory', label: 'Regulatory factors', source: 'External feed', on: false },
-      { id: 'geo', label: 'Geopolitical factors', source: 'External feed', on: false },
-      { id: 'commodity', label: 'Commodity index', source: 'External feed', on: true },
-      { id: 'fuel', label: 'Fuel price', source: 'External feed', on: false },
-      { id: 'weather', label: 'Weather', source: 'External feed', on: false },
-      { id: 'port', label: 'Port congestion', source: 'External feed', on: false },
-      { id: 'tariff', label: 'Tariffs and duties', source: 'External feed', on: false },
-      { id: 'inflation', label: 'Inflation', source: 'External feed', on: false },
-    ],
-  },
+export const DEPENDENT_VARIABLE = { id: 'base_stock', source: 'SAP' };
+
+// [id, suggested source], in the order the model team listed them.
+const INDEPENDENT = [
+  ['date', 'SAP'], ['weekend_flag', 'External feed'], ['holiday_flag', 'External feed'], ['season', 'External feed'],
+  ['demand', 'SAP'], ['sales_qty', 'SAP'], ['price', 'SAP'], ['sales_value', 'SAP'],
+  ['inbound_qty', 'SAP'], ['outbound_qty', 'SAP'], ['closing_stock', 'SAP'], ['safety_stock', 'SAP'],
+  ['reorder_point', 'SAP'], ['max_stock_level', 'SAP'], ['min_stock_level', 'SAP'],
+  ['production_capacity', 'DCS'], ['production_qty', 'DCS'], ['lead_time_days', 'SAP'],
+  ['supplier_lead_time', 'Supplier feed'], ['supplier_capacity', 'Supplier feed'], ['supplier_reliability', 'Supplier feed'],
+  ['product_id', 'SAP'], ['material_code', 'SAP'], ['material_group', 'SAP'], ['material_type', 'SAP'],
+  ['product_category', 'SAP'], ['product_subcategory', 'SAP'], ['uom', 'SAP'], ['product_type', 'SAP'],
+  ['shelf_life_days', 'SAP'], ['expiry_flag', 'SAP'], ['batch_required_flag', 'SAP'], ['serial_required_flag', 'SAP'],
+  ['substitute_available_flag', 'SAP'], ['is_substitute_for_other', 'SAP'], ['quality_grade', 'LIMS'], ['quality_score', 'LIMS'],
+  ['location_id', 'SAP'], ['warehouse_id', 'SAP'], ['plant_id', 'SAP'], ['distribution_channel', 'SAP'],
+  ['region', 'SAP'], ['inventory_channel', 'SAP'], ['stock_in_transit', 'SAP'], ['inventory_value', 'SAP'],
+  ['inventory_carrying_cost', 'SAP'], ['inventory_overage_ratio', 'Custom software'],
+  ['machine_availability', 'PCS'], ['plant_availability', 'PCS'], ['planned_shutdown_flag', 'PCS'], ['maintenance_flag', 'PCS'],
+  ['consumption_qty', 'SAP'], ['bill_of_material_qty', 'SAP'], ['yield_rate', 'DCS'],
+  ['supplier_id', 'Supplier feed'], ['supplier_discount', 'Supplier feed'], ['supplier_price', 'Supplier feed'],
+  ['price_forecast', 'Custom software'], ['discount', 'SAP'], ['promotion_flag', 'Custom software'], ['promotion_type', 'Custom software'],
+  ['marketing_spend', 'Custom software'], ['advertisement_spend', 'Custom software'], ['branding_spend', 'Custom software'],
+  ['sales_team_count', 'Custom software'], ['sales_activity_score', 'Custom software'],
+  ['storage_capacity_rm', 'SAP'], ['storage_capacity_fg', 'SAP'], ['warehouse_capacity_utilization', 'SAP'],
+  ['transport_constraint_flag', 'Supplier feed'], ['logistics_delay_days', 'Supplier feed'], ['freight_cost', 'Supplier feed'],
+  ['inbound_delay', 'SAP'], ['outbound_delay', 'SAP'], ['substitution_demand', 'SAP'], ['cross_product_effect', 'Custom software'],
+  ['competitor_price', 'External feed'], ['competitor_promotion_flag', 'External feed'], ['competitor_stock_flag', 'External feed'],
+  ['weather_index', 'External feed'], ['festival_flag', 'External feed'], ['event_flag', 'External feed'],
+  ['gdp_growth', 'External feed'], ['inflation_rate', 'External feed'], ['interest_rate', 'External feed'],
+  ['consumer_confidence_index', 'External feed'], ['disposable_income', 'External feed'], ['unemployment_rate', 'External feed'],
+  ['industrial_growth_rate', 'External feed'], ['purchase_frequency', 'SAP'], ['demographics_index', 'Excel upload'],
+  ['wip', 'SAP'], ['storage_days', 'SAP'], ['receivable_days', 'SAP'], ['payable_days', 'SAP'],
+];
+
+export const INDEPENDENT_VARIABLES = INDEPENDENT.map(([id, source]) => ({ id, source }));
+
+// A typical working model, used to seed a returning user's setup in the prototype.
+const RETURNING_PRESET = [
+  'date', 'season', 'holiday_flag', 'demand', 'sales_qty', 'price', 'inbound_qty', 'outbound_qty', 'closing_stock',
+  'safety_stock', 'reorder_point', 'production_qty', 'yield_rate', 'machine_availability', 'supplier_lead_time',
+  'supplier_reliability', 'quality_score', 'stock_in_transit', 'promotion_flag', 'competitor_price', 'inflation_rate', 'wip',
 ];
 
 // ---- Which connector provides each source system (Data sources step) ----
@@ -112,11 +91,18 @@ export function isRangeValid({ from, to }) {
   return to === 'today' || Number(from) <= Number(to);
 }
 
-/** The catalogue defaults as a selection: which parameters are on, and the source declared for each. */
+/** A first-time selection: only the dependent variable is in the model; each variable keeps its suggested source. */
 export function defaultParameterSelection() {
-  const rows = {};
-  PARAMETER_CATALOG.forEach((g) => g.items.forEach((p) => { rows[p.id] = { on: p.on, source: p.source }; }));
+  const rows = { [DEPENDENT_VARIABLE.id]: { on: true, source: DEPENDENT_VARIABLE.source } };
+  INDEPENDENT_VARIABLES.forEach((v) => { rows[v.id] = { on: false, source: v.source }; });
   return { rows, fromYear: DEFAULT_FROM_YEAR, toYear: DEFAULT_TO };
+}
+
+/** A returning user's selection: the dependent plus a typical set of independents. */
+export function returningParameterSelection() {
+  const selection = defaultParameterSelection();
+  RETURNING_PRESET.forEach((id) => { selection.rows[id] = { ...selection.rows[id], on: true }; });
+  return selection;
 }
 
 /**
